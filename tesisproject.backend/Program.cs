@@ -10,9 +10,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using tesisproject.backend.Data;
-// [ARTICLES-MIGRATION] Politicas y roles aislados del modulo de articulos.
 using tesisproject.backend.Authorization.Articles;
-// [ARTICLES-MIGRATION] Contexto independiente del dominio de articulos.
 using tesisproject.backend.Data.Articles;
 using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Implementations;
@@ -23,7 +21,6 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
 using tesisproject.backend.UnitOfWork.Interfaces;
-// [ARTICLES-MIGRATION] Contratos compartidos de seguridad de articulos.
 using tesisproject.shared.Auth.Articles;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Routing;
@@ -41,12 +38,11 @@ builder.ConfigureHttpClients();
 builder.ConfigureDependencyInjection();
 builder.ConfigureApiDocumentation();
 
-ExcelPackage.License.SetNonCommercialOrganization("Universidad Técnica de Ambato");
+ExcelPackage.License.SetNonCommercialOrganization("Universidad Tï¿½cnica de Ambato");
 
 var app = builder.Build();
 
 // 1) Migraciones primero (para que existan tablas, incluyendo Identity)
-// [ARTICLES-MIGRATION] Permite validar la fusion sin modificar el esquema base; por defecto conserva el comportamiento original.
 if (app.Configuration.GetValue("DatabaseBootstrap:ApplyMigrations", true))
 {
     await ApplyMigrationsAsync(app);
@@ -56,9 +52,8 @@ else
     app.Logger.LogWarning("Database migrations were skipped by configuration.");
 }
 
-// 2) Seed de roles después de migrar
+// 2) Seed de roles despuï¿½s de migrar
 var identityRoles = new List<string> { "admin", "financial", "technical", "superadmin", "coordinador", "user" };
-// [ARTICLES-MIGRATION] Los roles historicos se crean solo cuando el modulo de articulos esta habilitado.
 if (app.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
     identityRoles.AddRange(ArticleRoles.All);
 await EnsureIdentityRolesAsync(app, identityRoles.ToArray());
@@ -157,8 +152,6 @@ static class StartupExtensions
 
         builder.Services.AddDbContext<DwContext>(options =>
             options.UseSqlServer(defaultConnection));
-
-        // [ARTICLES-MIGRATION] El OLTP de articulos permanece separado y solo se activa con configuracion explicita.
         if (builder.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
         {
             var articlesOltpConnection = builder.Configuration.GetConnectionString("ArticlesOltpConnection");
@@ -227,8 +220,6 @@ static class StartupExtensions
 
                 options.MapInboundClaims = false;
             });
-
-        // [ARTICLES-MIGRATION] Agrega politicas de articulos sin reemplazar la autorizacion de proyectos.
         builder.Services.AddAuthorization(options => ArticlePolicies.Configure(options));
     }
 
@@ -251,7 +242,6 @@ static class StartupExtensions
     }
     public static void ConfigureOptions(this WebApplicationBuilder builder)
     {
-        // [ARTICLES-MIGRATION] Bandera del modulo; deshabilitada por defecto.
         builder.Services.Configure<ArticlesModuleOptions>(
             builder.Configuration.GetSection(ArticlesModuleOptions.SectionName));
 
@@ -306,16 +296,18 @@ static class StartupExtensions
             });
 
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-        // [ARTICLES-MIGRATION] Dependencias aisladas del modulo de articulos.
         if (builder.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
         {
             builder.Services.AddScoped<IArticleReadRepository, ArticleReadRepository>();
             builder.Services.AddScoped<IArticleQueryService, ArticleQueryService>();
+            builder.Services.AddScoped<IArticleRegistrationCommandService, ArticleRegistrationCommandService>();
+            builder.Services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         }
         else
         {
             builder.Services.AddSingleton<IArticleQueryService, DisabledArticleQueryService>();
+            builder.Services.AddSingleton<IArticleRegistrationCommandService, DisabledArticleRegistrationCommandService>();
+            builder.Services.AddSingleton<IRegistrationMatrixService, DisabledRegistrationMatrixService>();
         }
         builder.Services.AddHttpContextAccessor();
 
@@ -354,7 +346,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IUserFacultyScopeAssignmentRepository, UserFacultyScopeAssignmentRepository>();
         builder.Services.AddScoped<IAppConfigurationRepository, AppConfigurationRepository>();
 
-        // Genéricos
+        // Genï¿½ricos
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         builder.Services.AddScoped(typeof(ICatalogRepository<>), typeof(CatalogRepository<>));
 
@@ -364,7 +356,6 @@ static class StartupExtensions
         builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-        // [ARTICLES-MIGRATION] Adapta IdentityUser<int> y AppUser.IdUser para los modulos de articulos.
         builder.Services.AddScoped<IArticleUserContext, ArticleUserContext>();
         builder.Services.AddScoped<ITokenService, JwtTokenService>();
         builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();

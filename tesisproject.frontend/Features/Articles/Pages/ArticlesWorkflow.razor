@@ -1,0 +1,221 @@
+@page "/articles/module/workflow"
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Articles
+@inject IArticleClientService ArticlesClient
+@inject NavigationManager Nav
+<div class="articles-module-page articles-workflow-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-workflow-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-workflow-hero__top px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-cyan-200">Workflow de articulos</p>
+                        <h1 class="mt-1 text-2xl font-bold">Seguimiento de envios</h1>
+                        <p class="mt-2 max-w-2xl text-sm text-slate-300">
+                            Vista inicial para revisar registros de articulos dentro de la plataforma integrada.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button"
+                                class="rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                @onclick="ReloadAsync"
+                                disabled="@_loading">
+                            Actualizar
+                        </button>
+                        <button type="button"
+                                class="rounded-md bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+                                @onclick="GoToRegister">
+                            Nuevo registro
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-workflow-metrics grid gap-3 px-5 py-4 sm:grid-cols-2 xl:grid-cols-4 md:px-6">
+                <div class="articles-workflow-metric rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span>Registros consultados</span>
+                    <strong>@_page.TotalCount</strong>
+                </div>
+                <div class="articles-workflow-metric rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span>Pagina actual</span>
+                    <strong>@_page.Page / @Math.Max(1, _page.TotalPages)</strong>
+                </div>
+                <div class="articles-workflow-metric rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span>Con DOI</span>
+                    <strong>@CurrentPageWithDoi</strong>
+                </div>
+                <div class="articles-workflow-metric rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span>Con autores</span>
+                    <strong>@CurrentPageWithAuthors</strong>
+                </div>
+            </div>
+        </header>
+
+        <section class="articles-workflow-status rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <span class="articles-workflow-pill">Integracion controlada</span>
+                    <h2 class="mt-3 text-lg font-bold text-foreground">Bandeja operativa activa</h2>
+                    <p class="mt-2 max-w-3xl text-sm text-muted">
+                        Esta pantalla ya trabaja con los articulos reales del módulo integrado. Las acciones avanzadas de UODIDE, autor y Area Tecnica permanecen preservadas para acoplarlas en la siguiente fase sin afectar Proyectos.
+                    </p>
+                </div>
+                <button type="button"
+                        class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-primary-subtle"
+                        @onclick="GoToArticles">
+                    Ver listado
+                </button>
+            </div>
+        </section>
+
+        @if (_loading)
+        {
+            <section class="articles-workflow-loading rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+                <p class="mt-3 text-sm text-muted">Cargando seguimiento...</p>
+            </section>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
+                <h2 class="text-base font-bold text-rose-900">No fue posible cargar el workflow</h2>
+                <p class="mt-2 text-sm text-rose-700">@_error</p>
+                <button type="button"
+                        class="mt-4 rounded-md bg-rose-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-800"
+                        @onclick="ReloadAsync">
+                    Intentar nuevamente
+                </button>
+            </section>
+        }
+        else if (_page.Items.Count == 0)
+        {
+            <section class="rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <h2 class="text-lg font-bold text-foreground">Sin envios para seguimiento</h2>
+                <p class="mt-2 text-sm text-muted">Cuando existan articulos registrados, apareceran aqui para continuar el acoplamiento del workflow.</p>
+                <button type="button"
+                        class="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                        @onclick="GoToRegister">
+                    Registrar articulo
+                </button>
+            </section>
+        }
+        else
+        {
+            <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                @foreach (var article in _page.Items)
+                {
+                    <article @key="article.Id" class="articles-workflow-card rounded-lg border border-border bg-background p-4 shadow-sm">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0">
+                                <div class="mb-2 flex flex-wrap gap-2">
+                                    <span class="rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">@Display(article.Year)</span>
+                                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">@Display(article.PublicationStatusName)</span>
+                                    <span class="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">Seguimiento</span>
+                                </div>
+                                <h2 class="line-clamp-2 text-base font-bold text-foreground">@Display(article.Title)</h2>
+                                <p class="mt-2 text-sm text-muted">DOI: @Display(article.Doi)</p>
+                            </div>
+                            <button type="button"
+                                    class="shrink-0 rounded-md border border-border px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary-subtle"
+                                    @onclick="() => OpenArticle(article.Id)">
+                                Ver articulo
+                            </button>
+                        </div>
+
+                        <dl class="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
+                            <div>
+                                <dt>Autor o autores</dt>
+                                <dd>@DisplayAuthors(article.AuthorsSummary)</dd>
+                            </div>
+                            <div>
+                                <dt>Revista</dt>
+                                <dd>@Display(article.VenueName)</dd>
+                            </div>
+                            <div>
+                                <dt>Facultad</dt>
+                                <dd>@Display(article.FacultyName)</dd>
+                            </div>
+                            <div>
+                                <dt>Ruta actual</dt>
+                                <dd>Registro consolidado</dd>
+                            </div>
+                        </dl>
+                    </article>
+                }
+            </section>
+
+            <footer class="articles-workflow-pagination flex flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-muted">Pagina @_page.Page de @Math.Max(1, _page.TotalPages)</p>
+                <div class="flex gap-2">
+                    <button type="button"
+                            class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-primary-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                            @onclick="PreviousPageAsync"
+                            disabled="@(_loading || _page.Page <= 1)">
+                        Anterior
+                    </button>
+                    <button type="button"
+                            class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-primary-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                            @onclick="NextPageAsync"
+                            disabled="@(_loading || _page.Page >= _page.TotalPages)">
+                        Siguiente
+                    </button>
+                </div>
+            </footer>
+        }
+    </div>
+</div>
+
+@code {
+    private ArticlePageDto _page = new();
+    private bool _loading = true;
+    private string? _error;
+    private const int PageSize = 10;
+
+    private int CurrentPageWithDoi => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.Doi));
+    private int CurrentPageWithAuthors => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.AuthorsSummary) || item.Participants is { Count: > 0 });
+
+    protected override Task OnInitializedAsync() => LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
+        {
+            Page = page,
+            PageSize = PageSize,
+            SortBy = "CreatedAt",
+            SortDesc = true
+        });
+
+        if (result.Success && result.Data is not null)
+            _page = result.Data;
+        else
+            _error = FriendlyError(result.ErrorCode, result.Message);
+
+        _loading = false;
+    }
+
+    private Task ReloadAsync() => LoadPageAsync(Math.Max(1, _page.Page));
+    private Task PreviousPageAsync() => LoadPageAsync(Math.Max(1, _page.Page - 1));
+    private Task NextPageAsync() => LoadPageAsync(Math.Min(Math.Max(1, _page.TotalPages), _page.Page + 1));
+
+    private void GoToArticles() => Nav.NavigateTo("/articles");
+    private void GoToRegister() => Nav.NavigateTo("/articles/module/register");
+    private void OpenArticle(int articleId) => Nav.NavigateTo($"/articles?articleId={articleId}");
+
+    private static string Display(object? value)
+        => string.IsNullOrWhiteSpace(value?.ToString()) ? "No informado" : value.ToString()!;
+
+    private static string DisplayAuthors(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "Sin autores informados" : value;
+
+    private static string FriendlyError(string? code, string? message)
+        => code switch
+        {
+            "ARTICLES_MODULE_DISABLED" => "El modulo de articulos todavia no esta habilitado en este entorno.",
+            _ when !string.IsNullOrWhiteSpace(message) => message,
+            _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
+        };
+}

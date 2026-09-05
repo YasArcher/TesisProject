@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Servicio inerte para mantener el controlador resoluble mientras el modulo esta deshabilitado.
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Articles;
 using tesisproject.shared.Responses;

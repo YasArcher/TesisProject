@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Cliente de configuracion de articulos adaptado al contrato HTTP del sistema base.
 using tesisproject.shared.DTOs.Catalogs;
 using tesisproject.shared.DTOs.Configuration;
 

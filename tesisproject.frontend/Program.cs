@@ -1,4 +1,4 @@
-﻿using Blazored.LocalStorage;
+using Blazored.LocalStorage;
 using Blazored.Toast;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -75,8 +75,8 @@ builder.Services.AddScoped<IProjectFiltersClientService, ProjectFiltersClientSer
 builder.Services.AddScoped<IProjectExtensionClientService, ProjectExtensionClientService>();
 builder.Services.AddScoped<IVisitClientService, VisitClientService>();
 builder.Services.AddScoped<IAuthClientService, AuthClientService>();
-// [ARTICLES-MIGRATION] Primera superficie activa de consulta de articulos.
 builder.Services.AddScoped<IArticleClientService, ArticleClientService>();
+builder.Services.AddScoped<IRegistrationMatrixClient, RegistrationMatrixClient>();
 builder.Services.AddScoped<IFormConfigurationClient, FormConfigurationClient>();
 builder.Services.AddScoped<IDocumentRecognitionClientService, DocumentRecognitionClientService>();
 builder.Services.AddScoped<IProjectTypeClientService, ProjectTypeClientService>();
@@ -171,4 +171,3 @@ static string NormalizeBaseUrl(string baseUrl)
 
     return baseUrl;
 }
-

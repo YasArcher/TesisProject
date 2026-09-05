@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Workflow;
 
 public static class RegistrationEntryModes
@@ -29,4 +28,3 @@ public sealed class UpdateRegistrationWorkflowSettingsRequest
 {
     public string EntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
 }
-

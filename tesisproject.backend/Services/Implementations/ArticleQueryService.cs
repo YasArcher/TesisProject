@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Adaptacion de lectura a contratos del sistema base de proyectos.
 using tesisproject.backend.Data.Articles.Entities;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;

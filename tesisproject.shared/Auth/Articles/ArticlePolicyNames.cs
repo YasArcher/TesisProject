@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Nombres estables de politicas del modulo de articulos.
 namespace tesisproject.shared.Auth.Articles;
 
 public static class ArticlePolicyNames

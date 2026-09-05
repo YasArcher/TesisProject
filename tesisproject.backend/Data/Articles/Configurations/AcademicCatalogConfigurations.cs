@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using tesisproject.backend.Data.Articles.Entities;
@@ -57,4 +56,3 @@ public sealed class FacultyConfiguration : IEntityTypeConfiguration<Faculty>
             .HasFilter("[Code] IS NOT NULL AND [Code] <> N''");
     }
 }
-

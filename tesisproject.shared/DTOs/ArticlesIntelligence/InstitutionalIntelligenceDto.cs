@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Intelligence;
 
 public sealed class InstitutionalIntelligenceDashboardDto
@@ -244,4 +243,3 @@ public sealed class IntelligenceDatasetFeatureDto
     public string Source { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
 }
-

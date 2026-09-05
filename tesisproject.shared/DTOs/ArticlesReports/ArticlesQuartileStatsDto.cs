@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Reports
 {
     public class ArticlesQuartileStatsDto
@@ -16,4 +15,3 @@ namespace tesisproject.shared.DTOs.Reports
         public double NoQuartilePercent { get; set; }
     }
 }
-

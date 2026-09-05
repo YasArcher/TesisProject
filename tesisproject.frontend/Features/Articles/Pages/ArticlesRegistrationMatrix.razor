@@ -1,0 +1,294 @@
+@page "/articles/module/matrix"
+@page "/articles/module/registration-matrix"
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Configuration
+@using tesisproject.shared.DTOs.MassRegistration
+@inject IFormConfigurationClient FormConfigurationClient
+@inject IRegistrationMatrixClient MatrixClient
+<div class="articles-module-page articles-matrix-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
+        <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+                <p class="text-sm font-semibold text-primary">Registro tabular</p>
+                <h1 class="mt-1 text-2xl font-bold text-foreground">Matriz de articulos</h1>
+                <p class="mt-1 max-w-3xl text-sm text-muted">Crea borradores tabulares usando los campos visibles del formulario activo. El envio a staging se habilitara al integrar carga masiva y workflow.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="LoadAsync" disabled="@_loading">Actualizar</button>
+                <button class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover" @onclick="CreateFromActiveFormAsync" disabled="@(_loading || _creating || ActiveFields.Count == 0)">Crear matriz</button>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <section class="mb-4 rounded-lg border @MessageClass p-4 text-sm font-semibold">@_message</section>
+        }
+
+        @if (_loading)
+        {
+            <section class="rounded-lg border border-border bg-background p-8 text-center text-sm text-muted">Cargando matrices...</section>
+        }
+        else if (_form is null)
+        {
+            <section class="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
+                <h2 class="text-lg font-bold">No existe formulario activo</h2>
+                <p class="mt-2 text-sm">Activa un formulario de articulos desde configuracion antes de crear una matriz tabular.</p>
+            </section>
+        }
+        else
+        {
+            <section class="articles-metric-grid mb-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                    <p class="text-xs font-semibold uppercase text-muted">Formulario activo</p>
+                    <p class="mt-1 text-lg font-bold text-foreground">@_form.FormName</p>
+                </article>
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                    <p class="text-xs font-semibold uppercase text-muted">Campos disponibles</p>
+                    <p class="mt-1 text-lg font-bold text-foreground">@ActiveFields.Count</p>
+                </article>
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                    <p class="text-xs font-semibold uppercase text-muted">Matrices</p>
+                    <p class="mt-1 text-lg font-bold text-foreground">@_matrices.Count</p>
+                </article>
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                    <p class="text-xs font-semibold uppercase text-muted">Fase actual</p>
+                    <p class="mt-1 text-lg font-bold text-foreground">Borrador</p>
+                </article>
+            </section>
+
+            <div class="grid grid-cols-1 gap-5 xl:grid-cols-[20rem_minmax(0,1fr)]">
+                <aside class="articles-matrix-sidebar rounded-lg border border-border bg-background p-4">
+                    <div class="mb-3 flex items-center justify-between gap-2">
+                        <h2 class="text-sm font-bold text-foreground">Matrices recientes</h2>
+                        <span class="rounded bg-primary-subtle px-2 py-1 text-xs font-bold text-primary">@_matrices.Count</span>
+                    </div>
+                    <div class="space-y-2">
+                        @if (_matrices.Count == 0)
+                        {
+                            <p class="rounded-lg border border-dashed border-border p-4 text-sm text-muted">Aun no hay matrices en borrador.</p>
+                        }
+                        @foreach (var matrix in _matrices)
+                        {
+                            <button class="w-full rounded-lg border px-3 py-2 text-left text-sm transition @(matrix.RegistrationMatrixId == _selectedMatrixId ? "border-primary bg-primary-subtle text-primary" : "border-border bg-page-bg text-foreground hover:border-primary")"
+                                    @onclick="() => SelectMatrixAsync(matrix.RegistrationMatrixId)">
+                                <span class="block font-bold">@matrix.Name</span>
+                                <span class="mt-1 block text-xs text-muted">@matrix.RowCount fila(s) - @matrix.ColumnCount columna(s)</span>
+                            </button>
+                        }
+                    </div>
+                </aside>
+
+                <main class="articles-workspace-panel rounded-lg border border-border bg-background p-4">
+                    @if (_selected is null)
+                    {
+                        <div class="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">Selecciona una matriz o crea una nueva desde el formulario activo.</div>
+                    }
+                    else
+                    {
+                        <div class="mb-4 flex flex-col gap-3 border-b border-border pb-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <h2 class="text-lg font-bold text-foreground">@_selected.Summary.Name</h2>
+                                <p class="text-xs text-muted">Estado: @_selected.Summary.Status - @_selected.Summary.RowCount fila(s)</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="AddRowAsync" disabled="@_busy">Agregar fila</button>
+                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted hover:bg-page-bg" @onclick="SubmitAsync" disabled="@_busy">Enviar a staging</button>
+                                <button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @onclick="DeleteSelectedAsync" disabled="@_busy">Eliminar borrador</button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full border-separate border-spacing-0 text-sm">
+                                <thead>
+                                    <tr>
+                                        <th class="sticky left-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-bold uppercase text-muted">Fila</th>
+                                        @foreach (var column in _selected.Columns)
+                                        {
+                                            <th class="border-b border-border px-3 py-2 text-left text-xs font-bold uppercase text-muted">@column.FieldLabel</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (_selected.Rows.Count == 0)
+                                    {
+                                        <tr><td class="px-3 py-6 text-sm text-muted" colspan="@(Math.Max(1, _selected.Columns.Count + 1))">Agrega una fila para empezar a capturar datos.</td></tr>
+                                    }
+                                    @foreach (var row in _selected.Rows)
+                                    {
+                                        <tr @key="row.RegistrationMatrixRowId">
+                                            <td class="sticky left-0 z-10 border-b border-border bg-background px-3 py-2 font-bold text-foreground">@row.RowNumber</td>
+                                            @foreach (var column in _selected.Columns)
+                                            {
+                                                <td class="min-w-48 border-b border-border px-2 py-2">
+                                                    <input class="w-full rounded-lg border border-border bg-page-bg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                                                           value="@GetCellValue(row, column.FieldId)"
+                                                           maxlength="4000"
+                                                           @onchange="args => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, args.Value?.ToString())" />
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </main>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private ResolvedFormDto? _form;
+    private List<RegistrationMatrixSummaryDto> _matrices = [];
+    private RegistrationMatrixDetailDto? _selected;
+    private int? _selectedMatrixId;
+    private bool _loading;
+    private bool _creating;
+    private bool _busy;
+    private string? _message;
+    private bool _messageIsError;
+
+    private string MessageClass => _messageIsError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
+
+    private List<ResolvedFormFieldDto> ActiveFields => _form?.Sections
+        .SelectMany(s => s.Fields)
+        .Where(f => f.IsVisible && f.IsEditable)
+        .OrderBy(f => f.EntityName)
+        .ThenBy(f => f.DisplayOrder)
+        .ToList() ?? [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _message = null;
+        try
+        {
+            var form = await FormConfigurationClient.GetActiveResolvedFormAsync("Article", "ArticleManualForm");
+            _form = form.Success ? form.Data : null;
+            var matrices = await MatrixClient.GetMatricesAsync(50);
+            _matrices = matrices.Success && matrices.Data is not null ? matrices.Data : [];
+            if (_selectedMatrixId.HasValue)
+                await SelectMatrixAsync(_selectedMatrixId.Value, showErrors: false);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateFromActiveFormAsync()
+    {
+        if (_form is null || ActiveFields.Count == 0) return;
+        _creating = true;
+        try
+        {
+            var result = await MatrixClient.CreateMatrixAsync(new CreateRegistrationMatrixRequest
+            {
+                Name = $"Matriz {_form.FormName} {DateTime.Now:yyyyMMdd HHmm}",
+                EntityName = "Article",
+                FieldIds = ActiveFields.Select(f => f.FieldId).ToList(),
+                Notes = "Matriz creada desde el formulario activo durante la integración."
+            });
+            if (!result.Success || result.Data is null)
+            {
+                Show(result.Message ?? "No pude crear la matriz.", true);
+                return;
+            }
+            _selected = result.Data;
+            _selectedMatrixId = result.Data.Summary.RegistrationMatrixId;
+            await LoadAsync();
+            Show("Matriz creada como borrador.", false);
+        }
+        finally
+        {
+            _creating = false;
+        }
+    }
+
+    private async Task SelectMatrixAsync(int matrixId, bool showErrors = true)
+    {
+        var result = await MatrixClient.GetMatrixAsync(matrixId);
+        if (!result.Success || result.Data is null)
+        {
+            if (showErrors) Show(result.Message ?? "No pude abrir la matriz.", true);
+            return;
+        }
+        _selected = result.Data;
+        _selectedMatrixId = matrixId;
+    }
+
+    private async Task AddRowAsync()
+    {
+        if (_selected is null) return;
+        _busy = true;
+        try
+        {
+            var result = await MatrixClient.AddRowAsync(_selected.Summary.RegistrationMatrixId);
+            if (!result.Success || result.Data is null)
+            {
+                Show(result.Message ?? "No pude agregar la fila.", true);
+                return;
+            }
+            _selected = result.Data;
+            Show("Fila agregada.", false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task UpdateCellAsync(int rowId, int fieldId, string? rawValue)
+    {
+        if (_selected is null) return;
+        var result = await MatrixClient.UpdateCellAsync(_selected.Summary.RegistrationMatrixId, rowId, new UpdateRegistrationMatrixCellRequest { FieldId = fieldId, RawValue = rawValue });
+        if (!result.Success || result.Data is null)
+        {
+            Show(result.Message ?? "No pude guardar la celda.", true);
+            return;
+        }
+        _selected = result.Data;
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_selected is null) return;
+        _busy = true;
+        try
+        {
+            var result = await MatrixClient.DeleteMatrixAsync(_selected.Summary.RegistrationMatrixId);
+            if (!result.Success)
+            {
+                Show(result.Message ?? "No pude eliminar la matriz.", true);
+                return;
+            }
+            _selected = null;
+            _selectedMatrixId = null;
+            await LoadAsync();
+            Show(result.Data?.Message ?? "Matriz eliminada.", false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_selected is null) return;
+        var result = await MatrixClient.SubmitToStagingAsync(_selected.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest { ValidateAfterCreate = true });
+        Show(result.Message ?? "El envio a staging todavia no esta disponible en esta fusion.", !result.Success);
+    }
+
+    private static string? GetCellValue(RegistrationMatrixRowDto row, int fieldId)
+        => row.Cells.FirstOrDefault(c => c.FieldId == fieldId)?.RawValue;
+
+    private void Show(string message, bool isError)
+    {
+        _message = message;
+        _messageIsError = isError;
+    }
+}

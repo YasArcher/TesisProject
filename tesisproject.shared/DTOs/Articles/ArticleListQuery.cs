@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Articles
 {
     public class ArticleListQuery
@@ -21,4 +20,3 @@ namespace tesisproject.shared.DTOs.Articles
         public bool SortDesc { get; set; } = true;
     }
 }
-

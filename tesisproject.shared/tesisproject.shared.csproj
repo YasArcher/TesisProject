@@ -17,8 +17,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.8" />
   </ItemGroup>
-
-  <!-- [ARTICLES-MIGRATION] Copia pasiva para analisis; no se compila ni publica. -->
   <ItemGroup>
     <Compile Remove="ArticlesMigration\**\*.cs" />
     <Content Remove="ArticlesMigration\**" />

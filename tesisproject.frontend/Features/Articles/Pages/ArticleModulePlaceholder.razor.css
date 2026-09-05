@@ -1,0 +1,14 @@
+.articles-placeholder-page .articles-workspace-panel {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-placeholder-page .articles-workspace-panel h2 {
+    color: #12343b !important;
+}
+
+.articles-placeholder-page .articles-workspace-panel .rounded-lg {
+    border-color: rgba(47, 95, 91, 0.14) !important;
+}

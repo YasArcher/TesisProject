@@ -44,8 +44,6 @@
   <ItemGroup>
     <Folder Include="wwwroot\" />
   </ItemGroup>
-
-  <!-- [ARTICLES-MIGRATION] Copia pasiva para analisis; no se compila ni publica. -->
   <ItemGroup>
     <Compile Remove="ArticlesMigration\**\*.cs" />
     <Content Remove="ArticlesMigration\**" />

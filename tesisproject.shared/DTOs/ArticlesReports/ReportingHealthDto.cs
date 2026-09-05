@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Reports;
 
 public sealed class ReportingHealthDto
@@ -14,4 +13,3 @@ public sealed class ReportingHealthDto
     public int BatchRows { get; set; }
     public int WorkflowStageRows { get; set; }
 }
-

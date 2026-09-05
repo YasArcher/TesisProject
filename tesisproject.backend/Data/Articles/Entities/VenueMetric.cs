@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.backend.Data.Articles.Entities;
 
     public class VenueMetric
@@ -11,4 +10,3 @@ namespace tesisproject.backend.Data.Articles.Entities;
 
         public Venue Venue { get; set; } = null!;
     }
-

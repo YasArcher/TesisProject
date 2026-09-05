@@ -1,31 +1,24 @@
-﻿@page "/articles/module/configuration"
+@page "/articles/module/configuration"
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Configuration
 @inject IFormConfigurationClient FormConfigurationClient
 @inject NavigationManager Nav
-
-@* [ARTICLES-MIGRATION] Configuracion de articulos conectada en modo lectura para validar la fusion sin modificar datos. *@
-<div class="h-full min-h-0 overflow-y-auto bg-page-bg">
+<div class="articles-module-page articles-config-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
-        <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-end md:justify-between">
+        <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-                <p class="text-sm font-semibold text-primary">Administración de artículos</p>
-                <h1 class="mt-1 text-2xl font-bold text-foreground">Configuración de formularios</h1>
+                <p class="text-sm font-semibold text-primary">Administracion de articulos</p>
+                <h1 class="mt-1 text-2xl font-bold text-foreground">Configuracion de formularios</h1>
                 <p class="mt-1 max-w-3xl text-sm text-muted">
-                    Lectura integrada de formularios, campos, catálogos y reglas del módulo de artículos. Las acciones de escritura siguen bloqueadas durante esta fase de fusión.
+                    Administra formularios, campos dinamicos y asignaciones que controlan el registro de articulos dentro de la plataforma integrada.
                 </p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="button"
-                        class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
-                        @onclick="LoadAsync"
-                        disabled="@_loading">
+                <button type="button" class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle disabled:opacity-60" @onclick="LoadAsync" disabled="@(_loading || _saving)">
                     Actualizar
                 </button>
-                <button type="button"
-                        class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
-                        @onclick="BackToArticles">
-                    Volver a artículos
+                <button type="button" class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="BackToArticles">
+                    Volver a articulos
                 </button>
             </div>
         </header>
@@ -34,25 +27,44 @@
         {
             <section class="rounded-lg border border-border bg-background p-8 text-center">
                 <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                <p class="mt-3 text-sm text-muted">Cargando configuración...</p>
+                <p class="mt-3 text-sm text-muted">Cargando configuracion...</p>
             </section>
         }
         else if (!string.IsNullOrWhiteSpace(_error))
         {
             <section class="rounded-lg border border-border bg-background p-6">
-                <h2 class="text-lg font-bold text-foreground">No fue posible cargar la configuración</h2>
+                <h2 class="text-lg font-bold text-foreground">No fue posible cargar la configuracion</h2>
                 <p class="mt-2 text-sm text-muted">@_error</p>
-                <button type="button" class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="LoadAsync">
-                    Intentar nuevamente
-                </button>
+                <button type="button" class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="LoadAsync">Intentar nuevamente</button>
             </section>
         }
         else
         {
-            <section class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            @if (!string.IsNullOrWhiteSpace(_message))
+            {
+                <section class="mb-4 rounded-lg border @(_messageIsError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800") p-4 text-sm font-semibold">
+                    @_message
+                </section>
+            }
+
+            @if (_pendingAction != PendingAction.None)
+            {
+                <section class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                    <h2 class="text-sm font-bold">@_pendingTitle</h2>
+                    <p class="mt-1 text-sm">@_pendingMessage</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <button type="button" class="rounded-lg bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled="@_saving" @onclick="ConfirmPendingActionAsync">
+                            @(_pendingStep == 1 && RequiresSecondConfirmation ? "Continuar" : "Confirmar")
+                        </button>
+                        <button type="button" class="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900" @onclick="CancelPendingAction">Cancelar</button>
+                    </div>
+                </section>
+            }
+
+            <section class="articles-metric-grid mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
                 @foreach (var item in SummaryItems)
                 {
-                    <article class="rounded-lg border border-border bg-background p-4">
+                    <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
                         <p class="text-xs font-semibold text-muted">@item.Label</p>
                         <p class="mt-1 text-lg font-bold text-foreground">@item.Value</p>
                         <p class="mt-1 text-xs text-muted">@item.Detail</p>
@@ -60,126 +72,189 @@
                 }
             </section>
 
-            <section class="rounded-lg border border-border bg-background">
-                <div class="flex flex-wrap gap-2 border-b border-border p-3">
+            <section class="articles-workspace-panel rounded-lg border border-border bg-background">
+                <div class="articles-tabs flex flex-wrap gap-2 border-b border-border p-3">
                     @foreach (var tab in Tabs)
                     {
-                        <button type="button"
-                                class="rounded-lg px-4 py-2 text-sm font-semibold transition @(ActiveTab == tab.Key ? "bg-primary text-white" : "border border-border text-foreground hover:bg-primary-subtle")"
-                                @onclick="() => ActiveTab = tab.Key">
+                        <button type="button" class="articles-tab rounded-lg px-4 py-2 text-sm font-semibold transition @(ActiveTab == tab.Key ? "articles-tab--active bg-primary text-white shadow-sm" : "border border-border text-foreground hover:bg-primary-subtle")" @onclick="() => ActiveTab = tab.Key">
                             @tab.Label
                         </button>
                     }
                 </div>
 
                 <div class="p-5">
-                    @switch (ActiveTab)
+                    @if (ActiveTab == "forms")
                     {
-                        case "forms":
+                        <section class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
                             <article>
-                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                    <div>
-                                        <h2 class="text-lg font-bold text-foreground">Formularios activos y disponibles</h2>
-                                        <p class="mt-1 text-sm text-muted">Se muestran los formularios registrados para artículos y participantes.</p>
-                                    </div>
-                                    <span class="rounded-lg bg-primary-subtle px-3 py-2 text-xs font-bold text-primary">Solo lectura</span>
-                                </div>
-
+                                <h2 class="text-lg font-bold text-foreground">Formularios</h2>
+                                <p class="mt-1 text-sm text-muted">Solo un formulario activo por entidad alimenta el registro.</p>
                                 <div class="mt-4 overflow-hidden rounded-lg border border-border">
                                     <table class="w-full text-left text-sm" style="min-width: 760px;">
                                         <thead class="bg-primary-subtle text-xs uppercase text-muted">
-                                            <tr><th class="px-4 py-3">Formulario</th><th class="px-4 py-3">Entidad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Campos</th></tr>
+                                            <tr><th class="px-4 py-3">Formulario</th><th class="px-4 py-3">Entidad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Campos</th><th class="px-4 py-3 text-right">Acciones</th></tr>
                                         </thead>
                                         <tbody class="divide-y divide-border">
-                                            @foreach (var form in _forms)
+                                            @foreach (var form in _forms.OrderByDescending(x => x.IsActive).ThenBy(x => x.EntityName).ThenBy(x => x.FormName))
                                             {
-                                                <tr class="hover:bg-primary-subtle/70">
-                                                    <td class="px-4 py-3"><span class="font-semibold text-foreground">@Display(form.FormName)</span><div class="text-xs text-muted">@Display(form.FormKey)</div></td>
+                                                <tr class="hover:bg-primary-subtle/70 @(SelectedFormId == form.FormId ? "bg-primary-subtle/80" : string.Empty)">
+                                                    <td class="px-4 py-3"><button type="button" class="text-left font-semibold text-foreground underline-offset-2 hover:underline" @onclick="() => SelectFormAsync(form)">@Display(form.FormName)</button><div class="text-xs text-muted">@Display(form.FormKey)</div></td>
                                                     <td class="px-4 py-3 text-muted">@Display(form.EntityName)</td>
-                                                    <td class="px-4 py-3"><span class="rounded-lg px-2 py-1 text-xs font-bold @(form.IsActive ? "bg-primary-subtle text-primary" : "bg-page-bg text-muted")">@(form.IsActive ? "Activo" : "Inactivo")</span></td>
+                                                    <td class="px-4 py-3"><span class="rounded-lg px-2 py-1 text-xs font-bold @(form.IsActive ? "bg-emerald-50 text-emerald-700" : "bg-page-bg text-muted")">@(form.IsActive ? "Activo" : "Inactivo")</span></td>
                                                     <td class="px-4 py-3 text-muted">@GetFieldCount(form.FormId)</td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex justify-end gap-2">
+                                                            <button type="button" class="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary-subtle" disabled="@(form.IsActive || _saving)" @onclick="() => SetFormActiveAsync(form, true)">Activar</button>
+                                                            <button type="button" class="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:bg-background" disabled="@(!form.IsActive || _saving)" @onclick="() => SetFormActiveAsync(form, false)">Desactivar</button>
+                                                            <button type="button" class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50" disabled="@_saving" @onclick="() => RequestDeleteForm(form)">Eliminar</button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             }
                                         </tbody>
                                     </table>
                                 </div>
                             </article>
-                            break;
-                        case "fields":
+                            <aside class="space-y-4">
+                                <article class="rounded-lg border border-border bg-page-bg p-4">
+                                    <h3 class="font-bold text-foreground">Nuevo formulario</h3>
+                                    <div class="mt-3 space-y-3">
+                                        <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Clave interna" @bind="_newForm.FormKey" />
+                                        <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Nombre visible" @bind="_newForm.FormName" />
+                                        <select class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="_newForm.EntityName"><option value="Article">Articulo</option><option value="ArticleParticipant">Participante</option></select>
+                                        <textarea class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Descripcion" @bind="_newForm.Description"></textarea>
+                                        <label class="flex items-center gap-2 text-sm text-muted"><input type="checkbox" @bind="_newForm.IsActive" /> Activar al crear</label>
+                                        <button type="button" class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled="@_saving" @onclick="CreateFormAsync">Crear formulario</button>
+                                    </div>
+                                </article>
+                                @if (_selectedForm is not null)
+                                {
+                                    <article class="rounded-lg border border-border bg-page-bg p-4">
+                                        <h3 class="font-bold text-foreground">Seleccionado</h3>
+                                        <p class="mt-1 text-sm text-muted">@_selectedForm.FormName</p>
+                                        <p class="mt-2 text-xs text-muted">@_selectedFormFields.Count campo(s) asignados.</p>
+                                    </article>
+                                }
+                            </aside>
+                        </section>
+                    }
+                    else if (ActiveTab == "fields")
+                    {
+                        <section class="grid grid-cols-1 gap-5 xl:grid-cols-[24rem_minmax(0,1fr)]">
+                            <aside class="rounded-lg border border-border bg-page-bg p-4">
+                                <h2 class="font-bold text-foreground">Nuevo campo dinamico</h2>
+                                <div class="mt-3 space-y-3">
+                                    <select class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="_newField.EntityName"><option value="Article">Articulo</option><option value="ArticleParticipant">Participante</option></select>
+                                    <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Clave del campo" @bind="_newField.FieldKey" />
+                                    <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Etiqueta visible" @bind="_newField.FieldLabel" />
+                                    <select class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="_newField.DataType">@foreach (var type in DataTypes) { <option value="@type">@type</option> }</select>
+                                    <input type="number" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Limite de caracteres" @bind="_newField.MaxLength" />
+                                    <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Ayuda para el usuario" @bind="_newField.HelpText" />
+                                    <div class="grid grid-cols-2 gap-2 text-sm text-muted">
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_newField.IsActive" /> Activo</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_newField.IsVisible" /> Visible</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_newField.IsRequired" /> Requerido</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_newField.IsEditable" /> Editable</label>
+                                    </div>
+                                    <button type="button" class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled="@_saving" @onclick="CreateDynamicFieldAsync">Crear campo</button>
+                                </div>
+                            </aside>
                             <article>
-                                <h2 class="text-lg font-bold text-foreground">Campos configurados</h2>
-                                <p class="mt-1 text-sm text-muted">Lectura combinada de campos de Article y ArticleParticipant.</p>
-                                <div class="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                                    @foreach (var group in _fields.GroupBy(x => x.EntityName).OrderBy(x => x.Key))
+                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div><h2 class="text-lg font-bold text-foreground">Campos configurados</h2><p class="mt-1 text-sm text-muted">El estado maestro controla lo visible en formularios.</p></div>
+                                    <select class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm md:w-56" @bind="FieldEntityFilter"><option value="Article">Articulo</option><option value="ArticleParticipant">Participante</option></select>
+                                </div>
+                                <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                    @foreach (var field in FilteredFields)
                                     {
-                                        <section class="rounded-lg border border-border p-4">
-                                            <h3 class="font-bold text-foreground">@group.Key</h3>
-                                            <div class="mt-3 space-y-2">
-                                                @foreach (var field in group.OrderBy(x => x.DisplayOrder).Take(18))
-                                                {
-                                                    <div class="rounded-lg border border-border bg-page-bg p-3">
-                                                        <div class="flex items-start justify-between gap-3">
-                                                            <div>
-                                                                <p class="font-semibold text-foreground">@field.FieldLabel</p>
-                                                                <p class="text-xs text-muted">@field.FieldKey · @field.DataType</p>
-                                                            </div>
-                                                            <span class="rounded-lg px-2 py-1 text-xs font-bold @(field.IsActive ? "bg-primary-subtle text-primary" : "bg-background text-muted")">@(field.IsActive ? "Activo" : "Inactivo")</span>
-                                                        </div>
-                                                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
-                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsDynamic ? "Dinámico" : "Sistema")</span>
-                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsVisible ? "Visible" : "No visible")</span>
-                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsRequired ? "Requerido" : "Opcional")</span>
-                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsEditable ? "Editable" : "Bloqueado")</span>
-                                                        </div>
-                                                    </div>
-                                                }
+                                        <section class="rounded-lg border border-border bg-page-bg p-4" @key="field.FieldId">
+                                            <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold" @bind="field.FieldLabel" />
+                                            <p class="mt-1 text-xs text-muted">@field.FieldKey · @field.DataType · @(field.IsDynamic ? "Dinamico" : "Sistema")</p>
+                                            <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-muted">
+                                                <label class="flex items-center gap-2"><input type="checkbox" @bind="field.IsActive" /> Activo</label>
+                                                <label class="flex items-center gap-2"><input type="checkbox" @bind="field.IsVisible" /> Visible</label>
+                                                <label class="flex items-center gap-2"><input type="checkbox" @bind="field.IsRequired" /> Requerido</label>
+                                                <label class="flex items-center gap-2"><input type="checkbox" @bind="field.IsEditable" /> Editable</label>
                                             </div>
-                                            @if (group.Count() > 18)
-                                            {
-                                                <p class="mt-3 text-xs text-muted">Se muestran 18 de @group.Count() campo(s).</p>
-                                            }
+                                            <div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                                                <input type="number" class="rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="field.DisplayOrder" />
+                                                <input type="number" class="rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="field.MaxLength" />
+                                            </div>
+                                            <input class="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Regla de validacion" @bind="field.ValidationRule" />
+                                            <div class="mt-3 flex justify-end gap-2">
+                                                <button type="button" class="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60" disabled="@_saving" @onclick="() => SaveFieldAsync(field)">Guardar</button>
+                                                <button type="button" class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50" disabled="@(!field.IsDynamic || _saving)" @onclick="() => RequestDeleteField(field)">Eliminar</button>
+                                            </div>
                                         </section>
                                     }
                                 </div>
                             </article>
-                            break;
-                        case "catalogs":
-                            <article>
-                                <h2 class="text-lg font-bold text-foreground">Catálogos principales</h2>
-                                <p class="mt-1 text-sm text-muted">Resumen de catálogos usados por formularios y registro de artículos.</p>
-                                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                    @foreach (var catalog in _catalogSummaries)
+                        </section>
+                    }
+                    else if (ActiveTab == "assignment")
+                    {
+                        <section class="grid grid-cols-1 gap-5 xl:grid-cols-[22rem_minmax(0,1fr)]">
+                            <aside class="rounded-lg border border-border bg-page-bg p-4">
+                                <h2 class="font-bold text-foreground">Asignar campo</h2>
+                                <select class="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" @onchange="OnSelectedFormChanged">
+                                    <option value="">Seleccionar formulario</option>
+                                    @foreach (var form in _forms.OrderBy(x => x.EntityName).ThenBy(x => x.FormName))
                                     {
-                                        <div class="rounded-lg border border-border p-4">
-                                            <p class="text-xs font-semibold text-muted">@catalog.Label</p>
-                                            <p class="mt-1 text-2xl font-bold text-foreground">@catalog.Count</p>
-                                            <p class="mt-1 text-xs text-muted">@catalog.Detail</p>
-                                        </div>
+                                        <option value="@form.FormId">@form.FormName (@form.EntityName)</option>
                                     }
-                                </div>
-                            </article>
-                            break;
-                        default:
-                            <article>
-                                <h2 class="text-lg font-bold text-foreground">Validaciones detectadas</h2>
-                                <p class="mt-1 text-sm text-muted">Campos con reglas de validación configuradas desde el catálogo dinámico.</p>
-                                <div class="mt-4 overflow-hidden rounded-lg border border-border">
-                                    <table class="w-full text-left text-sm">
-                                        <thead class="bg-primary-subtle text-xs uppercase text-muted"><tr><th class="px-4 py-3">Campo</th><th class="px-4 py-3">Entidad</th><th class="px-4 py-3">Regla</th></tr></thead>
-                                        <tbody class="divide-y divide-border">
-                                            @foreach (var field in _fields.Where(x => !string.IsNullOrWhiteSpace(x.ValidationRule)).OrderBy(x => x.EntityName).ThenBy(x => x.DisplayOrder))
-                                            {
-                                                <tr><td class="px-4 py-3 font-semibold text-foreground">@field.FieldLabel</td><td class="px-4 py-3 text-muted">@field.EntityName</td><td class="px-4 py-3 text-muted">@field.ValidationRule</td></tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                                @if (!_fields.Any(x => !string.IsNullOrWhiteSpace(x.ValidationRule)))
+                                </select>
+                                @if (_selectedForm is not null)
                                 {
-                                    <p class="mt-3 rounded-lg border border-border bg-page-bg p-4 text-sm text-muted">No se encontraron reglas de validación configuradas.</p>
+                                    <select class="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="_addFieldRequest.FieldId"><option value="0">Campo disponible</option>@foreach (var field in AvailableFieldsForSelectedForm) { <option value="@field.FieldId">@field.FieldLabel</option> }</select>
+                                    <div class="mt-3 grid grid-cols-2 gap-2 text-sm text-muted">
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_addFieldRequest.IsVisible" /> Visible</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_addFieldRequest.IsRequired" /> Requerido</label>
+                                        <label class="flex items-center gap-2"><input type="checkbox" @bind="_addFieldRequest.IsEditable" /> Editable</label>
+                                    </div>
+                                    <input class="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Grupo visual" @bind="_addFieldRequest.GroupName" />
+                                    <input type="number" class="mt-3 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="_addFieldRequest.DisplayOrder" />
+                                    <button type="button" class="mt-3 w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled="@(_saving || _addFieldRequest.FieldId <= 0)" @onclick="AddFieldToSelectedFormAsync">Agregar al formulario</button>
+                                }
+                            </aside>
+                            <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                                <h2 class="text-lg font-bold text-foreground">Campos del formulario</h2>
+                                @if (_selectedForm is null)
+                                {
+                                    <p class="mt-2 text-sm text-muted">Selecciona un formulario para ver sus campos.</p>
+                                }
+                                else
+                                {
+                                    <div class="mt-4 space-y-2">
+                                        @foreach (var field in _selectedFormFields.OrderBy(x => x.DisplayOrder))
+                                        {
+                                            <div class="rounded-lg border border-border bg-page-bg p-3" @key="field.FormFieldId">
+                                                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                                    <div><p class="font-semibold text-foreground">@field.FieldLabel</p><p class="text-xs text-muted">@field.FieldKey · @Display(field.GroupName)</p></div>
+                                                    <div class="flex flex-wrap gap-2 text-xs">
+                                                        <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsVisible ? "Visible" : "No visible")</span>
+                                                        <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsRequired ? "Requerido" : "Opcional")</span>
+                                                        <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsEditable ? "Editable" : "Bloqueado")</span>
+                                                        <button type="button" class="rounded-lg border border-red-200 px-3 py-1 text-red-700 hover:bg-red-50" disabled="@_saving" @onclick="() => RequestRemoveFormField(field)">Quitar</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </article>
-                            break;
+                        </section>
+                    }
+                    else
+                    {
+                        <article>
+                            <h2 class="text-lg font-bold text-foreground">Catalogos principales</h2>
+                            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                @foreach (var catalog in _catalogSummaries)
+                                {
+                                    <div class="rounded-lg border border-border p-4"><p class="text-xs font-semibold text-muted">@catalog.Label</p><p class="mt-1 text-2xl font-bold text-foreground">@catalog.Count</p><p class="mt-1 text-xs text-muted">@catalog.Detail</p></div>
+                                }
+                            </div>
+                        </article>
                     }
                 </div>
             </section>
@@ -189,28 +264,44 @@
 
 @code {
     private string ActiveTab { get; set; } = "forms";
+    private string FieldEntityFilter { get; set; } = "Article";
     private bool _loading = true;
+    private bool _saving;
     private string? _error;
+    private string? _message;
+    private bool _messageIsError;
     private List<FormSummaryDto> _forms = [];
     private List<FieldCatalogItemDto> _fields = [];
     private readonly Dictionary<int, int> _formFieldCounts = [];
     private List<(string Label, int Count, string Detail)> _catalogSummaries = [];
+    private FormSummaryDto? _selectedForm;
+    private List<FormFieldAdminDto> _selectedFormFields = [];
+    private CreateFormDefinitionRequest _newForm = new() { EntityName = "Article", IsActive = true };
+    private CreateDynamicFieldRequest _newField = new() { EntityName = "Article", DataType = "string", SourceType = "Dynamic", IsActive = true, IsVisible = true, IsEditable = true, IsFilterable = true, DisplayOrder = 100 };
+    private AddFieldToFormRequest _addFieldRequest = new() { DisplayOrder = 100, IsVisible = true, IsEditable = true };
+    private PendingAction _pendingAction = PendingAction.None;
+    private int _pendingStep;
+    private int _pendingFormId;
+    private int _pendingFieldId;
+    private int _pendingFormFieldId;
+    private string _pendingTitle = string.Empty;
+    private string _pendingMessage = string.Empty;
+
+    private static readonly string[] DataTypes = ["string", "number", "integer", "decimal", "date", "boolean", "select"];
+    private static readonly (string Key, string Label)[] Tabs = [("forms", "Formularios"), ("fields", "Campos"), ("assignment", "Asignacion"), ("catalogs", "Catalogos")];
+    private bool RequiresSecondConfirmation => _pendingAction is PendingAction.DeleteForm or PendingAction.DeleteField;
+    private int? SelectedFormId => _selectedForm?.FormId;
 
     private IEnumerable<(string Label, string Value, string Detail)> SummaryItems =>
     [
         ("Formularios", _forms.Count.ToString(), $"{_forms.Count(x => x.IsActive)} activo(s)"),
-        ("Campos", _fields.Count.ToString(), $"{_fields.Count(x => x.IsDynamic)} dinámico(s)"),
+        ("Campos", _fields.Count.ToString(), $"{_fields.Count(x => x.IsDynamic)} dinamico(s)"),
         ("Visibles", _fields.Count(x => x.IsVisible && x.IsActive).ToString(), "Disponibles para registro"),
-        ("Validaciones", _fields.Count(x => !string.IsNullOrWhiteSpace(x.ValidationRule)).ToString(), "Reglas configuradas")
+        ("Reglas", _fields.Count(x => !string.IsNullOrWhiteSpace(x.ValidationRule)).ToString(), "Validaciones configuradas")
     ];
 
-    private static readonly (string Key, string Label)[] Tabs =
-    [
-        ("forms", "Formularios"),
-        ("fields", "Campos"),
-        ("catalogs", "Catálogos"),
-        ("rules", "Validaciones")
-    ];
+    private IEnumerable<FieldCatalogItemDto> FilteredFields => _fields.Where(x => x.EntityName == FieldEntityFilter).OrderBy(x => x.DisplayOrder).ThenBy(x => x.FieldLabel);
+    private IEnumerable<FieldCatalogItemDto> AvailableFieldsForSelectedForm => _selectedForm is null ? [] : _fields.Where(field => string.Equals(field.EntityName, _selectedForm.EntityName, StringComparison.OrdinalIgnoreCase)).Where(field => !_selectedFormFields.Any(formField => formField.FieldId == field.FieldId)).OrderBy(field => field.DisplayOrder).ThenBy(field => field.FieldLabel);
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -218,14 +309,12 @@
     {
         _loading = true;
         _error = null;
-
         var formsResult = await FormConfigurationClient.GetFormsAsync();
         var articleFieldsResult = await FormConfigurationClient.GetFieldsAsync("Article");
         var participantFieldsResult = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
-
         if (!formsResult.Success || !articleFieldsResult.Success || !participantFieldsResult.Success)
         {
-            _error = formsResult.Message ?? articleFieldsResult.Message ?? participantFieldsResult.Message ?? "La configuración no está disponible.";
+            _error = formsResult.Message ?? articleFieldsResult.Message ?? participantFieldsResult.Message ?? "La configuracion no esta disponible.";
             _loading = false;
             return;
         }
@@ -233,11 +322,16 @@
         _forms = formsResult.Data ?? [];
         _fields = [.. (articleFieldsResult.Data ?? []), .. (participantFieldsResult.Data ?? [])];
         _formFieldCounts.Clear();
-
         foreach (var form in _forms)
         {
             var fieldsResult = await FormConfigurationClient.GetFormFieldsAsync(form.FormId);
             _formFieldCounts[form.FormId] = fieldsResult.Success ? fieldsResult.Data?.Count ?? 0 : 0;
+        }
+
+        if (_selectedForm is not null)
+        {
+            var refreshed = _forms.FirstOrDefault(x => x.FormId == _selectedForm.FormId);
+            if (refreshed is not null) await SelectFormAsync(refreshed, true); else ClearSelection();
         }
 
         await LoadCatalogSummariesAsync();
@@ -246,25 +340,133 @@
 
     private async Task LoadCatalogSummariesAsync()
     {
-        var definitions = new (string Key, string Label, string Detail)[]
-        {
-            ("faculties", "Facultades", "Estructura institucional"),
-            ("research-lines", "Líneas", "Líneas de investigación"),
-            ("indexing-sources", "Indexaciones", "Fuentes de indexación"),
-            ("publication-statuses", "Estados", "Estados de publicación")
-        };
-
+        var definitions = new (string Key, string Label, string Detail)[] { ("faculties", "Facultades", "Estructura institucional"), ("research-lines", "Lineas", "Lineas de investigacion"), ("indexing-sources", "Indexaciones", "Fuentes de indexacion"), ("publication-statuses", "Estados", "Estados de publicacion") };
         var summaries = new List<(string Label, int Count, string Detail)>();
         foreach (var item in definitions)
         {
             var result = await FormConfigurationClient.GetAdminCatalogAsync(item.Key);
             summaries.Add((item.Label, result.Success ? result.Data?.Count ?? 0 : 0, item.Detail));
         }
-
         _catalogSummaries = summaries;
     }
 
+    private async Task SelectFormAsync(FormSummaryDto form, bool preserveMessage = false)
+    {
+        _selectedForm = form;
+        _addFieldRequest = new AddFieldToFormRequest { DisplayOrder = 100, IsVisible = true, IsEditable = true };
+        var fieldsResult = await FormConfigurationClient.GetFormFieldsAsync(form.FormId);
+        _selectedFormFields = fieldsResult.Success ? fieldsResult.Data ?? [] : [];
+        if (!preserveMessage && !fieldsResult.Success) SetError(fieldsResult.Message ?? "No fue posible cargar los campos del formulario.");
+    }
+
+    private async Task OnSelectedFormChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var formId))
+        {
+            var form = _forms.FirstOrDefault(x => x.FormId == formId);
+            if (form is not null) await SelectFormAsync(form);
+        }
+    }
+
+    private async Task CreateFormAsync() => await RunActionAsync(async () =>
+    {
+        var result = await FormConfigurationClient.CreateFormAsync(_newForm);
+        if (!result.Success || result.Data is null) { SetError(result.Message ?? "No fue posible crear el formulario."); return; }
+        SetSuccess($"Formulario '{result.Data.FormName}' creado correctamente.");
+        _newForm = new CreateFormDefinitionRequest { EntityName = result.Data.EntityName, IsActive = true };
+        await LoadAsync();
+    });
+
+    private async Task SetFormActiveAsync(FormSummaryDto form, bool isActive) => await RunActionAsync(async () =>
+    {
+        var result = await FormConfigurationClient.UpdateFormAsync(form.FormId, new UpdateFormDefinitionRequest { FormName = form.FormName, Description = form.Description, IsActive = isActive });
+        if (!result.Success) { SetError(result.Message ?? "No fue posible actualizar el formulario."); return; }
+        SetSuccess(isActive ? "Formulario activado. El registro usara este formulario activo." : "Formulario desactivado. Si no queda otro activo, el registro entrara en mantenimiento.");
+        await LoadAsync();
+    });
+
+    private async Task CreateDynamicFieldAsync() => await RunActionAsync(async () =>
+    {
+        var result = await FormConfigurationClient.CreateDynamicFieldAsync(_newField);
+        if (!result.Success || result.Data is null) { SetError(result.Message ?? "No fue posible crear el campo dinamico."); return; }
+        SetSuccess($"Campo '{result.Data.FieldLabel}' creado. Puedes asignarlo a un formulario desde Asignacion.");
+        _newField = new CreateDynamicFieldRequest { EntityName = result.Data.EntityName, DataType = "string", SourceType = "Dynamic", IsActive = true, IsVisible = true, IsEditable = true, IsFilterable = true, DisplayOrder = result.Data.DisplayOrder + 1 };
+        await LoadAsync();
+    });
+
+    private async Task SaveFieldAsync(FieldCatalogItemDto field) => await RunActionAsync(async () =>
+    {
+        var result = await FormConfigurationClient.UpdateFieldAsync(field.FieldId, new UpdateFieldCatalogRequest { FieldLabel = field.FieldLabel, IsRequired = field.IsRequired, IsVisible = field.IsVisible, IsEditable = field.IsEditable, IsFilterable = field.IsFilterable, IsActive = field.IsActive, DisplayOrder = field.DisplayOrder, MaxLength = field.MaxLength, Placeholder = field.Placeholder, HelpText = field.HelpText, DefaultValue = field.DefaultValue, ValidationRule = field.ValidationRule });
+        if (!result.Success) { SetError(result.Message ?? "No fue posible guardar el campo."); return; }
+        SetSuccess("Campo actualizado. Los formularios respetaran el estado maestro del campo.");
+        await LoadAsync();
+    });
+
+    private async Task AddFieldToSelectedFormAsync() => await RunActionAsync(async () =>
+    {
+        if (_selectedForm is null || _addFieldRequest.FieldId <= 0) return;
+        var result = await FormConfigurationClient.AddFieldToFormAsync(_selectedForm.FormId, _addFieldRequest);
+        if (!result.Success || result.Data is null) { SetError(result.Message ?? "No fue posible agregar el campo al formulario."); return; }
+        SetSuccess($"Campo '{result.Data.FieldLabel}' agregado al formulario.");
+        _addFieldRequest = new AddFieldToFormRequest { DisplayOrder = 100, IsVisible = true, IsEditable = true };
+        await LoadAsync();
+    });
+
+    private void RequestDeleteForm(FormSummaryDto form) { _pendingAction = PendingAction.DeleteForm; _pendingStep = 1; _pendingFormId = form.FormId; _pendingTitle = $"Advertencia 1/2: eliminar formulario '{form.FormName}'"; _pendingMessage = "Eliminar un formulario quita su configuracion de captura. Si solo necesitas pausarlo, usa desactivar."; }
+    private void RequestDeleteField(FieldCatalogItemDto field) { _pendingAction = PendingAction.DeleteField; _pendingStep = 1; _pendingFieldId = field.FieldId; _pendingTitle = $"Advertencia 1/2: eliminar campo '{field.FieldLabel}'"; _pendingMessage = "Solo se intentara eliminar campos dinamicos sin valores registrados y sin asignaciones activas en formularios."; }
+    private void RequestRemoveFormField(FormFieldAdminDto field) { _pendingAction = PendingAction.RemoveFormField; _pendingStep = 2; _pendingFormId = field.FormId; _pendingFormFieldId = field.FormFieldId; _pendingTitle = $"Quitar campo '{field.FieldLabel}' del formulario"; _pendingMessage = "El campo seguira existiendo en el catalogo maestro, pero ya no aparecera en este formulario."; }
+
+    private async Task ConfirmPendingActionAsync()
+    {
+        if (RequiresSecondConfirmation && _pendingStep == 1)
+        {
+            _pendingStep = 2;
+            _pendingTitle = _pendingAction == PendingAction.DeleteForm ? "Confirmacion 2/2: borrar formulario" : "Confirmacion 2/2: borrar campo";
+            _pendingMessage = "Esta accion es definitiva si el sistema permite ejecutarla. Confirma solo si ya revisaste que no afecta registros ni configuracion activa.";
+            return;
+        }
+
+        await RunActionAsync(async () =>
+        {
+            switch (_pendingAction)
+            {
+                case PendingAction.DeleteForm:
+                    var formResult = await FormConfigurationClient.DeleteFormAsync(_pendingFormId);
+                    if (!formResult.Success) { SetError(formResult.Message ?? "No fue posible eliminar el formulario."); return; }
+                    SetSuccess("Formulario eliminado correctamente.");
+                    ClearSelection();
+                    break;
+                case PendingAction.DeleteField:
+                    var fieldResult = await FormConfigurationClient.DeleteFieldAsync(_pendingFieldId);
+                    if (!fieldResult.Success) { SetError(fieldResult.Message ?? "No fue posible eliminar el campo."); return; }
+                    SetSuccess("Campo eliminado correctamente.");
+                    break;
+                case PendingAction.RemoveFormField:
+                    var removeResult = await FormConfigurationClient.DeleteFormFieldAsync(_pendingFormId, _pendingFormFieldId);
+                    if (!removeResult.Success) { SetError(removeResult.Message ?? "No fue posible quitar el campo del formulario."); return; }
+                    SetSuccess("Campo quitado del formulario.");
+                    break;
+            }
+            CancelPendingAction();
+            await LoadAsync();
+        });
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        if (_saving) return;
+        _saving = true;
+        try { await action(); }
+        catch (Exception ex) { SetError($"No fue posible completar la operacion: {ex.Message}"); }
+        finally { _saving = false; }
+    }
+
+    private void CancelPendingAction() { _pendingAction = PendingAction.None; _pendingStep = 0; _pendingFormId = 0; _pendingFieldId = 0; _pendingFormFieldId = 0; _pendingTitle = string.Empty; _pendingMessage = string.Empty; }
+    private void ClearSelection() { _selectedForm = null; _selectedFormFields = []; _addFieldRequest = new AddFieldToFormRequest { DisplayOrder = 100, IsVisible = true, IsEditable = true }; }
+    private void SetSuccess(string message) { _message = message; _messageIsError = false; }
+    private void SetError(string message) { _message = message; _messageIsError = true; }
     private int GetFieldCount(int formId) => _formFieldCounts.TryGetValue(formId, out var count) ? count : 0;
     private void BackToArticles() => Nav.NavigateTo("/articles");
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "No informado" : value;
+    private enum PendingAction { None, DeleteForm, DeleteField, RemoveFormField }
 }

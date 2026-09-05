@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 using System.Collections.Generic;
 
 namespace tesisproject.shared.DTOs.Reports
@@ -10,4 +9,3 @@ namespace tesisproject.shared.DTOs.Reports
         public ArticlesKpiSummaryDto? Kpis { get; set; }
     }
 }
-

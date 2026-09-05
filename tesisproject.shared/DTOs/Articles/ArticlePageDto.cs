@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Contrato paginado aislado para la fusion progresiva.
 namespace tesisproject.shared.DTOs.Articles
 {
     public sealed class ArticlePageDto

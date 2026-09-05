@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 using System.Collections.Generic;
 
 namespace tesisproject.backend.Data.Articles.Entities;
@@ -16,4 +15,3 @@ namespace tesisproject.backend.Data.Articles.Entities;
         public ICollection<Article> Articles { get; set; } = new List<Article>();
         public ICollection<VenueMetric> VenueMetrics { get; set; } = new List<VenueMetric>();
     }
-

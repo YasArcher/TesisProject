@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 // ArticlesAdvancedFilterDto.cs
 namespace tesisproject.shared.DTOs.Reports
 {

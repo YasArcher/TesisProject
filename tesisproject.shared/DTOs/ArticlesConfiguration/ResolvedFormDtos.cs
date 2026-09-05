@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Configuration
 {
     public class FormSummaryDto
@@ -93,4 +92,3 @@ namespace tesisproject.shared.DTOs.Configuration
         public List<ResolvedFormSectionDto> Sections { get; set; } = new();
     }
 }
-

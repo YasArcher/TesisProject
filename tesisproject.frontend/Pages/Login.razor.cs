@@ -1,4 +1,4 @@
-﻿using Blazored.Toast.Services;
+using Blazored.Toast.Services;
 using Microsoft.AspNetCore.Components;
 using System.ComponentModel.DataAnnotations;
 using tesisproject.frontend.Services.Auth;
@@ -55,7 +55,6 @@ namespace tesisproject.frontend.Pages
                     await AuthStateProvider.SetTokenAsync(result.Data.AccessToken);
 
                     Toast.ShowSuccess(result.ToSuccessMessage("Acceso correcto"));
-                    // [ARTICLES-MIGRATION] El mismo login dirige al portal permitido por la sesion.
                     var session = await AuthClient.GetCurrentSessionAsync();
                     Navigation.NavigateTo(GetLandingRoute(session.Data), replace: true);
                     return;

@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Adapta la sesion central de proyectos al contexto requerido por articulos.
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using tesisproject.backend.Repositories.Interfaces;

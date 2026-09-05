@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
@@ -17,7 +17,6 @@ namespace tesisproject.backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _auth;
-        // [ARTICLES-MIGRATION] Contexto y bandera del modulo; no reemplazan el login de proyectos.
         private readonly IArticleUserContext _articleUser;
         private readonly IAuthorizationService _authorization;
         private readonly ArticlesModuleOptions _articlesModule;
@@ -150,8 +149,6 @@ namespace tesisproject.backend.Controllers
         }
 
         // =============== CURRENT SESSION ===============
-
-        // [ARTICLES-MIGRATION] Expone capacidades de articulos usando la sesion Identity/JWT de proyectos.
         [HttpGet("me")]
         [Authorize]
         [ProducesResponseType(typeof(ServiceResult<CurrentSessionResponse>), StatusCodes.Status200OK)]

@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -234,4 +233,3 @@ public static class DynamicFieldValidationEngine
     private static bool TryDecimal(string? value, out decimal result)
         => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out result);
 }
-

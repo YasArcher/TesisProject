@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Reports;
 
 public sealed class ReportingPerformanceSummaryDto
@@ -31,4 +30,3 @@ public sealed class ReportingPerformanceDailyDto
     public int TotalOperations { get; set; }
     public decimal AverageDurationSeconds { get; set; }
 }
-

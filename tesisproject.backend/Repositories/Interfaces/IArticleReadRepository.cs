@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Repositorio temporal adaptado a la arquitectura base de proyectos.
 using tesisproject.backend.Data.Articles.Entities;
 using tesisproject.shared.DTOs.Articles;
 

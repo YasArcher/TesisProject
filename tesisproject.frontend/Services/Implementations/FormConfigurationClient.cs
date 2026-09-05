@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Adaptador del modulo de configuracion de articulos al ApiClient unificado de proyectos.
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Catalogs;
 using tesisproject.shared.DTOs.Configuration;

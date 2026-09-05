@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Reports;
 
 public sealed class InstitutionalPdfReportRequestDto
@@ -14,4 +13,3 @@ public sealed class ReportChartImageDto
     public string Section { get; set; } = string.Empty;
     public string Base64Png { get; set; } = string.Empty;
 }
-

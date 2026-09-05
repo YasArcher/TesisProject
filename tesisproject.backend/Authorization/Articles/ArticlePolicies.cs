@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Compatibilidad entre roles historicos y permisos granulares de articulos.
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using tesisproject.shared.Auth;

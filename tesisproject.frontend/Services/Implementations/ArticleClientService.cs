@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Adaptador del API activo de articulos al cliente HTTP del sistema base.
 using System.Globalization;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Articles;
@@ -48,6 +47,14 @@ public sealed class ArticleClientService : IArticleClientService
             throw new ArgumentOutOfRangeException(nameof(articleId));
 
         return _api.GetAsync<ArticleDetailDto>($"articles/{articleId}", ct);
+    }
+
+    public Task<HttpResponseWrapper<RegisterArticleAggregateResponse?>> RegisterAsync(
+        RegisterArticleAggregateRequest request,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return _api.PostAsync<RegisterArticleAggregateRequest, RegisterArticleAggregateResponse>("articles", request, ct);
     }
 
     private static void Add(List<string> parameters, string key, string? value)

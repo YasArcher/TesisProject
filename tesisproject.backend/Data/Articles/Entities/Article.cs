@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.backend.Data.Articles.Entities;
 
 public class Article
@@ -42,5 +41,3 @@ public class Article
     public ICollection<ArticleFile> Files { get; set; } = new List<ArticleFile>();
     public ICollection<DynamicFieldValue> DynamicFieldValues { get; set; } = new List<DynamicFieldValue>();
 }
-
-

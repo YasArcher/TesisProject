@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Contrato de sesion unificada para exponer capacidades sin duplicar autenticacion.
 namespace tesisproject.shared.DTOs.Auth;
 
 public sealed class CurrentSessionResponse

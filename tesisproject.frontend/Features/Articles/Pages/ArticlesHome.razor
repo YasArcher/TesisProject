@@ -1,65 +1,136 @@
 @page "/articles"
+@using Microsoft.AspNetCore.Components.Web
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @inject IArticleClientService ArticlesClient
-
-@* [ARTICLES-MIGRATION] Primera pagina funcional de articulos dentro de la arquitectura base. *@
-<div class="h-full min-h-0 overflow-y-auto bg-page-bg">
-    <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
-        <header class="mb-4 flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-end md:justify-between">
-            <div>
-                <p class="text-sm font-semibold text-primary">Producción científica</p>
-                <h1 class="mt-1 text-2xl font-bold text-foreground">Artículos registrados</h1>
-                <p class="mt-1 text-sm text-muted">Consulta inicial de la base transaccional de artículos.</p>
+<div class="articles-module-page articles-home-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-home-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="border-b border-border bg-slate-950 px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-cyan-200">Produccion cientifica</p>
+                        <h1 class="mt-1 text-2xl font-bold">Articulos registrados</h1>
+                        <p class="mt-2 max-w-2xl text-sm text-slate-300">
+                            Consulta operativa de articulos consolidados en la base transaccional.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button"
+                                class="rounded-md border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                @onclick="ReloadAsync"
+                                disabled="@_loading">
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
             </div>
-            <button type="button"
-                    class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
-                    @onclick="ReloadAsync"
-                    disabled="@_loading">
-                Actualizar
-            </button>
+
+            <div class="articles-metric-grid grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4 md:px-6">
+                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span class="text-xs font-semibold uppercase text-muted">Registros</span>
+                    <strong class="mt-1 block text-2xl text-foreground">@_page.TotalCount</strong>
+                </div>
+                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span class="text-xs font-semibold uppercase text-muted">Pagina</span>
+                    <strong class="mt-1 block text-2xl text-foreground">@_page.Page / @Math.Max(1, _page.TotalPages)</strong>
+                </div>
+                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span class="text-xs font-semibold uppercase text-muted">Con DOI</span>
+                    <strong class="mt-1 block text-2xl text-foreground">@CurrentPageWithDoi</strong>
+                </div>
+                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
+                    <span class="text-xs font-semibold uppercase text-muted">Con autores</span>
+                    <strong class="mt-1 block text-2xl text-foreground">@CurrentPageWithAuthors</strong>
+                </div>
+            </div>
         </header>
 
-        <section class="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-border bg-background p-4 md:grid-cols-2">
-            <label class="block md:col-span-1">
-                <span class="mb-1 block text-xs font-semibold text-muted">Buscar</span>
-                <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                       placeholder="Título, DOI o revista"
-                       @bind="_search"
-                       @onkeydown="HandleSearchKeyDown" />
-            </label>
-            <label class="block">
-                <span class="mb-1 block text-xs font-semibold text-muted">Año</span>
-                <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                       type="number"
-                       min="1900"
-                       max="@DateTime.Today.Year"
-                       @bind="_year" />
-            </label>
-            <button type="button"
-                    class="self-end rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
-                    @onclick="ApplyFiltersAsync"
-                    disabled="@_loading">
-                Buscar
-            </button>
+        <section class="articles-home-filters rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(9rem,.45fr)_minmax(11rem,.55fr)_minmax(10rem,.45fr)]">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Buscar</span>
+                    <input class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                           placeholder="Titulo, DOI o identificador externo"
+                           @bind="_search"
+                           @onkeydown="HandleSearchKeyDown" />
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Anio</span>
+                    <input class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                           type="number"
+                           min="1900"
+                           max="@DateTime.Today.Year"
+                           @bind="_year" />
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Ordenar por</span>
+                    <select class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            @bind="_sortBy">
+                        <option value="PublishedAt">Fecha de publicacion</option>
+                        <option value="Year">Anio</option>
+                        <option value="Title">Titulo</option>
+                        <option value="CreatedAt">Fecha de registro</option>
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Por pagina</span>
+                    <select class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            @bind="_pageSize">
+                        <option value="12">12</option>
+                        <option value="24">24</option>
+                        <option value="48">48</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="inline-flex rounded-md border border-border bg-page-bg p-1">
+                    <button type="button"
+                            class="rounded px-3 py-1.5 text-sm font-semibold transition @CardsButtonClass"
+                            @onclick="SetCardsView">
+                        Tarjetas
+                    </button>
+                    <button type="button"
+                            class="rounded px-3 py-1.5 text-sm font-semibold transition @TableButtonClass"
+                            @onclick="SetTableView">
+                        Tabla
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button type="button"
+                            class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle disabled:cursor-not-allowed disabled:opacity-60"
+                            @onclick="ClearFiltersAsync"
+                            disabled="@_loading">
+                        Limpiar
+                    </button>
+                    <button type="button"
+                            class="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                            @onclick="ApplyFiltersAsync"
+                            disabled="@_loading">
+                        Buscar
+                    </button>
+                </div>
+            </div>
         </section>
 
         @if (_loading)
         {
-            <div class="flex items-center justify-center rounded-lg border border-border bg-background" style="min-height: 16rem;">
+            <div class="flex items-center justify-center rounded-lg border border-border bg-background shadow-sm" style="min-height: 18rem;">
                 <div class="text-center">
                     <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                    <p class="mt-3 text-sm text-muted">Cargando artículos...</p>
+                    <p class="mt-3 text-sm text-muted">Cargando articulos...</p>
                 </div>
             </div>
         }
         else if (!string.IsNullOrWhiteSpace(_error))
         {
-            <section class="rounded-lg border border-border bg-background p-6">
-                <h2 class="text-lg font-bold text-foreground">No fue posible cargar los artículos</h2>
+            <section class="rounded-lg border border-border bg-background p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-foreground">No fue posible cargar los articulos</h2>
                 <p class="mt-2 text-sm text-muted">@_error</p>
                 <button type="button"
-                        class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+                        class="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white"
                         @onclick="ReloadAsync">
                     Intentar nuevamente
                 </button>
@@ -67,69 +138,124 @@
         }
         else if (_page.Items.Count == 0)
         {
-            <section class="rounded-lg border border-border bg-background p-8 text-center">
-                <h2 class="text-lg font-bold text-foreground">No se encontraron artículos</h2>
-                <p class="mt-2 text-sm text-muted">Ajusta los filtros o verifica que el módulo tenga información registrada.</p>
+            <section class="rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <h2 class="text-lg font-bold text-foreground">No se encontraron articulos</h2>
+                <p class="mt-2 text-sm text-muted">Ajusta los filtros o verifica que el modulo tenga informacion registrada.</p>
             </section>
         }
         else
         {
-            <section class="overflow-hidden rounded-lg border border-border bg-background">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left" style="min-width: 760px;">
-                        <thead class="border-b border-border bg-primary-subtle">
-                            <tr class="text-xs uppercase text-muted">
-                                <th class="px-4 py-3">Artículo</th>
-                                <th class="px-4 py-3">Año</th>
-                                <th class="px-4 py-3">Revista</th>
-                                <th class="px-4 py-3">Indexación</th>
-                                <th class="px-4 py-3 text-right">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-border">
-                            @foreach (var article in _page.Items)
-                            {
-                                <tr @key="article.Id" class="hover:bg-primary-subtle">
-                                    <td class="px-4 py-3">
-                                        <div class="max-w-xl font-semibold text-foreground">@Display(article.Title)</div>
-                                        <div class="mt-1 text-xs text-muted">DOI: @Display(article.Doi)</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-foreground">@Display(article.Year)</td>
-                                    <td class="px-4 py-3 text-sm text-foreground">@Display(article.VenueName)</td>
-                                    <td class="px-4 py-3 text-sm text-foreground">@Display(article.IndexingSourceName)</td>
-                                    <td class="px-4 py-3 text-right">
-                                        <button type="button"
-                                                class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
-                                                @onclick="() => OpenDetailAsync(article.Id)">
-                                            Ver detalle
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+            @if (_viewMode == "cards")
+            {
+                <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    @foreach (var article in _page.Items)
+                    {
+                        <article @key="article.Id" class="articles-article-card rounded-lg border border-border bg-background p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0">
+                                    <div class="mb-2 flex flex-wrap gap-2">
+                                        <span class="rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">@Display(article.Year)</span>
+                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">@Display(article.PublicationStatusName)</span>
+                                        @if (article.IsOpenAccess)
+                                        {
+                                            <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Acceso abierto</span>
+                                        }
+                                    </div>
+                                    <h2 class="line-clamp-2 text-base font-bold text-foreground">@Display(article.Title)</h2>
+                                    <p class="mt-2 text-sm text-muted">DOI: @Display(article.Doi)</p>
+                                </div>
+                                <button type="button"
+                                        class="shrink-0 rounded-md border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
+                                        @onclick="() => OpenDetailAsync(article.Id)">
+                                    Ver detalle
+                                </button>
+                            </div>
 
-                <footer class="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p class="text-xs text-muted">
-                        Página @_page.Page de @Math.Max(1, _page.TotalPages) · @_page.TotalCount registro(s)
-                    </p>
-                    <div class="flex gap-2">
-                        <button type="button"
-                                class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                disabled="@(_page.Page <= 1)"
-                                @onclick="PreviousPageAsync">
-                            Anterior
-                        </button>
-                        <button type="button"
-                                class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                disabled="@(_page.Page >= _page.TotalPages)"
-                                @onclick="NextPageAsync">
-                            Siguiente
-                        </button>
+                            <dl class="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
+                                <div>
+                                    <dt class="text-xs font-semibold text-muted">Revista</dt>
+                                    <dd class="mt-1 text-sm text-foreground">@Display(article.VenueName)</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-muted">Indexacion</dt>
+                                    <dd class="mt-1 text-sm text-foreground">@Display(article.IndexingSourceName)</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-muted">Facultad</dt>
+                                    <dd class="mt-1 text-sm text-foreground">@Display(article.FacultyName)</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-muted">Autores</dt>
+                                    <dd class="mt-1 text-sm text-foreground">@DisplayAuthors(article.AuthorsSummary)</dd>
+                                </div>
+                            </dl>
+                        </article>
+                    }
+                </section>
+            }
+            else
+            {
+                <section class="articles-table-panel overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left" style="min-width: 920px;">
+                            <thead class="border-b border-border bg-primary-subtle">
+                                <tr class="text-xs uppercase text-muted">
+                                    <th class="px-4 py-3">Articulo</th>
+                                    <th class="px-4 py-3">Anio</th>
+                                    <th class="px-4 py-3">Revista</th>
+                                    <th class="px-4 py-3">Estado</th>
+                                    <th class="px-4 py-3">Indexacion</th>
+                                    <th class="px-4 py-3">Autores</th>
+                                    <th class="px-4 py-3 text-right">Accion</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                                @foreach (var article in _page.Items)
+                                {
+                                    <tr @key="article.Id" class="hover:bg-primary-subtle">
+                                        <td class="px-4 py-3">
+                                            <div class="max-w-xl font-semibold text-foreground">@Display(article.Title)</div>
+                                            <div class="mt-1 text-xs text-muted">DOI: @Display(article.Doi)</div>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.Year)</td>
+                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.VenueName)</td>
+                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.PublicationStatusName)</td>
+                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.IndexingSourceName)</td>
+                                        <td class="px-4 py-3 text-sm text-foreground">@DisplayAuthors(article.AuthorsSummary)</td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button type="button"
+                                                    class="rounded-md border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
+                                                    @onclick="() => OpenDetailAsync(article.Id)">
+                                                Ver detalle
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
-                </footer>
-            </section>
+                </section>
+            }
+
+            <footer class="articles-pagination flex flex-col gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-xs text-muted">
+                    Mostrando @_page.Items.Count registro(s) de @_page.TotalCount · Pagina @_page.Page de @Math.Max(1, _page.TotalPages)
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button"
+                            class="rounded-md border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled="@(_page.Page <= 1)"
+                            @onclick="PreviousPageAsync">
+                        Anterior
+                    </button>
+                    <button type="button"
+                            class="rounded-md border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled="@(_page.Page >= _page.TotalPages)"
+                            @onclick="NextPageAsync">
+                        Siguiente
+                    </button>
+                </div>
+            </footer>
         }
     </div>
 </div>
@@ -137,32 +263,31 @@
 @if (_detailOpen)
 {
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="background-color: rgba(0, 0, 0, 0.5);"
+         style="background-color: rgba(15, 23, 42, 0.62);"
          @onclick="CloseDetail">
-        <section class="w-full max-w-3xl overflow-y-auto rounded-lg bg-background shadow-2xl"
-                 style="max-height: 85vh;"
+        <section class="articles-detail-modal w-full max-w-4xl overflow-hidden rounded-lg bg-background shadow-2xl"
                  role="dialog"
                  aria-modal="true"
                  aria-labelledby="article-detail-title"
                  @onclick:stopPropagation="true">
-            <header class="flex items-start justify-between gap-4 border-b border-border p-5">
+            <header class="flex items-start justify-between gap-4 border-b border-border bg-slate-950 p-5 text-white">
                 <div>
-                    <p class="text-sm font-semibold text-primary">Detalle del artículo</p>
-                    <h2 id="article-detail-title" class="mt-1 text-xl font-bold text-foreground">
+                    <p class="text-sm font-semibold text-cyan-200">Detalle del articulo</p>
+                    <h2 id="article-detail-title" class="mt-1 line-clamp-2 text-xl font-bold">
                         @(_detailLoading ? "Consultando..." : Display(_detail?.Title))
                     </h2>
                 </div>
                 <button type="button"
-                        class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground"
+                        class="rounded-md border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10"
                         @onclick="CloseDetail">
                     Cerrar
                 </button>
             </header>
 
-            <div class="p-5">
+            <div class="max-h-[72vh] overflow-y-auto p-5">
                 @if (_detailLoading)
                 {
-                    <p class="text-sm text-muted">Cargando información...</p>
+                    <p class="text-sm text-muted">Cargando informacion...</p>
                 }
                 else if (!string.IsNullOrWhiteSpace(_detailError))
                 {
@@ -170,32 +295,60 @@
                 }
                 else if (_detail is not null)
                 {
-                    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div><dt class="text-xs font-semibold text-muted">DOI</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Doi)</dd></div>
-                        <div><dt class="text-xs font-semibold text-muted">Fecha de publicación</dt><dd class="mt-1 text-sm text-foreground">@DisplayDate(_detail.PublishedAt)</dd></div>
-                        <div><dt class="text-xs font-semibold text-muted">Revista</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.VenueName)</dd></div>
-                        <div><dt class="text-xs font-semibold text-muted">ISSN</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.IssnCode)</dd></div>
-                        <div><dt class="text-xs font-semibold text-muted">Cuartil</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Quartile)</dd></div>
-                        <div><dt class="text-xs font-semibold text-muted">Filiación</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Filiacion)</dd></div>
+                    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">DOI</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Doi)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Fecha de publicacion</dt><dd class="mt-1 text-sm text-foreground">@DisplayDate(_detail.PublishedAt)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Paginas</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.PageCount)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Revista</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.VenueName)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">ISSN</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.IssnCode)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Cuartil</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Quartile)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Facultad</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.FacultyName)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Filiacion</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Filiacion)</dd></div>
+                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Acceso abierto</dt><dd class="mt-1 text-sm text-foreground">@(_detail.IsOpenAccess ? "Si" : "No")</dd></div>
                     </dl>
 
                     <div class="mt-5 border-t border-border pt-4">
                         <h3 class="text-sm font-bold text-foreground">Participantes</h3>
-                        <p class="mt-2 text-sm text-muted">
-                            @(_detail.Participants is { Count: > 0 }
-                                ? string.Join(", ", _detail.Participants.OrderBy(x => x.Index).Select(x => x.Nombre))
-                                : "Sin participantes informados")
-                        </p>
+                        @if (_detail.Participants is { Count: > 0 })
+                        {
+                            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                @foreach (var participant in _detail.Participants.OrderBy(x => x.Index))
+                                {
+                                    <div class="rounded-md border border-border bg-page-bg px-3 py-2">
+                                        <span class="text-xs font-semibold text-muted">Orden @participant.Index</span>
+                                        <p class="text-sm font-semibold text-foreground">@Display(participant.Nombre)</p>
+                                        <p class="text-xs text-muted">@Display(participant.Participacion)</p>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="mt-2 text-sm text-muted">Sin participantes informados.</p>
+                        }
                     </div>
+
+                    @if (_detail.Indexings is { Count: > 0 })
+                    {
+                        <div class="mt-5 border-t border-border pt-4">
+                            <h3 class="text-sm font-bold text-foreground">Indexaciones</h3>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach (var indexing in _detail.Indexings)
+                                {
+                                    <span class="rounded-full bg-primary-subtle px-3 py-1 text-xs font-semibold text-primary">@indexing.IndexingSourceName</span>
+                                }
+                            </div>
+                        </div>
+                    }
 
                     @if (_detail.DynamicFields.Count > 0)
                     {
                         <div class="mt-5 border-t border-border pt-4">
-                            <h3 class="text-sm font-bold text-foreground">Información adicional</h3>
+                            <h3 class="text-sm font-bold text-foreground">Informacion adicional</h3>
                             <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                 @foreach (var field in _detail.DynamicFields)
                                 {
-                                    <div>
+                                    <div class="rounded-md border border-border bg-page-bg px-3 py-2">
                                         <dt class="text-xs font-semibold text-muted">@field.FieldLabel</dt>
                                         <dd class="mt-1 text-sm text-foreground">@Display(field.DisplayValue)</dd>
                                     </div>
@@ -210,16 +363,23 @@
 }
 
 @code {
-    private const int PageSize = 12;
     private ArticlePageDto _page = new();
     private string? _search;
     private int? _year;
+    private int _pageSize = 12;
+    private string _sortBy = "PublishedAt";
+    private string _viewMode = "cards";
     private bool _loading = true;
     private string? _error;
     private bool _detailOpen;
     private bool _detailLoading;
     private string? _detailError;
     private ArticleDetailDto? _detail;
+
+    private int CurrentPageWithDoi => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.Doi));
+    private int CurrentPageWithAuthors => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.AuthorsSummary) || item.Participants is { Count: > 0 });
+    private string CardsButtonClass => ViewButtonClass("cards");
+    private string TableButtonClass => ViewButtonClass("table");
 
     protected override Task OnInitializedAsync() => LoadPageAsync(1);
 
@@ -233,8 +393,8 @@
             Search = _search,
             Year = ToShortYear(_year),
             Page = page,
-            PageSize = PageSize,
-            SortBy = "PublishedAt",
+            PageSize = _pageSize,
+            SortBy = _sortBy,
             SortDesc = true
         });
 
@@ -249,7 +409,19 @@
     private Task ReloadAsync() => LoadPageAsync(Math.Max(1, _page.Page));
     private Task ApplyFiltersAsync() => LoadPageAsync(1);
     private Task PreviousPageAsync() => LoadPageAsync(Math.Max(1, _page.Page - 1));
-    private Task NextPageAsync() => LoadPageAsync(Math.Min(_page.TotalPages, _page.Page + 1));
+    private Task NextPageAsync() => LoadPageAsync(Math.Min(Math.Max(1, _page.TotalPages), _page.Page + 1));
+
+    private async Task ClearFiltersAsync()
+    {
+        _search = null;
+        _year = null;
+        _sortBy = "PublishedAt";
+        await LoadPageAsync(1);
+    }
+
+    private void SetCardsView() => _viewMode = "cards";
+
+    private void SetTableView() => _viewMode = "table";
 
     private async Task HandleSearchKeyDown(KeyboardEventArgs args)
     {
@@ -280,11 +452,19 @@
         _detailError = null;
     }
 
+    private string ViewButtonClass(string mode)
+        => _viewMode == mode
+            ? "bg-background text-primary shadow-sm"
+            : "text-muted hover:text-foreground";
+
     private static short? ToShortYear(int? year)
         => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
 
     private static string Display(object? value)
         => string.IsNullOrWhiteSpace(value?.ToString()) ? "No informado" : value.ToString()!;
+
+    private static string DisplayAuthors(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "Sin autores informados" : value;
 
     private static string DisplayDate(DateTime? value)
         => value?.ToString("dd/MM/yyyy") ?? "No informada";
@@ -292,8 +472,8 @@
     private static string FriendlyError(string? code, string? message)
         => code switch
         {
-            "ARTICLES_MODULE_DISABLED" => "El módulo de artículos todavía no está habilitado en este entorno.",
+            "ARTICLES_MODULE_DISABLED" => "El modulo de articulos todavia no esta habilitado en este entorno.",
             _ when !string.IsNullOrWhiteSpace(message) => message,
-            _ => "Ocurrió un problema al consultar la información. Inténtalo nuevamente."
+            _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
         };
 }

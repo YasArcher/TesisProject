@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Contexto temporal para adaptar el modulo a la arquitectura de proyectos.
 using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Data.Articles.Configurations;
 using tesisproject.backend.Data.Articles.Entities;
@@ -31,6 +30,10 @@ public sealed class ArticlesDbContext : DbContext
     public DbSet<FormFieldDefinition> FormFieldDefinitions => Set<FormFieldDefinition>();
     public DbSet<DynamicFieldValue> DynamicFieldValues => Set<DynamicFieldValue>();
     public DbSet<ArticleParticipantDynamicFieldValue> ArticleParticipantDynamicFieldValues => Set<ArticleParticipantDynamicFieldValue>();
+    public DbSet<RegistrationMatrix> RegistrationMatrices => Set<RegistrationMatrix>();
+    public DbSet<RegistrationMatrixColumn> RegistrationMatrixColumns => Set<RegistrationMatrixColumn>();
+    public DbSet<RegistrationMatrixRow> RegistrationMatrixRows => Set<RegistrationMatrixRow>();
+    public DbSet<RegistrationMatrixCell> RegistrationMatrixCells => Set<RegistrationMatrixCell>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

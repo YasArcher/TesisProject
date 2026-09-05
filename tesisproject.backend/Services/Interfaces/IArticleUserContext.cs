@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Frontera de identidad para que articulos no dependa directamente de ASP.NET Identity.
 namespace tesisproject.backend.Services.Interfaces;
 
 public interface IArticleUserContext

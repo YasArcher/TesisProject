@@ -1,19 +1,19 @@
-﻿@page "/articles/module/register"
+@page "/articles/module/register"
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.shared.DTOs.Articles
 @inject IFormConfigurationClient FormConfigurationClient
+@inject IArticleClientService ArticleClient
 @inject NavigationManager Nav
-
-@* [ARTICLES-MIGRATION] Registro dinamico controlado. Usa configuracion activa de articulos sin activar aun persistencia/workflow. *@
-<div class="h-full min-h-0 overflow-y-auto bg-page-bg">
+<div class="articles-module-page articles-register-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
         <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
                 <p class="text-sm font-semibold text-primary">Registro y seguimiento</p>
                 <h1 class="mt-1 text-2xl font-bold text-foreground">Registrar artículo</h1>
                 <p class="mt-1 max-w-3xl text-sm text-muted">
-                    Vista de integración progresiva conectada al formulario activo. Permite validar estructura, campos requeridos y participantes antes de activar el envío real al workflow.
+                    Formulario operativo conectado a la configuración activa. Valida campos requeridos, participantes y reglas antes de registrar el artículo en la base transaccional de producción científica.
                 </p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -57,20 +57,20 @@
         }
         else
         {
-            <section class="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
-                <article class="rounded-lg border border-border bg-background p-4">
+            <section class="articles-metric-grid mb-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Formulario</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@_articleForm.FormName</p>
                 </article>
-                <article class="rounded-lg border border-border bg-background p-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Campos visibles</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@VisibleArticleFields.Count</p>
                 </article>
-                <article class="rounded-lg border border-border bg-background p-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Obligatorios</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@VisibleArticleFields.Count(f => f.IsRequired)</p>
                 </article>
-                <article class="rounded-lg border border-border bg-background p-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Participantes</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@_participants.Count</p>
                 </article>
@@ -89,7 +89,7 @@
             }
 
             <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-                <main class="space-y-4">
+                <main class="articles-form-stack space-y-4">
                     @foreach (var formSection in _articleForm.Sections.OrderBy(s => s.DisplayOrder))
                     {
                         var fields = formSection.Fields.Where(IsRenderable).OrderBy(f => f.DisplayOrder).ToList();
@@ -213,12 +213,12 @@
                     </section>
                 </main>
 
-                <aside class="space-y-4">
+                <aside class="articles-right-panel space-y-4">
                     <section class="rounded-lg border border-border bg-background p-5">
                         <p class="text-xs font-semibold uppercase text-muted">Estado del registro</p>
                         <h2 class="mt-1 text-lg font-bold text-foreground">Preparación controlada</h2>
                         <p class="mt-2 text-sm text-muted">
-                            Esta vista valida datos contra la configuración activa. El guardado definitivo y envío a workflow se activarán en la siguiente fase de fusión.
+                            Valida los datos visibles del formulario activo antes de guardar. Si existen campos opcionales pendientes, el sistema solicitará confirmación antes de registrar.
                         </p>
                         <div class="mt-4 grid grid-cols-2 gap-3">
                             <div class="rounded-lg border border-border p-3">
@@ -237,17 +237,17 @@
                         </button>
                         <button type="button"
                                 class="mt-2 w-full rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
-                                @onclick="PrepareForWorkflow">
-                            Preparar para envío
+                                @onclick="RequestSubmitDirectRegistrationAsync" disabled="@_submitting">
+                            @(_submitting ? "Registrando..." : "Registrar articulo")
                         </button>
                     </section>
 
                     <section class="rounded-lg border border-border bg-background p-5">
-                        <p class="text-xs font-semibold uppercase text-muted">Siguiente integración</p>
+                        <p class="text-xs font-semibold uppercase text-muted">Flujo actual</p>
                         <ul class="mt-3 space-y-2 text-sm text-muted">
-                            <li>1. Conectar guardado en staging.</li>
-                            <li>2. Crear lote institucional.</li>
-                            <li>3. Enviar a revisión UODIDE.</li>
+                            <li>1. Verificar campos obligatorios y reglas configuradas.</li>
+                            <li>2. Confirmar si existen campos opcionales pendientes.</li>
+                            <li>3. Registrar el artículo para consulta institucional.</li>
                         </ul>
                     </section>
                 </aside>
@@ -256,6 +256,35 @@
     </div>
 </div>
 
+
+            @if (_showOptionalConfirmation)
+            {
+                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <section class="w-full max-w-lg rounded-lg border border-border bg-background p-5 shadow-xl">
+                        <p class="text-xs font-semibold uppercase text-primary">Confirmar registro</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Hay campos opcionales pendientes</h2>
+                        <p class="mt-2 text-sm text-muted">
+                            Los campos obligatorios estan completos, pero existen campos no obligatorios sin completar. Puedes registrar el articulo ahora o volver al formulario para completarlos.
+                        </p>
+                        <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                            @string.Join(", ", _missingOptional.Take(10))@(_missingOptional.Count > 10 ? "..." : string.Empty)
+                        </div>
+                        <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <button type="button"
+                                    class="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
+                                    @onclick="CancelOptionalConfirmation">
+                                Volver a completar
+                            </button>
+                            <button type="button"
+                                    class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+                                    @onclick="ConfirmOptionalSubmitAsync"
+                                    disabled="@_submitting">
+                                Registrar de todas formas
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            }
 @code {
     private ResolvedFormDto? _articleForm;
     private ResolvedFormDto? _participantForm;
@@ -266,6 +295,8 @@
     private readonly List<string> _missingOptional = [];
     private bool _loading = true;
     private bool _submitted;
+    private bool _submitting;
+    private bool _showOptionalConfirmation;
     private string? _error;
     private string? _statusTitle;
     private string? _statusMessage;
@@ -422,17 +453,224 @@
         }
     }
 
-    private void PrepareForWorkflow()
+    private async Task RequestSubmitDirectRegistrationAsync()
     {
         ValidateDraft();
         if (_validation.Count > 0)
             return;
 
-        _statusOk = true;
-        _statusTitle = "Listo para integración de envío";
-        _statusMessage = "El formulario supera la validación local. En la siguiente fase se conectará el guardado en staging y el envío a revisión.";
+        if (_missingOptional.Count > 0)
+        {
+            _showOptionalConfirmation = true;
+            return;
+        }
+
+        await SubmitDirectRegistrationAsync();
     }
 
+    private async Task ConfirmOptionalSubmitAsync()
+    {
+        _showOptionalConfirmation = false;
+        await SubmitDirectRegistrationAsync();
+    }
+
+    private void CancelOptionalConfirmation()
+    {
+        _showOptionalConfirmation = false;
+    }
+
+    private async Task SubmitDirectRegistrationAsync()
+    {
+        _submitting = true;
+        try
+        {
+            var request = BuildRegistrationRequest();
+            var result = await ArticleClient.RegisterAsync(request);
+            if (result.Success && result.Data is not null)
+            {
+                _statusOk = true;
+                _statusTitle = "Articulo registrado";
+                _statusMessage = $"El articulo fue registrado correctamente con codigo {result.Data.ArticleId}.";
+                return;
+            }
+
+            _statusOk = false;
+            _statusTitle = "No pude registrar el articulo";
+            _statusMessage = result.Message ?? "Revisa los datos e intenta nuevamente.";
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+
+    private RegisterArticleAggregateRequest BuildRegistrationRequest()
+    {
+        var request = new RegisterArticleAggregateRequest { FormKey = _articleForm?.FormKey };
+
+        foreach (var field in VisibleArticleFields)
+        {
+            var value = GetValue(field);
+            if (string.IsNullOrWhiteSpace(value))
+                continue;
+
+            if (!ApplyKnownArticleField(request, field, value))
+                request.DynamicFields.Add(BuildDynamicValue(field, value));
+        }
+
+        request.Participants = _participants
+            .OrderBy(item => item.Order)
+            .Select((participant, index) => new ArticleParticipantAggregateDto
+            {
+                Index = index + 1,
+                Nombre = participant.Name?.Trim() ?? string.Empty,
+                Identificacion = participant.Identifier?.Trim(),
+                Participacion = participant.Role,
+                ParticipantType = participant.Type,
+                IsPrimaryAuthor = index == 0 || string.Equals(participant.Role, "Autor", StringComparison.OrdinalIgnoreCase),
+                Affiliation = participant.Affiliation
+            })
+            .ToList();
+
+        return request;
+    }
+
+    private static bool ApplyKnownArticleField(RegisterArticleAggregateRequest request, ResolvedFormFieldDto field, string value)
+    {
+        var key = NormalizeFieldKey(field.FieldKey);
+        var physicalColumn = NormalizeFieldKey(field.PhysicalColumnName);
+        var effectiveKey = string.IsNullOrWhiteSpace(physicalColumn) ? key : physicalColumn;
+
+        switch (effectiveKey)
+        {
+            case "title":
+            case "titulo":
+                request.Article.Title = value.Trim();
+                return true;
+            case "doi":
+                request.Article.Doi = value.Trim();
+                return true;
+            case "year":
+            case "anio":
+            case "ano":
+                request.Article.Year = TryShort(value);
+                return true;
+            case "publishedat":
+            case "publicationdate":
+            case "fechapublicacion":
+                request.Article.PublishedAt = TryDate(value);
+                request.Article.Year ??= request.Article.PublishedAt.HasValue ? (short?)request.Article.PublishedAt.Value.Year : null;
+                return true;
+            case "pagecount":
+            case "numeropaginas":
+                request.Article.PageCount = TryInt(value);
+                return true;
+            case "publicationurl":
+            case "urlpublicacion":
+                request.Article.PublicationUrl = value.Trim();
+                return true;
+            case "filiacion":
+            case "affiliation":
+                request.Article.Filiacion = value.Trim();
+                return true;
+            case "isprojectresult":
+            case "resultadoproyecto":
+                request.Article.IsProjectResult = TryBool(value);
+                return true;
+            case "hasinterculturalcomponent":
+            case "componenteintercultural":
+                request.Article.HasInterculturalComponent = TryBool(value);
+                return true;
+            case "isopenaccess":
+            case "openaccess":
+                request.Article.IsOpenAccess = TryBool(value);
+                return true;
+            case "academictermid":
+                request.Article.AcademicTermId = TryInt(value);
+                return true;
+            case "publicationstatusid":
+                request.Article.PublicationStatusId = TryByte(value);
+                return true;
+            case "researchlineid":
+                request.Article.ResearchLineId = TryInt(value);
+                return true;
+            case "broadfieldid":
+                request.Article.BroadFieldId = TryInt(value);
+                return true;
+            case "specificfieldid":
+                request.Article.SpecificFieldId = TryInt(value);
+                return true;
+            case "detailedfieldid":
+                request.Article.DetailedFieldId = TryInt(value);
+                return true;
+            case "facultyid":
+                request.Article.FacultyId = TryInt(value);
+                return true;
+            case "journalname":
+            case "nombrerevista":
+            case "revista":
+                request.Venue.JournalName = value.Trim();
+                return true;
+            case "issncode":
+            case "issn":
+                request.Venue.IssnCode = value.Trim();
+                return true;
+            case "issuenumber":
+                request.Venue.IssueNumber = value.Trim();
+                return true;
+            case "volumenumber":
+                request.Venue.VolumeNumber = value.Trim();
+                return true;
+            case "journalurl":
+                request.Venue.JournalUrl = value.Trim();
+                return true;
+            case "quartile":
+            case "cuartil":
+                request.VenueMetric.Quartile = value.Trim();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static DynamicFieldValueInputDto BuildDynamicValue(ResolvedFormFieldDto field, string value)
+    {
+        var dynamicValue = new DynamicFieldValueInputDto { FieldId = field.FieldId, FieldKey = field.FieldKey };
+        switch (NormalizeType(field.DataType))
+        {
+            case "integer":
+            case "number":
+                dynamicValue.ValueInt = TryInt(value);
+                dynamicValue.ValueString = dynamicValue.ValueInt.HasValue ? null : value.Trim();
+                break;
+            case "decimal":
+                dynamicValue.ValueDecimal = TryDecimal(value);
+                dynamicValue.ValueString = dynamicValue.ValueDecimal.HasValue ? null : value.Trim();
+                break;
+            case "date":
+                dynamicValue.ValueDate = TryDate(value);
+                dynamicValue.ValueString = dynamicValue.ValueDate.HasValue ? null : value.Trim();
+                break;
+            case "boolean":
+                dynamicValue.ValueBit = TryBool(value);
+                break;
+            default:
+                dynamicValue.ValueString = value.Trim();
+                break;
+        }
+        return dynamicValue;
+    }
+
+    private static string NormalizeFieldKey(string? value)
+        => new string((value ?? string.Empty).Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+
+    private static int? TryInt(string value) => int.TryParse(value, out var parsed) ? parsed : null;
+    private static short? TryShort(string value) => short.TryParse(value, out var parsed) ? parsed : null;
+    private static byte? TryByte(string value) => byte.TryParse(value, out var parsed) ? parsed : null;
+    private static decimal? TryDecimal(string value) => decimal.TryParse(value, out var parsed) ? parsed : null;
+    private static DateTime? TryDate(string value) => DateTime.TryParse(value, out var parsed) ? parsed : null;
+    private static bool TryBool(string value) => value.Equals("true", StringComparison.OrdinalIgnoreCase) || value.Equals("si", StringComparison.OrdinalIgnoreCase) || value.Equals("1", StringComparison.OrdinalIgnoreCase);
     private void ValidateField(ResolvedFormFieldDto field)
     {
         _validation.Remove(field.FieldId);
@@ -522,7 +760,3 @@
         public string Affiliation { get; set; } = "Universidad Técnica de Ambato";
     }
 }
-
-
-
-

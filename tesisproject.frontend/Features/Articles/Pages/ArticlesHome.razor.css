@@ -1,0 +1,82 @@
+.articles-home-page .articles-home-hero {
+    margin-bottom: 0;
+}
+
+.articles-home-page .articles-home-filters {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-home-page .articles-home-filters label span {
+    color: #526762 !important;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.articles-home-page .articles-article-card {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-radius: 8px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 248, 0.96)) !important;
+}
+
+.articles-home-page .articles-article-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.22rem;
+    background: linear-gradient(180deg, #2f5f5b, #d8b84f);
+    opacity: 0.88;
+}
+
+.articles-home-page .articles-article-card h2 {
+    color: #12343b !important;
+    line-height: 1.35;
+}
+
+.articles-home-page .articles-article-card dl {
+    border-color: rgba(47, 95, 91, 0.14) !important;
+}
+
+.articles-home-page .articles-table-panel {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-home-page .articles-table-panel tbody tr {
+    transition: background 0.16s ease;
+}
+
+.articles-home-page .articles-pagination {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+}
+
+.articles-detail-modal {
+    border: 1px solid rgba(47, 95, 91, 0.2);
+    border-radius: 8px !important;
+}
+
+.articles-detail-modal header {
+    background: linear-gradient(135deg, #12343b 0%, #1d4f4b 54%, #2f5f5b 100%) !important;
+}
+
+.articles-detail-modal dl > div,
+.articles-detail-modal .rounded-md {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    background: rgba(246, 251, 248, 0.96) !important;
+}
+
+@media (max-width: 768px) {
+    .articles-home-page .articles-home-filters {
+        padding: 0.9rem !important;
+    }
+
+    .articles-home-page .articles-article-card {
+        padding: 0.95rem !important;
+    }
+}

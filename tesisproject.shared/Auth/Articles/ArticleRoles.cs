@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Roles historicos del sistema de articulos conservados para compatibilidad progresiva.
 namespace tesisproject.shared.Auth.Articles;
 
 public static class ArticleRoles

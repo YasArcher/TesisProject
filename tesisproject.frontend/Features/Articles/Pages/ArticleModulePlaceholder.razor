@@ -1,10 +1,8 @@
 @page "/articles/module/{ModuleKey}"
 @inject NavigationManager Nav
-
-@* [ARTICLES-MIGRATION] Representa modulos existentes que aun permanecen en la copia pasiva. *@
-<div class="h-full overflow-y-auto bg-page-bg">
+<div class="articles-module-page articles-placeholder-page h-full overflow-y-auto bg-page-bg">
     <div class="mx-auto w-full max-w-5xl p-4 md:p-6">
-        <header class="border-b border-border pb-4">
+        <header class="mb-5 border-b border-border pb-4">
             <p class="text-sm font-semibold text-primary">Producción científica</p>
             <h1 class="mt-1 text-2xl font-bold text-foreground">@ModuleTitle</h1>
             <p class="mt-2 text-sm text-muted">
@@ -12,7 +10,7 @@
             </p>
         </header>
 
-        <section class="mt-5 rounded-lg border border-border bg-background p-6">
+        <section class="articles-workspace-panel mt-5 rounded-lg border border-border bg-background p-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <span class="inline-block rounded-lg bg-primary-subtle px-3 py-2 text-xs font-bold uppercase text-primary">

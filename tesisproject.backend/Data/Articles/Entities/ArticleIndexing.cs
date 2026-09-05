@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.backend.Data.Articles.Entities;
 
     public class ArticleIndexing
@@ -8,4 +7,3 @@ namespace tesisproject.backend.Data.Articles.Entities;
         public int IndexingSourceId { get; set; }
         public IndexingSource IndexingSource { get; set; } = default!;
     }
-

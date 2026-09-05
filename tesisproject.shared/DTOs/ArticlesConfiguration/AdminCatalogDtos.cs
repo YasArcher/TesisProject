@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Configuration
 {
     public class CatalogAdminItemDto
@@ -39,4 +38,3 @@ namespace tesisproject.shared.DTOs.Configuration
         public bool IsActive { get; set; }
     }
 }
-

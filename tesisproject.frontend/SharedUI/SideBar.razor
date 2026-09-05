@@ -1,11 +1,24 @@
-﻿@* SideBar.razor *@
+@* SideBar.razor *@
 @using Microsoft.AspNetCore.Components.Routing
 @using tesisproject.frontend.SharedUI.ActionButton
 
-<div class="fusion-sidebar-shell">
+<div class="@SidebarShellClass">
     <div class="fusion-sidebar-topline">
         <span class="fusion-sidebar-system">Plataforma institucional</span>
         <span class="fusion-sidebar-badge">@(IsArticlePortal ? "Artículos" : "Proyectos")</span>
+        @if (IsDesktop)
+        {
+            <button type="button"
+                    class="fusion-sidebar-collapse"
+                    title="@CollapseButtonLabel"
+                    aria-label="@CollapseButtonLabel"
+                    aria-pressed="@IsCollapsed"
+                    @onclick="ToggleCollapsedAsync">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 6l-6 6 6 6" />
+                </svg>
+            </button>
+        }
     </div>
 
     <div class="fusion-context-card">
@@ -13,8 +26,6 @@
         <strong>@(IsArticlePortal ? "Artículos" : "Proyectos")</strong>
         <small>@(IsArticlePortal ? "Registro, reportería e IA." : "Seguimiento y gestión operativa.")</small>
     </div>
-
-    <!-- [ARTICLES-MIGRATION] Se conserva la logica unificada de navegacion; solo se aplica la identidad visual de articulos. -->
     <nav class="fusion-sidebar-nav" aria-label="Navegacion principal">
         @foreach (var group in GroupedItems)
         {
@@ -31,13 +42,13 @@
             {
                 var key = $"{group.Key ?? "root"}::{item.Text}::{item.Href ?? "nohref"}";
                 var parentActive = item.HasChildren && IsChildActive(item);
-                var expanded = item.HasChildren && (IsExpanded(key) || parentActive);
+                var expanded = item.HasChildren && !IsCollapsed && (IsExpanded(key) || parentActive);
 
                 if (item.HasChildren)
                 {
                     <div class="fusion-nav-group">
                         <button type="button"
-                                class="fusion-nav-link fusion-nav-button @(parentActive ? "is-active" : null)"
+                                class="fusion-nav-link fusion-nav-button @(parentActive ? "is-active" : null)" title="@item.Text"
                                 @onclick="() => Toggle(key)"
                                 aria-expanded="@expanded">
                             @if (!string.IsNullOrWhiteSpace(item.Icon))
@@ -57,11 +68,12 @@
                         </button>
 
                         <div class="fusion-subnav @(expanded ? "is-expanded" : null)">
-                            @foreach (var child in item.Children!)
+                            @foreach (var child in item.Children!.Where(IsVisible))
                             {
                                 <NavLink class="fusion-nav-link fusion-nav-child"
                                          ActiveClass="is-active"
                                          href="@(child.Href!)"
+                                         title="@child.Text"
                                          Match="@(child.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)"
                                          tabindex="@(expanded ? "0" : "-1")">
                                     @if (!string.IsNullOrWhiteSpace(child.Icon))
@@ -81,6 +93,7 @@
                     <NavLink class="fusion-nav-link"
                              ActiveClass="is-active"
                              href="@(item.Href!)"
+                             title="@item.Text"
                              Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
                         @if (!string.IsNullOrWhiteSpace(item.Icon))
                         {
@@ -142,4 +155,3 @@
         }
     </div>
 </div>
-

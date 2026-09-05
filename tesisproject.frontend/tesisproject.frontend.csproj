@@ -39,8 +39,6 @@
   <ItemGroup>
     <ProjectReference Include="..\tesisproject.shared\tesisproject.shared.csproj" />
   </ItemGroup>
-
-  <!-- [ARTICLES-MIGRATION] Copia pasiva para analisis; no se compila ni publica. -->
   <ItemGroup>
     <Compile Remove="ArticlesMigration\**\*.cs" />
     <Content Remove="ArticlesMigration\**" />

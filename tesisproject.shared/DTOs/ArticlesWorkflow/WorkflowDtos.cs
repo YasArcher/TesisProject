@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Workflow
 {
     public class WorkflowBatchDetailDto
@@ -97,4 +96,3 @@ namespace tesisproject.shared.DTOs.Workflow
         public string? Comments { get; set; }
     }
 }
-

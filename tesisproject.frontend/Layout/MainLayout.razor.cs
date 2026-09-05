@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using tesisproject.frontend.Services.Auth; // asegúrate del namespace real de CustomAuthStateProvider
 
@@ -9,6 +9,7 @@ namespace tesisproject.frontend.Layout
         [Inject] public CustomAuthStateProvider AuthStateProvider { get; set; } = null!;
 
         private bool IsSidebarOpen = false;
+        private bool _isSidebarCollapsed;
         private DateTime _now = DateTime.Now;
         private CancellationTokenSource? _clockCancellation;
 
@@ -102,6 +103,11 @@ namespace tesisproject.frontend.Layout
         private void ToggleSidebar()
         {
             IsSidebarOpen = !IsSidebarOpen;
+        }
+
+        private void ToggleSidebarCollapsed()
+        {
+            _isSidebarCollapsed = !_isSidebarCollapsed;
         }
 
         public void Dispose()

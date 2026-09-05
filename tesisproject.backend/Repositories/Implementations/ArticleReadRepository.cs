@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Repositorio temporal de solo lectura para integracion progresiva.
 using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Data.Articles;
 using tesisproject.backend.Data.Articles.Entities;

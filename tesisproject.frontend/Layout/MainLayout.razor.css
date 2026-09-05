@@ -1,4 +1,4 @@
-﻿.fusion-app-shell {
+.fusion-app-shell {
     height: 100vh;
     min-height: 0;
     min-width: 0;
@@ -346,7 +346,6 @@
 }
 
 /* FUSION-UX-HEADER-PALETTE-REFINEMENT */
-/* [ARTICLES-MIGRATION] Header oscuro con acento turquesa para diferenciar la cabecera del sidebar fusionado. */
 .fusion-app-header {
     background:
         radial-gradient(circle at 8% 0%, rgba(38, 208, 206, 0.2), transparent 25%),
@@ -431,3 +430,21 @@
     background: rgba(38, 208, 206, 0.14);
 }
 
+
+/* FUSION-SIDEBAR-COLLAPSE */
+.fusion-sidebar-desktop {
+    transition: width 0.28s cubic-bezier(0.2, 0.85, 0.25, 1), min-width 0.28s cubic-bezier(0.2, 0.85, 0.25, 1), box-shadow 0.22s ease;
+}
+
+.fusion-sidebar-desktop.is-collapsed {
+    width: 5.35rem;
+    min-width: 5.35rem;
+}
+
+.fusion-app-shell.is-sidebar-collapsed .fusion-app-header {
+    grid-template-columns: minmax(12rem, auto) minmax(0, 1fr) auto;
+}
+
+.fusion-app-shell.is-sidebar-collapsed .fusion-header-description {
+    max-width: 42rem;
+}

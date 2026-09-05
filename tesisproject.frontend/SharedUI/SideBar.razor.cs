@@ -8,6 +8,10 @@ namespace tesisproject.frontend.SharedUI;
 
 public partial class SideBar : IDisposable
 {
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public bool IsDesktop { get; set; }
+    [Parameter] public EventCallback OnToggleCollapsed { get; set; }
+
     private record MenuItem(
         string Text,
         string? Href = null,
@@ -16,7 +20,8 @@ public partial class SideBar : IDisposable
         string? Icon = null,
         IReadOnlyList<MenuItem>? Children = null,
         IReadOnlyCollection<string>? AllowedRoles = null,
-        bool RequiresArticlesAccess = false
+        bool RequiresArticlesAccess = false,
+        string? ArticleCapability = null
     )
     {
         public bool HasChildren => Children is { Count: > 0 };
@@ -34,7 +39,6 @@ public partial class SideBar : IDisposable
     [Inject] private IDwEtlClientService DwEtlClientService { get; set; } = default!;
     [Inject] private IToastService Toast { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
-    // [ARTICLES-MIGRATION] La sesion unificada determina la navegacion visible.
     [Inject] private IAuthClientService AuthClient { get; set; } = default!;
 
     private bool _etlBusy;
@@ -42,15 +46,29 @@ public partial class SideBar : IDisposable
     private string? _etlError;
     private HashSet<string> _roles = new(StringComparer.OrdinalIgnoreCase);
     private bool _articlesAccess;
+    private bool _articleCanList;
+    private bool _articleCanRegister;
+    private bool _articleCanManageConfiguration;
     private bool _projectsAccess;
     private bool _sessionLoaded;
+    private string SidebarShellClass => $"fusion-sidebar-shell {(IsCollapsed ? "is-collapsed" : string.Empty)}";
+    private string CollapseButtonLabel => IsCollapsed ? "Expandir navegación" : "Contraer navegación";
 
     private readonly HashSet<string> _expanded = new();
 
     private void Toggle(string key)
     {
+        if (IsCollapsed)
+            return;
+
         if (!_expanded.Add(key))
             _expanded.Remove(key);
+    }
+
+    private async Task ToggleCollapsedAsync()
+    {
+        if (OnToggleCollapsed.HasDelegate)
+            await OnToggleCollapsed.InvokeAsync();
     }
 
     private bool IsExpanded(string key) => _expanded.Contains(key);
@@ -108,62 +126,60 @@ public partial class SideBar : IDisposable
             ],
             AllowedRoles: ["superadmin"])
     ];
-
-    // [ARTICLES-MIGRATION] Mapa ordenado del sistema de produccion cientifica dentro de la fusion.
+    // Los modulos aun preservados apuntan a placeholders controlados hasta su activacion funcional.
     private readonly MenuItem[] _articleItems =
     [
-        new MenuItem("Portal de artículos", "/articles", true, "Inicio", IconDashboard),
+        new MenuItem("Portal de articulos", "/articles", true, "Inicio", IconDashboard, ArticleCapability: "access"),
         new MenuItem(
-            Text: "Registro y seguimiento",
-            Section: "Operación",
+            Text: "Registro de articulos",
+            Section: "Operacion",
             Icon: IconArticles,
             Children:
             [
-                new MenuItem("Listado de artículos", "/articles", true),
-                new MenuItem("Registrar artículo", "/articles/module/register"),
-                new MenuItem("Revisión de envíos", "/articles/module/workflow")
+                new MenuItem("Listado de articulos", "/articles", true, ArticleCapability: "list"),
+                new MenuItem("Registrar articulo", "/articles/module/register", ArticleCapability: "register"),
+                new MenuItem("Matriz tabular", "/articles/module/matrix", ArticleCapability: "register"),
+                new MenuItem("Revision de envios", "/articles/module/workflow", ArticleCapability: "workflow")
             ]),
         new MenuItem(
-            Text: "Captura e importación",
-            Section: "Operación",
+            Text: "Captura e integracion",
+            Section: "Operacion",
             Icon: IconImport,
             Children:
             [
-                new MenuItem("Matriz de registro", "/articles/module/registration-matrix"),
-                new MenuItem("Carga masiva", "/articles/module/bulk-import"),
-                new MenuItem("APIs externas", "/articles/module/external-apis"),
-                new MenuItem("Ingesta externa", "/articles/module/external-ingestion")
+                new MenuItem("Carga masiva", "/articles/module/bulk-import", ArticleCapability: "bulk"),
+                new MenuItem("APIs externas", "/articles/module/external-apis", ArticleCapability: "external"),
+                new MenuItem("Ingesta externa", "/articles/module/external-ingestion", ArticleCapability: "external")
             ]),
         new MenuItem(
-            Text: "Análisis institucional",
+            Text: "Analisis institucional",
             Section: "Inteligencia",
             Icon: IconChart,
             Children:
             [
-                new MenuItem("Reportería", "/articles/module/reporting"),
-                new MenuItem("Inteligencia Artificial", "/articles/module/intelligence")
+                new MenuItem("Reporteria", "/articles/module/reporting", ArticleCapability: "reporting"),
+                new MenuItem("Inteligencia Artificial", "/articles/module/intelligence", ArticleCapability: "intelligence")
             ]),
         new MenuItem(
-            Text: "Configuración del módulo",
-            Section: "Administración",
+            Text: "Configuracion del modulo",
+            Section: "Administracion",
             Icon: IconSettings,
             Children:
             [
-                new MenuItem("Formularios y campos", "/articles/module/configuration"),
-                new MenuItem("Usuarios y roles", "/articles/module/security")
+                new MenuItem("Formularios y campos", "/articles/module/configuration", ArticleCapability: "configuration"),
+                new MenuItem("Usuarios y roles", "/articles/module/security", ArticleCapability: "configuration")
             ]),
         new MenuItem(
-            Text: "Soporte y cuenta",
-            Section: "Cuenta",
+            Text: "Cuenta",
+            Section: "Soporte",
             Icon: IconHelp,
             Children:
             [
-                new MenuItem("Centro de ayuda", "/articles/module/support"),
-                new MenuItem("Manual de usuario", "/articles/module/manual"),
-                new MenuItem("Perfil", "/articles/module/profile")
+                new MenuItem("Perfil", "/articles/module/profile", ArticleCapability: "access"),
+                new MenuItem("Centro de ayuda", "/articles/module/support", ArticleCapability: "access"),
+                new MenuItem("Manual de usuario", "/articles/module/manual", ArticleCapability: "access")
             ])
     ];
-
     private IEnumerable<IGrouping<string?, MenuItem>> GroupedItems =>
         ActiveItems
             .Where(IsVisible)
@@ -193,7 +209,10 @@ public partial class SideBar : IDisposable
 
         _roles = session.Data.Roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
         _articlesAccess = session.Data.Articles.Enabled &&
-            (session.Data.Articles.CanAccess || session.Data.Articles.CanList);
+            (session.Data.Articles.CanAccess || session.Data.Articles.CanList || session.Data.Articles.CanRegister || session.Data.Articles.CanManageConfiguration);
+        _articleCanList = session.Data.Articles.CanList || session.Data.Articles.CanAccess;
+        _articleCanRegister = session.Data.Articles.CanRegister;
+        _articleCanManageConfiguration = session.Data.Articles.CanManageConfiguration;
         _projectsAccess = _roles.Overlaps(["coordinador", "technical", "admin", "superadmin"]);
         _sessionLoaded = true;
     }
@@ -211,7 +230,12 @@ public partial class SideBar : IDisposable
     private bool IsVisible(MenuItem item)
     {
         if (IsArticlePortal)
-            return true;
+        {
+            if (item.HasChildren)
+                return item.Children!.Any(IsVisible);
+
+            return HasArticleCapability(item.ArticleCapability);
+        }
 
         if (item.RequiresArticlesAccess && !_articlesAccess)
             return false;
@@ -221,6 +245,24 @@ public partial class SideBar : IDisposable
                item.AllowedRoles.Any(_roles.Contains);
     }
 
+    private bool HasArticleCapability(string? capability)
+    {
+        if (!_articlesAccess)
+            return false;
+
+        return capability?.ToLowerInvariant() switch
+        {
+            "list" => _articleCanList,
+            "register" => _articleCanRegister,
+            "configuration" => _articleCanManageConfiguration,
+            "workflow" => _articleCanList || _articleCanRegister || _articleCanManageConfiguration,
+            "bulk" => _articleCanManageConfiguration,
+            "external" => _articleCanManageConfiguration,
+            "reporting" => _articleCanList || _articleCanManageConfiguration,
+            "intelligence" => _articleCanList || _articleCanManageConfiguration,
+            _ => true
+        };
+    }
     private async Task RunDwEtlAsync()
     {
         if (_etlBusy) return;

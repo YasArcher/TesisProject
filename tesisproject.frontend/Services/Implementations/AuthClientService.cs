@@ -1,4 +1,4 @@
-﻿using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -37,8 +37,6 @@ namespace tesisproject.frontend.Services.Implementations
                 ct
             );
         }
-
-        // [ARTICLES-MIGRATION] Capacidades de modulos asociadas a la sesion Identity actual.
         public Task<HttpResponseWrapper<CurrentSessionResponse?>> GetCurrentSessionAsync(
             CancellationToken ct = default)
         {

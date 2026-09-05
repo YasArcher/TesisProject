@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Servicio de consulta previo a exponer endpoints.
 using tesisproject.shared.DTOs.Articles;
 using tesisproject.shared.Responses;
 

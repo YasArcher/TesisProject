@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 using System.ComponentModel.DataAnnotations;
 
 namespace tesisproject.backend.Data.Articles.Entities;
@@ -13,5 +12,3 @@ public class ArticleFile
     [MaxLength(64)] public string? Sha256 { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 }
-
-

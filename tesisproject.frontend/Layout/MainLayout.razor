@@ -1,20 +1,22 @@
-﻿@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI
 @using Microsoft.AspNetCore.Components
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
 
-<div class="fusion-app-shell">
+<div class="fusion-app-shell @(_isSidebarCollapsed ? "is-sidebar-collapsed" : null)">
     @if (ShowSidebar)
     {
-        <aside class="fusion-sidebar-desktop" aria-label="Navegación principal">
-            <SideBar />
+        <aside class="fusion-sidebar-desktop @(_isSidebarCollapsed ? "is-collapsed" : null)" aria-label="Navegación principal">
+            <SideBar IsCollapsed="@_isSidebarCollapsed"
+                     IsDesktop="true"
+                     OnToggleCollapsed="ToggleSidebarCollapsed" />
         </aside>
 
         @if (IsSidebarOpen)
         {
             <div class="fusion-sidebar-overlay" @onclick="ToggleSidebar">
                 <aside class="fusion-sidebar-mobile" @onclick:stopPropagation="true" aria-label="Navegación principal móvil">
-                    <SideBar />
+                    <SideBar IsCollapsed="false" IsDesktop="false" />
                 </aside>
             </div>
         }
@@ -66,4 +68,3 @@
         </main>
     </div>
 </div>
-

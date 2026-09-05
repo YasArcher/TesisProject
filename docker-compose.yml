@@ -21,8 +21,6 @@ services:
         User Id=${DB_USER};
         Password=${DB_PASS};
         TrustServerCertificate=True;
-
-      # [ARTICLES-MIGRATION] Bases OLTP y OLAP independientes del sistema de proyectos.
       ArticlesModule__Enabled: ${ARTICLES_MODULE_ENABLED:-false}
       ConnectionStrings__ArticlesOltpConnection: >
         Server=${ARTICLES_DB_HOST:-host.docker.internal},${ARTICLES_DB_PORT:-1433};

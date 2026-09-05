@@ -1,4 +1,3 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Pendiente de adaptar/fusionar con arquitectura de proyectos.
 namespace tesisproject.shared.DTOs.Reports
 {
     public class ArticlesTimeToPublicationStatsDto
@@ -15,4 +14,3 @@ namespace tesisproject.shared.DTOs.Reports
         public int BucketMore365 { get; set; }     // > 12 meses
     }
 }
-

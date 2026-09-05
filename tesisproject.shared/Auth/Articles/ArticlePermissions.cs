@@ -1,4 +1,3 @@
-// [ARTICLES-MIGRATION] Permisos granulares para desacoplar acciones de articulos de los roles institucionales.
 namespace tesisproject.shared.Auth.Articles;
 
 public static class ArticlePermissions
