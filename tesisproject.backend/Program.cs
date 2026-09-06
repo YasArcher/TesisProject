@@ -151,7 +151,8 @@ static class StartupExtensions
             options.UseSqlServer(defaultConnection));
 
         builder.Services.AddDbContext<DwContext>(options =>
-            options.UseSqlServer(defaultConnection));
+            options.UseSqlServer(defaultConnection, sql =>
+                sql.MigrationsHistoryTable("__EFMigrationsHistory", "DW")));
         if (builder.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
         {
             var articlesOltpConnection = builder.Configuration.GetConnectionString("ArticlesOltpConnection");
@@ -160,7 +161,8 @@ static class StartupExtensions
                     "ConnectionStrings:ArticlesOltpConnection missing while ArticlesModule is enabled");
 
             builder.Services.AddDbContext<ArticlesDbContext>(options =>
-                options.UseSqlServer(articlesOltpConnection));
+                options.UseSqlServer(articlesOltpConnection, sql =>
+                    sql.MigrationsHistoryTable("__EFMigrationsHistoryArticles", "dbo")));
         }
     }
 

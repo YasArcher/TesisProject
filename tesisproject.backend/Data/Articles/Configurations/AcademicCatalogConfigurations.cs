@@ -36,9 +36,11 @@ public sealed class IndexingSourceConfiguration : IEntityTypeConfiguration<Index
 {
     public void Configure(EntityTypeBuilder<IndexingSource> entity)
     {
-        entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
-        entity.Property(x => x.IsActive).HasDefaultValue(true);
-        entity.HasIndex(x => x.Name).IsUnique();
+        // This catalog is shared with, and migrated by, AppDbContext.
+        entity.ToTable("IndexingSources", table => table.ExcludeFromMigrations());
+        entity.Property(x => x.IndexingSourceId).HasColumnName("Id");
+        entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+        entity.Property<bool>("IsLocked");
     }
 }
 
