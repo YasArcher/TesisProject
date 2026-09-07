@@ -20,7 +20,8 @@ namespace tesisproject.shared.DTOs.Products.Product.Request
 
         public bool? IsActive { get; set; }
 
-        // if null => do not touch, if empty => remove all
+        // Institutional AppUser.IdUser values only. Null leaves authors unchanged;
+        // a supplied list replaces all links (including external ones), empty removes all.
         public List<int>? AuthorUserIds { get; set; }
 
         // if null => do not touch, if empty => clear all values

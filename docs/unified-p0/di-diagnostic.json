@@ -1,0 +1,490 @@
+{
+  "actual_registration_resolution_error": "Unable to resolve service for type \u0027tesisproject.backend.Data.UnifiedDideDbContext\u0027 while attempting to activate \u0027tesisproject.backend.Repositories.Implementations.VisitIssueRepository\u0027.",
+  "uow_context": "AppDbContext",
+  "same_uow_instance_within_scope": true,
+  "repositories": [
+    {
+      "property": "Projects",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProjectRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProjectRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "Groups",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IGroupRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.GroupRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "GroupMembers",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IGroupMemberRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.GroupMemberRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "Budgets",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IBudgetRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.BudgetRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "Visits",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IVisitRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.VisitRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectExtensions",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProjectExtensionRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProjectExtensionRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "VisitIssues",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IVisitIssueRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.VisitIssueRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "Convocations",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IConvocationRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ConvocationRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "ProductAttributeDefinitions",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProductAttributeDefinitionRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProductAttributeDefinitionRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "ProductValues",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProductValueRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProductValueRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProductAuthors",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProductAuthorRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProductAuthorRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "Products",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProductRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProductRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ObjectiveTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ObjectiveType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ObjectiveType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectObjectives",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProjectObjectiveRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProjectObjectiveRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ObjectiveActivities",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IObjectiveActivityRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ObjectiveActivityRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ObjectiveActivityUsers",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IObjectiveActivityUserRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ObjectiveActivityUserRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "Documents",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IDocumentRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.DocumentRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "MemberRoleTypeRepository",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.MemberRoleType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.MemberRoleType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectTypeRepository",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "DocumentTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.DocumentType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.DocumentType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectResearchCategories",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProjectResearchCategoryRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProjectResearchCategoryRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ResearchCategories",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IResearchCategoryRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ResearchCategoryRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ResearchCategoryTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ResearchCategoryType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ResearchCategoryType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "FundingTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.FundingType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.FundingType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ResearchCategoryGroups",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ResearchCategoryGroup]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ResearchCategoryGroup]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "TransactionTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.TransactionType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.TransactionType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ExternalResearchers",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IExternalResearcherRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ExternalResearcherRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "Countries",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.Country]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.Country]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "Institutions",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.Institution]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.Institution]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ExternalResearcherProjects",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IExternalResearcherProjectRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ExternalResearcherProjectRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "IndexingSources",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.IndexingSource]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.IndexingSource]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProductTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProductType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProductType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProductAttributes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProductAttribute]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProductAttribute]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectDocuments",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IProjectDocumentRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ProjectDocumentRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectStates",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectState]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectState]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "VisitStates",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.VisitState]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.VisitState]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectOriginTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectOriginType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectOriginType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ProjectExtensionTypes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.ICatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectExtensionType]",
+      "repository": "tesisproject.backend.Repositories.Implementations.CatalogRepository\u00601[tesisproject.shared.Entities.Catalogs.ProjectExtensionType]",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "ExportTemplateColumns",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IExportTemplateColumnRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ExportTemplateColumnRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "ExportTemplates",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IExportTemplateRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ExportTemplateRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "ExportFields",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IExportFieldRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.ExportFieldRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "VisitObjectiveActivityProgresses",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IVisitObjectiveActivityProgressRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.VisitObjectiveActivityProgressRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "FacultyScopes",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IFacultyScopeRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.FacultyScopeRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "FacultyScopeFaculties",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IFacultyScopeFacultyRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.FacultyScopeFacultyRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "UserFacultyScopeAssignments",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IUserFacultyScopeAssignmentRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.UserFacultyScopeAssignmentRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "AppConfigurations",
+      "contract": "tesisproject.backend.Services.Interfaces.IAppConfigurationRepository",
+      "repository": "tesisproject.backend.Services.Implementations.AppConfigurationRepository",
+      "contexts": [
+        "UnifiedDideDbContext"
+      ],
+      "same_as_uow": false,
+      "same_as_unified_scope": true
+    },
+    {
+      "property": "AspNetUsers",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IAspNetUserRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.AspNetUserRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    },
+    {
+      "property": "AppUsers",
+      "contract": "tesisproject.backend.Repositories.Interfaces.IAppUserRepository",
+      "repository": "tesisproject.backend.Repositories.Implementations.AppUserRepository",
+      "contexts": [
+        "AppDbContext"
+      ],
+      "same_as_uow": true,
+      "same_as_unified_scope": false
+    }
+  ],
+  "unified_repositories": 9,
+  "legacy_repositories": 39,
+  "database_connections_opened": 0
+}

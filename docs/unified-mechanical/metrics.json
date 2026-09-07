@@ -1,0 +1,19 @@
+{
+  "modified_code_files": 30,
+  "migrated_semantic_references": 320,
+  "migrated_namespace_records": 7,
+  "pending_manual_semantic_references": 2072,
+  "remaining_keep_semantic_references": 767,
+  "final_build_errors": 0,
+  "final_build_warnings": 39,
+  "baseline_build_warnings": 39,
+  "protected_files_unchanged": 1234,
+  "legacy_text_search_by_category": {
+    "docs": 20,
+    "legacy no usado (excluido del backend)": 163,
+    "runtime": 325,
+    "migrations": 1028,
+    "shared protegido": 139,
+    "tests": 13
+  }
+}

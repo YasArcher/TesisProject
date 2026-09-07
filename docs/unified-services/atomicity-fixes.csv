@@ -1,0 +1,15 @@
+Service,Method,BeforeSaveCount,AfterSaveCount,Owner,Status,Classification,Notes
+UnifiedProductTypeDesignService,SaveDesignAsync,N+2,1,SaveDesignAsync,FIXED,FIX_NOW,N atributos. Preparación compartida sin commit; navegación para claves generadas.
+UnifiedConvocationService,CreateAsync,2,1,CreateAsync,FIXED,FIX_NOW,Consulta activas antes de aplicar; desactivación e inserción en un save.
+UnifiedExportTemplateService,CreateTemplateAsync,2,1,CreateTemplateAsync,FIXED,FIX_NOW,Construye columnas antes de Add; agregado conectado por Template.
+UnifiedProductService,CreateAsync,2 legacy,N/A TODO,CreateAsync,BLOCKED_BY_LOGIC,BLOCKED_BY_LOGIC,Autoría y DTO pendientes. No implementado.
+UnifiedFacultyScopeService,CreateAsync,2 legacy,N/A TODO,CreateAsync,BLOCKED_BY_LOGIC,BLOCKED_BY_LOGIC,Resolver Faculty external/local.
+UnifiedProjectService,CreateFullAsync,usuarios+1 legacy,N/A TODO,CreateFullAsync,IDENTITY_BOUNDARY,IDENTITY_BOUNDARY,Provisión Identity; además Faculty external/local.
+UnifiedProjectService,ImportFromMatrixAsync,usuarios+1 legacy,N/A TODO,ImportFromMatrixAsync,IDENTITY_BOUNDARY,IDENTITY_BOUNDARY,Identity y Faculty/AcademicTerm; atomicidad por lote/fila sin decidir.
+UnifiedGroupService,AddMemberAsync,provisión+1 legacy,N/A TODO,AddMemberAsync,IDENTITY_BOUNDARY,IDENTITY_BOUNDARY,Separar provisión de identidad de cambios de grupo.
+UnifiedFacultyScopeService,AssignScopeToUserAsync,provisión+1 legacy,N/A TODO,AssignScopeToUserAsync,IDENTITY_BOUNDARY,IDENTITY_BOUNDARY,Asignación depende de provisión; no migrada.
+AppUserService,EnsureAppUsersAsync,por usuario legacy,N/A fuera de alcance,EnsureAppUsersAsync,IDENTITY_BOUNDARY,IDENTITY_BOUNDARY,Incluye EnsureSingleInternalAsync y UserManager/roles. Unified solo lectura IdLocal a IdUser.
+UnifiedDocumentService,UploadAsync,1 + filesystem,1 + filesystem,UploadAsync,EXTERNAL_SIDE_EFFECT,EXTERNAL_SIDE_EFFECT,Compensación de archivo limitada; sin cambios.
+UnifiedDocumentService,ReplaceFileAsync,1 + filesystem,1 + filesystem,ReplaceFileAsync,EXTERNAL_SIDE_EFFECT,EXTERNAL_SIDE_EFFECT,Fallo de recarga puede eliminar nuevo archivo ya referenciado; sin cambios.
+UnifiedDocumentService,DeleteAsync,1 + filesystem,1 + filesystem,DeleteAsync,EXTERNAL_SIDE_EFFECT,EXTERNAL_SIDE_EFFECT,Limpieza filesystem posterior al commit; sin cambios.
+ExternalDirectory/Periods/Academics/Distributivos,Consultas desde services,lecturas HTTP,sin cambios,caller correspondiente,EXTERNAL_SIDE_EFFECT,EXTERNAL_SIDE_EFFECT,Frontera histórica agrupada; no escritura remota demostrada. No snapshot común con EF.

@@ -26,7 +26,7 @@ namespace tesisproject.backend.Repositories.Implementations
     int projectId,
     CancellationToken ct = default)
         {
-            return await _ctx.ProjectObjectives
+            return await _ctx.Set<ProjectObjective>()
                 .AsNoTracking()
                 .Where(o => o.ProjectId == projectId)
                 .Include(o => o.Activities)
@@ -52,7 +52,7 @@ namespace tesisproject.backend.Repositories.Implementations
             int projectId,
             CancellationToken ct = default)
         {
-            return await _ctx.ProjectObjectives
+            return await _ctx.Set<ProjectObjective>()
                 .Where(o => o.ProjectId == projectId)
                 .Include(o => o.ObjectiveType)
                 .Include(o => o.Activities)
@@ -78,7 +78,7 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var ids = activityIds.Distinct().ToList();
 
-            var rows = await _ctx.VisitObjectiveActivityProgresses
+            var rows = await _ctx.Set<VisitObjectiveActivityProgress>()
                 .Where(x => x.VisitId == visitId && ids.Contains(x.ObjectiveActivityId))
                 .GroupBy(x => x.ObjectiveActivityId)
                 .Select(g => g

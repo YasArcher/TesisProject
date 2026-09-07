@@ -1,0 +1,97 @@
+Service,Method,LegacySaveLines,LogicalOwner,Classification,ExplicitTransaction,Notes
+AppUserService,EnsureSingleInternalAsync,224,caller Projects/Group/FacultyScope o EnsureAppUser(s)Async,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+BudgetService,AddCertificationAsync,308,AddCertificationAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+BudgetService,CancelTransactionAsync,498,CancelTransactionAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+BudgetService,CreateAsync,165,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+BudgetService,DeleteAsync,247,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+BudgetService,ExecuteDevengadoAsync,398,ExecuteDevengadoAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+BudgetService,UpdateAsync,215,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+BudgetService,UpdateTransactionAsync,641,UpdateTransactionAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+CatalogCrudService,CreateAsync,141,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+CatalogCrudService,DeleteAsync,317,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+CatalogCrudService,SaveAndOkAsync,340,UpdateAsync (SaveAndOkAsync solo es helper terminal),SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+CatalogCrudService,UpdateAsync,261,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ConvocationService,ActivateExclusiveAsync,267,ActivateExclusiveAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ConvocationService,AddRuleAsync,325,AddRuleAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ConvocationService,CreateAsync,"68,71",CreateAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ConvocationService,RemoveRuleAsync,412,RemoveRuleAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ConvocationService,UpdateAsync,220,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ConvocationService,UpdateRuleAsync,376,UpdateRuleAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+CountryService,CreateAsync,171,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+CountryService,UpdateAsync,255,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+DocumentService,DeleteAsync,240,DeleteAsync,EXTERNAL_SIDE_EFFECT,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+DocumentService,ReplaceFileAsync,181,ReplaceFileAsync,EXTERNAL_SIDE_EFFECT,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+DocumentService,UpdateAsync,106,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+DocumentService,UploadAsync,360,UploadAsync,EXTERNAL_SIDE_EFFECT,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ExportTemplateService,CreateTemplateAsync,"120,126",CreateTemplateAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ExportTemplateService,DeleteTemplateAsync,194,DeleteTemplateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ExportTemplateService,UpdateTemplateAsync,169,UpdateTemplateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ExternalResearcherProjectService,CreateAsync,166,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ExternalResearcherProjectService,UpdateAsync,280,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ExternalResearcherService,CreateAsync,139,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ExternalResearcherService,UpdateAsync,195,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+FacultyScopeService,AssignScopeToUserAsync,296,AssignScopeToUserAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+FacultyScopeService,CreateAsync,"103,115",CreateAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+FacultyScopeService,SetFacultiesAsync,219,SetFacultiesAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+FacultyScopeService,UnassignScopeFromUserAsync,329,UnassignScopeFromUserAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+FacultyScopeService,UpdateAsync,157,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+GroupService,AddMemberAsync,578,AddMemberAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+GroupService,CreateAsync,449,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+GroupService,RemoveMemberAsync,656,RemoveMemberAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+GroupService,UpdateAsync,621,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+IndexingSourceService,CreateAsync,96,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+IndexingSourceService,UpdateAsync,129,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+InstitutionService,CreateAsync,100,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+InstitutionService,UpdateAsync,132,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+MemberRoleTypeService,CreateAsync,91,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+MemberRoleTypeService,UpdateAsync,122,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityService,CreateAsync,136,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityService,DeleteAsync,222,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityService,SetProgressAsync,304,SetProgressAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityService,SetProjectExecutionAsync,413,SetProjectExecutionAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityService,UpdateAsync,193,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityUserService,AssignAsync,132,AssignAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityUserService,UnassignAsync,196,UnassignAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ObjectiveActivityUserService,UpdateAsync,166,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductAttributeDefinitionService,CreateAsync,115,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductAttributeDefinitionService,DeleteAsync,183,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductAttributeDefinitionService,UpdateAsync,159,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductAttributeService,CreateAsync,85,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductAttributeService,DeleteAsync,144,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductAttributeService,UpdateAsync,121,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductService,CreateAsync,"114,129",CreateAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ProductService,DeleteAsync,338,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductService,UpdateAsync,293,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProductTypeDesignService,SaveDesignAsync,163,SaveDesignAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ProductTypeDesignService,UpsertProductTypeAsync,"209,248",SaveDesignAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ProjectExtensionService,CreateAsync,132,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectExtensionService,DeleteAsync,279,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectExtensionService,UpdateAsync,247,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectObjectiveService,CreateAsync,184,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectObjectiveService,DeleteAsync,274,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectObjectiveService,UpdateAsync,244,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectResearchCategoryService,CreateAsync,74,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectResearchCategoryService,DeleteAsync,119,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectResearchCategoryService,UpdateAsync,98,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectService,CreateAsync,244,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectService,CreateFullAsync,877,CreateFullAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ProjectService,DeleteAsync,326,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectService,ImportFromMatrixAsync,1738,ImportFromMatrixAsync,ATOMICITY_RISK,No explícita,Legacy preservado; los métodos TODO no se exponen en Unified
+ProjectService,UpdateAsync,295,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ProjectService,UpdateResearchCategoriesAsync,982,UpdateResearchCategoriesAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ResearchCategoryService,CreateAsync,152,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ResearchCategoryService,DeleteAsync,284,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ResearchCategoryService,UpdateAsync,249,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ResearchCategoryTypeService,CreateAsync,92,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ResearchCategoryTypeService,DeleteAsync,138,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+ResearchCategoryTypeService,UpdateAsync,120,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitIssueService,CreateAsync,57,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitIssueService,DeleteAsync,151,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitIssueService,UpdateAsync,126,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitObjectiveActivityProgressService,DeleteAsync,164,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitObjectiveActivityProgressService,UpsertSingleAsync,125,UpsertSingleAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitService,BulkScheduleAsync,522,BulkScheduleAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitService,CreateAsync,58,CreateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitService,DeleteAsync,238,DeleteAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitService,FinalizeAsync,317,FinalizeAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit
+VisitService,UpdateAsync,203,UpdateAsync,SAFE,No explícita,Una llamada final al save; consultas de respuesta posteriores pueden fallar sin revertir el commit

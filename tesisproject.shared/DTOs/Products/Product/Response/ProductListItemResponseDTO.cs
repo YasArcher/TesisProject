@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +9,7 @@ namespace tesisproject.shared.DTOs.Products.Product.Response
     public class ProductListItemResponseDTO
     {
         public int Id { get; set; }
-        public int ProjectId { get; set; }
+        public int? ProjectId { get; set; }
         public int? VisitId { get; set; }
 
         public string Title { get; set; } = string.Empty;

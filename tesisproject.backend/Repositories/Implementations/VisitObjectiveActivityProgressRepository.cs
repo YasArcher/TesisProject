@@ -121,7 +121,7 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var ids = activityIds.Distinct().ToList();
 
-            var rows = await _ctx.VisitObjectiveActivityProgresses
+            var rows = await _ctx.Set<VisitObjectiveActivityProgress>()
                 .Where(x => x.VisitId == visitId && ids.Contains(x.ObjectiveActivityId))
                 .GroupBy(x => x.ObjectiveActivityId)
                 .Select(g => g
@@ -142,7 +142,7 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var ids = activityIds.Distinct().ToList();
 
-            var sums = await _ctx.VisitObjectiveActivityProgresses
+            var sums = await _ctx.Set<VisitObjectiveActivityProgress>()
                 .Where(x => ids.Contains(x.ObjectiveActivityId))
                 .GroupBy(x => x.ObjectiveActivityId)
                 .Select(g => new { ActivityId = g.Key, Total = g.Sum(x => x.ProgressPercentage) })

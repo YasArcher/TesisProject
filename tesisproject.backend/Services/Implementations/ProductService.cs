@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -58,7 +58,7 @@ namespace tesisproject.backend.Services.Implementations
                         ErrorCodes.Common.RequestRequired);
                 }
 
-                if (request.ProjectId <= 0)
+                if (request.ProjectId is null or <= 0)
                 {
                     return ValidationFailure<ProductDetailResponseDTO>(
                         ErrorMessages.Product.ProjectIdRequired,
@@ -101,7 +101,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 var entity = new Product
                 {
-                    ProjectId = request.ProjectId,
+                    ProjectId = request.ProjectId.Value,
                     VisitId = request.VisitId,
                     Title = NormalizeRequiredText(request.Title),
                     Description = NormalizeOptionalText(request.Description),
