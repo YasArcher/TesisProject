@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -9,8 +9,8 @@ namespace tesisproject.shared.DTOs.Products.Product.Request
 {
     public class ProductCreateRequestDTO
     {
-        [Required]
-        public int ProjectId { get; set; }
+        // Null denotes independent production in Unified; project editors still supply their project ID.
+        public int? ProjectId { get; set; }
 
         public int? VisitId { get; set; }
 
@@ -23,7 +23,7 @@ namespace tesisproject.shared.DTOs.Products.Product.Request
         [Required]
         public int ProductTypeId { get; set; }
 
-        // authors
+        // Institutional AppUser.IdUser values only; never AuthorId or ExternalResearcherId.
         public List<int>? AuthorUserIds { get; set; }
 
         // values by AttributeDefinitionId

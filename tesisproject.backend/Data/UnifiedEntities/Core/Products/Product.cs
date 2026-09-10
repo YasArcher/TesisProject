@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using tesisproject.backend.Data.UnifiedEntities.Articles;
 using tesisproject.backend.Data.UnifiedEntities.Catalogs;
 
 namespace tesisproject.backend.Data.UnifiedEntities.Core.Products
@@ -43,7 +44,7 @@ namespace tesisproject.backend.Data.UnifiedEntities.Core.Products
 
         // =========== Navigations ============
 
-        public tesisproject.backend.Data.UnifiedEntities.Articles.Article? Article { get; set; }
+        public Article? Article { get; set; }
 
         public ProductType? ProductType { get; set; }
         public ICollection<ProductValue>? Values { get; set; }

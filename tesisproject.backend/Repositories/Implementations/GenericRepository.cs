@@ -7,10 +7,12 @@ namespace tesisproject.backend.Repositories.Implementations
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected readonly AppDbContext _ctx;
+        protected readonly DbContext _ctx;
         protected readonly DbSet<T> _db;
 
-        public GenericRepository(AppDbContext ctx)
+        public GenericRepository(AppDbContext ctx) : this((DbContext)ctx) { }
+
+        protected GenericRepository(DbContext ctx)
         {
             _ctx = ctx;
             _db = _ctx.Set<T>();

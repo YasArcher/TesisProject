@@ -1,0 +1,11 @@
+.git
+.vs
+.codex
+.env
+.env.*
+**/appsettings.Local.json
+**/bin
+**/obj
+**/node_modules
+artifacts
+_fusion

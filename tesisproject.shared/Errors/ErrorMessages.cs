@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,8 +6,31 @@ using System.Threading.Tasks;
 
 namespace tesisproject.shared.Errors
 {
-    public static class ErrorMessages
+    public static partial class ErrorMessages
     {
+        public static class IdentityProvisioning
+        {
+            public const string MappingConflict = "Institutional identity conflicts with the existing local account link.";
+            public const string PendingChanges = "Identity provisioning requires a context without pending changes.";
+            public const string InvalidRole = "The requested Identity role is invalid or does not exist.";
+            public const string OperationFailed = "Identity provisioning could not be completed.";
+        }
+
+        public static class AcademicReferences
+        {
+            public const string FacultyNotSynchronized = "No synchronized local faculty exists for the external reference.";
+            public const string AcademicTermNotSynchronized = "No synchronized local academic term exists for the external reference.";
+        }
+
+        public static class Author
+        {
+            public const string NotFound = "No se encontró el autor.";
+            public const string ExactlyOneSource = "El autor debe tener exactamente una fuente: usuario institucional o investigador externo.";
+            public const string SourceAlreadyAssigned = "La fuente seleccionada ya tiene un autor asociado.";
+            public const string OrcidTooLong = "El ORCID no puede superar 50 caracteres.";
+            public const string OrcidAlreadyExists = "El ORCID ya pertenece a otro autor.";
+            public const string InUse = "No se puede eliminar un autor asociado a productos.";
+        }
         public static class Common
         {
             public const string RequestRequired = "Debes enviar la información requerida.";

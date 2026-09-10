@@ -46,6 +46,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="ArticlesMigration\**\*.cs" />
+    <!-- Historical Articles OLTP model/migrations retained as source, excluded from runtime. -->
+    <Compile Remove="Data\Articles\**\*.cs" />
+    <Compile Remove="Migrations\Articles\**\*.cs" />
     <Content Remove="ArticlesMigration\**" />
     <EmbeddedResource Remove="ArticlesMigration\**" />
     <None Remove="ArticlesMigration\**" />

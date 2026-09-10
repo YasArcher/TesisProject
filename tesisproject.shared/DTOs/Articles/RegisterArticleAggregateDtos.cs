@@ -8,10 +8,23 @@ namespace tesisproject.shared.DTOs.Articles
         public ArticleVenueMetricInputDto VenueMetric { get; set; } = new();
         public List<DynamicFieldValueInputDto> DynamicFields { get; set; } = new();
         public List<ArticleParticipantAggregateDto> Participants { get; set; } = new();
+        public List<int> IndexingSourceIds { get; set; } = new();
+        public List<ArticleRegistrationFileDto> Files { get; set; } = new();
+    }
+
+    public class ArticleRegistrationFileDto
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string? FileUrl { get; set; }
+        public string? Sha256 { get; set; }
     }
 
     public class ArticleAggregateCoreDto
     {
+        // Required by Unified registration; no inferred product type or project.
+        public int? ProductTypeId { get; set; }
+        public int? ProjectId { get; set; }
+        public string? IndexingDatabase { get; set; }
         public string? Title { get; set; }
         public string? Doi { get; set; }
         public short? Year { get; set; }
@@ -62,7 +75,10 @@ namespace tesisproject.shared.DTOs.Articles
         public string Nombre { get; set; } = string.Empty;
         public string? Participacion { get; set; }
         public string? ParticipantType { get; set; }
+        // Unified: directory person (id_usuario), verified using document/email;
+        // the directory's ASP_ID is passed to the Unified identity boundary.
         public int? InstitutionalPersonId { get; set; }
+        public int? ExternalResearcherId { get; set; }
         public bool IsPrimaryAuthor { get; set; }
         public string? Email { get; set; }
         public string? Orcid { get; set; }
@@ -85,6 +101,7 @@ namespace tesisproject.shared.DTOs.Articles
 
     public class RegisterArticleAggregateResponse
     {
+        public int ProductId { get; set; }
         public int ArticleId { get; set; }
         public List<int> ParticipantIds { get; set; } = new();
     }

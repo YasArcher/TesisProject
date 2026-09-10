@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +8,38 @@ namespace tesisproject.shared.Errors
 {
     public static class ErrorCodes
     {
+        public static class CatalogSynchronization
+        {
+            public const string ProviderUnavailable = "CATALOG_SYNC_PROVIDER_UNAVAILABLE";
+            public const string InvalidResponse = "CATALOG_SYNC_INVALID_RESPONSE";
+            public const string DuplicateExternalId = "CATALOG_SYNC_DUPLICATE_EXTERNAL_ID";
+            public const string PersistenceFailed = "CATALOG_SYNC_PERSISTENCE_FAILED";
+            public const string PendingChanges = "CATALOG_SYNC_PENDING_CHANGES";
+        }
+
+        public static class IdentityProvisioning
+        {
+            public const string MappingConflict = "IDENTITY_MAPPING_CONFLICT";
+            public const string PendingChanges = "IDENTITY_PENDING_DOMAIN_CHANGES";
+            public const string InvalidRole = "IDENTITY_ROLE_INVALID";
+            public const string OperationFailed = "IDENTITY_PROVISIONING_FAILED";
+        }
+
+        public static class AcademicReferences
+        {
+            public const string FacultyNotSynchronized = "FACULTY_NOT_SYNCHRONIZED";
+            public const string AcademicTermNotSynchronized = "ACADEMIC_TERM_NOT_SYNCHRONIZED";
+        }
+
+        public static class Author
+        {
+            public const string NotFound = "AUTHOR_NOT_FOUND";
+            public const string ExactlyOneSource = "AUTHOR_EXACTLY_ONE_SOURCE";
+            public const string SourceAlreadyAssigned = "AUTHOR_SOURCE_ALREADY_ASSIGNED";
+            public const string OrcidTooLong = "AUTHOR_ORCID_TOO_LONG";
+            public const string OrcidAlreadyExists = "AUTHOR_ORCID_ALREADY_EXISTS";
+            public const string InUse = "AUTHOR_IN_USE";
+        }
         public static class Common
         {
             public const string UnexpectedError = "COMMON_UNEXPECTED_ERROR";

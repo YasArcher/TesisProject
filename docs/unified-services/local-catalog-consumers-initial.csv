@@ -1,0 +1,8 @@
+Service Unified,Method,External client actual,External method,Semantica real,Sustituto local,Adaptacion necesaria,Estado
+UnifiedProjectService,ImportFromMatrixAsync,ExternalPeriodsClient,GetAllAsync,Period names/dates and external ID for matching; local FK for Visit,AcademicTerms.Query,Read batch and retain local/external maps,VERIFIED_PENDING
+UnifiedProjectService,ImportFromMatrixAsync,ExternalAcademicsService,GetFacultiesAsync,Roots; name similarity matching; no active-only filter,Faculties.Query,Root projection with external IDs and local FK map,VERIFIED_PENDING
+UnifiedProjectService,PrepareFullProjectFacultyAsync,ExternalPeriodsClient,GetAllAsync,Dates and external IDs for live career selection,AcademicTerms.Query,Project selected external faculty resolves local FK,VERIFIED_PENDING
+UnifiedGroupService,LoadExternalPeriodsAndDistributivosAsync,ExternalPeriodsClient,GetAllAsync,Ordered periods for live distributivo matching,AcademicTerms.Query,Keep external PeriodId in selector,VERIFIED_PENDING
+UnifiedDocumentRecognitionService,EnrichResearchersWithExternalDirectoryAsync,ExternalPeriodsClient,GetAllAsync,Period dates for live career selection,AcademicTerms.Query,Keep existing profile enrichment and career selection,VERIFIED_PENDING
+UnifiedProjectsFiltersService,GetBootstrapAsync,None (already local),None,Active Faculty selector with local IDs,Faculties.Query,Add ParentFacultyId == null,VERIFIED_PENDING
+UnifiedProjectFlatReportService,GetFlatReportAsync,None (already local),None,Names looked up by actual local Project Faculty FK,Faculties.GetAllAsync,Keep complete key dictionary; not a root selector,ALREADY_LOCAL_KEEP
