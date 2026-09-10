@@ -175,3 +175,14 @@ con preparación académica implementada y probada. Ver
 [academic-references-report.md](academic-references-report.md) para el informe A–J,
 tabla de métodos, contratos, límites y evidencia final. Rebuild: 0 errores,
 39 warnings preexistentes; suite Unified: PASS, 4108 aserciones.
+
+## Actualización: cierre de la frontera Identity / AppUser
+
+Los 12 TODO Identity quedan resueltos para la provisión institucional y pending.csv
+queda sin métodos pendientes. La frontera usa IdAsp canónico, rechaza relinks y
+separa provisión de mutaciones del dominio sobre el mismo contexto Unified.
+El registro final con UnifiedDideDbContext está preparado y probado, sin activar
+Program.cs mientras los Controllers consuman legacy. Ver
+[identity-boundary-report.md](identity-boundary-report.md) para el informe A–O,
+selección de participantes, commits, conflictos y limitaciones. Rebuild: 0 errores,
+39 warnings preexistentes; suite Unified: PASS, 4822 aserciones.

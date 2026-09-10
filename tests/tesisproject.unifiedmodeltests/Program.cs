@@ -14,7 +14,8 @@ using tesisproject.backend.Data.UnifiedEntities.Core.Products;
 // Model contracts run offline; --database additionally validates the separate development database.
 using var context = new UnifiedDideDbContextFactory().CreateDbContext([]);
 var model = context.GetService<IDesignTimeModel>().Model;
-var entities = model.GetEntityTypes().ToArray();
+var readModels = model.GetEntityTypes().Where(e => e.GetViewName() != null).ToArray();
+var entities = model.GetEntityTypes().Where(e => e.GetTableName() != null).ToArray();
 int checks = 0;
 void Check(bool condition, string message)
 {
@@ -62,16 +63,14 @@ Check(entities.Count(e => e.ClrType.Name == "IndexingSource") == 1, "Duplicate i
 // Build the existing contexts with inert options: adding Unified must not alter their model discovery.
 using var originalProjects = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
     .UseSqlServer("Server=127.0.0.1,1;Database=OriginalModelOnly;Integrated Security=True").Options);
-using var originalArticles = new tesisproject.backend.Data.Articles.ArticlesDbContext(
-    new DbContextOptionsBuilder<tesisproject.backend.Data.Articles.ArticlesDbContext>()
-        .UseSqlServer("Server=127.0.0.1,1;Database=OriginalModelOnly;Integrated Security=True").Options);
-foreach (var original in new DbContext[] { originalProjects, originalArticles })
-    Check(original.Model.GetEntityTypes().All(e => !e.ClrType.Namespace!.Contains("UnifiedEntities") && e.GetSchema() != "Unified"),
-        "Unified types leaked into an existing application context");
-Check(originalArticles.Model.FindEntityType(typeof(tesisproject.backend.Data.Articles.Entities.ArticleParticipant)) != null,
-    "Existing ArticleParticipants must remain available");
+Check(typeof(UnifiedDideDbContext).Assembly.GetType("tesisproject.backend.Data.Articles.ArticlesDbContext") == null,
+    "Historical Articles context must be excluded from runtime");
+Check(originalProjects.Model.GetEntityTypes().All(e => !e.ClrType.Namespace!.Contains("UnifiedEntities")),
+    "Unified types leaked into retained external context");
+Check(readModels.Length == 1 && readModels[0].GetViewName() == "ArticleReadView" && readModels[0].FindPrimaryKey() == null,
+    "Article read view must remain keyless");
 var unifiedTypeNames = entities.Select(e => e.ClrType.Name).ToHashSet();
-foreach (var oldEntity in originalProjects.Model.GetEntityTypes().Concat(originalArticles.Model.GetEntityTypes()))
+foreach (var oldEntity in originalProjects.Model.GetEntityTypes())
 {
     var replacement = oldEntity.ClrType.Name switch
     {
@@ -83,9 +82,9 @@ foreach (var oldEntity in originalProjects.Model.GetEntityTypes().Concat(origina
 }
 
 var assembly = context.GetService<IMigrationsAssembly>();
-Check(assembly.Migrations.Count == 1, "Unified migration selection leaked other contexts");
+Check(assembly.Migrations.Keys.SequenceEqual(new[] { "20260906042715_InitialUnifiedDide", "20260908025200_AddFacultyHierarchy", "20260908194950_AddArticleReadView", "20260908201802_HardenArticleReadModel" }), "Unified migration selection changed or leaked other contexts");
 Check(!context.Database.HasPendingModelChanges(), "Migration snapshot differs from the final model");
-var migration = assembly.CreateMigration(assembly.Migrations.Single().Value, context.Database.ProviderName!);
+var migration = assembly.CreateMigration(assembly.Migrations.First().Value, context.Database.ProviderName!);
 var tables = migration.UpOperations.OfType<CreateTableOperation>().ToArray();
 Check(tables.Length == entities.Length, "Migration does not cover all model entities");
 Check(migration.UpOperations.All(o => o is EnsureSchemaOperation { Name: "dbo" }
@@ -100,7 +99,7 @@ foreach (var table in tables)
 }
 var script = context.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
 Check(script.Contains("[dbo].[__EFMigrationsHistoryUnifiedDide]"), "Migration history isolation missing");
-Check(!script.Contains("[Unified].") && !script.Contains("[DW].") && !script.Contains("DROP TABLE"), "Generated SQL touches existing schemas");
+Check(!script.Contains("[Unified].") && !script.Contains("[DW].") && !script.Replace("DROP TABLE #ArticleAttributes;", "").Contains("DROP TABLE"), "Generated SQL touches existing schemas or drops persistent tables");
 
 // Exercise change tracking across both author sources without persisting anything.
 var project = new Project();

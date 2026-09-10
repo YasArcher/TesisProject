@@ -10,8 +10,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using tesisproject.backend.Data;
+using tesisproject.backend.Services.Unified;
 using tesisproject.backend.Authorization.Articles;
-using tesisproject.backend.Data.Articles;
 using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
@@ -19,22 +19,28 @@ using tesisproject.backend.Services.Analytic.Implementations;
 using tesisproject.backend.Services.Analytic.Interfaces;
 using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.backend.UnitOfWork.Implementations;
-using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.Auth.Articles;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Routing;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsDevelopment())
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true)
+        .AddEnvironmentVariables().AddCommandLine(args);
+
+// Deployment job: only Unified, without HTTP, Identity or legacy/DW bootstrap.
+if (args.Contains("--migrate-unified", StringComparer.Ordinal))
+{
+    await UnifiedDatabaseDeployment.MigrateAsync(builder.Configuration);
+    return;
+}
 
 // ===== Configure services =====
 builder.ConfigureLogging();
 builder.ConfigureDatabase();
-builder.ConfigureIdentity();
 builder.ConfigureAuthentication();
 builder.ConfigureCors();
 builder.ConfigureOptions();
-builder.ConfigureHttpClients();
 builder.ConfigureDependencyInjection();
 builder.ConfigureApiDocumentation();
 
@@ -57,6 +63,7 @@ var identityRoles = new List<string> { "admin", "financial", "technical", "super
 if (app.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
     identityRoles.AddRange(ArticleRoles.All);
 await EnsureIdentityRolesAsync(app, identityRoles.ToArray());
+await tesisproject.backend.Bootstrap.UnifiedSuperadminBootstrap.RunAsync(app.Services, app.Configuration);
 
 // ===== Configure pipeline =====
 app.ConfigurePipeline();
@@ -147,42 +154,21 @@ static class StartupExtensions
         var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection missing");
 
+        // Retained exclusively for the existing DwEtlService operational source; Projects/Articles use Unified.
+        // Projects and Identity use only the separate Unified composition below.
         builder.Services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(defaultConnection));
+
+        var unifiedConnection = builder.Configuration.GetConnectionString("UnifiedDideConnection")
+            ?? throw new InvalidOperationException("ConnectionStrings:UnifiedDideConnection missing");
+        builder.Services.AddUnifiedDide(builder.Configuration, options =>
+            options.UseSqlServer(unifiedConnection, sql =>
+                sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
 
         builder.Services.AddDbContext<DwContext>(options =>
             options.UseSqlServer(defaultConnection, sql =>
                 sql.MigrationsHistoryTable("__EFMigrationsHistory", "DW")));
-        if (builder.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
-        {
-            var articlesOltpConnection = builder.Configuration.GetConnectionString("ArticlesOltpConnection");
-            if (string.IsNullOrWhiteSpace(articlesOltpConnection))
-                throw new InvalidOperationException(
-                    "ConnectionStrings:ArticlesOltpConnection missing while ArticlesModule is enabled");
 
-            builder.Services.AddDbContext<ArticlesDbContext>(options =>
-                options.UseSqlServer(articlesOltpConnection, sql =>
-                    sql.MigrationsHistoryTable("__EFMigrationsHistoryArticles", "dbo")));
-        }
-    }
-
-    public static void ConfigureIdentity(this WebApplicationBuilder builder)
-    {
-        builder.Services
-            .AddIdentityCore<IdentityUser<int>>(options =>
-            {
-                options.Password.RequiredLength = 6;
-                options.Password.RequireDigit = false;
-                options.Password.RequireUppercase = false;
-                options.Password.RequireNonAlphanumeric = false;
-                options.User.RequireUniqueEmail = true;
-            })
-            .AddRoles<IdentityRole<int>>()
-            .AddEntityFrameworkStores<AppDbContext>()
-            .AddSignInManager<SignInManager<IdentityUser<int>>>()
-            .AddDefaultTokenProviders();
-
-        builder.Services.AddHttpContextAccessor();
     }
 
     public static void ConfigureAuthentication(this WebApplicationBuilder builder)
@@ -246,42 +232,7 @@ static class StartupExtensions
     {
         builder.Services.Configure<ArticlesModuleOptions>(
             builder.Configuration.GetSection(ArticlesModuleOptions.SectionName));
-
-        builder.Services.AddOptions<ExternalApiOptions>()
-            .Bind(builder.Configuration.GetSection(ExternalApiOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        builder.Services.AddOptions<StorageOptions>()
-            .Bind(builder.Configuration.GetSection(StorageOptions.SectionName))
-            .ValidateDataAnnotations()
-            .Validate(o => !string.IsNullOrWhiteSpace(o.RootPath), "Storage:RootPath is required")
-            .ValidateOnStart();
-
-        builder.Services.AddOptions<DocumentRecognitionOptions>()
-            .Bind(builder.Configuration.GetSection(DocumentRecognitionOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-    }
-
-    public static void ConfigureHttpClients(this WebApplicationBuilder builder)
-    {
-        builder.Services.AddHttpClient("ExternalApi")
-            .ConfigureHttpClient((sp, client) =>
-            {
-                var opts = sp.GetRequiredService<IOptions<ExternalApiOptions>>().Value;
-
-                client.BaseAddress = new Uri(opts.BaseUrl);
-                client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
-
-                if (!string.IsNullOrWhiteSpace(opts.UserAgent))
-                    client.DefaultRequestHeaders.Add("User-Agent", opts.UserAgent);
-            });
-
-        builder.Services.AddHttpClient<IExternalDirectoryClient, ExternalDirectoryClient>("ExternalApi");
-        builder.Services.AddHttpClient<IExternalPeriodsClient, ExternalPeriodsClient>("ExternalApi");
-        builder.Services.AddHttpClient<IExternalAcademicsService, ExternalAcademicsService>("ExternalApi");
-        builder.Services.AddHttpClient<IExternalDistributivosService, ExternalDistributivosService>("ExternalApi");
+        // External APIs, storage and recognition options are owned by AddUnifiedDide.
     }
 
     public static void ConfigureDependencyInjection(this WebApplicationBuilder builder)
@@ -297,105 +248,13 @@ static class StartupExtensions
                 options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             });
 
-        builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-        if (builder.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
-        {
-            builder.Services.AddScoped<IArticleReadRepository, ArticleReadRepository>();
-            builder.Services.AddScoped<IArticleQueryService, ArticleQueryService>();
-            builder.Services.AddScoped<IArticleRegistrationCommandService, ArticleRegistrationCommandService>();
-            builder.Services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
-        }
-        else
-        {
-            builder.Services.AddSingleton<IArticleQueryService, DisabledArticleQueryService>();
-            builder.Services.AddSingleton<IArticleRegistrationCommandService, DisabledArticleRegistrationCommandService>();
-            builder.Services.AddSingleton<IRegistrationMatrixService, DisabledRegistrationMatrixService>();
-        }
-        builder.Services.AddHttpContextAccessor();
-
+        // Remaining shared/external and DW dependencies. Projects/Articles are composed by AddUnifiedDide.
         // Repos concretos
-        builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-        builder.Services.AddScoped<IGroupRepository, GroupRepository>();
-        builder.Services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
-        builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
-        builder.Services.AddScoped<IVisitRepository, VisitRepository>();
-        builder.Services.AddScoped<IProjectExtensionRepository, ProjectExtensionRepository>();
-        builder.Services.AddScoped<IAspNetUserRepository, AspNetUserRepository>();
-        builder.Services.AddScoped<IVisitIssueRepository, VisitIssueRepository>();
-        builder.Services.AddScoped<IConvocationRepository, ConvocationRepository>();
-        builder.Services.AddScoped<IProductRepository, ProductRepository>();
-        builder.Services.AddScoped<IProductAttributeDefinitionRepository, ProductAttributeDefinitionRepository>();
-        builder.Services.AddScoped<IProductAuthorRepository, ProductAuthorRepository>();
-        builder.Services.AddScoped<IProductValueRepository, ProductValueRepository>();
-        builder.Services.AddScoped<IProjectObjectiveRepository, ProjectObjectiveRepository>();
-        builder.Services.AddScoped<IObjectiveActivityRepository, ObjectiveActivityRepository>();
-        builder.Services.AddScoped<IObjectiveActivityUserRepository, ObjectiveActivityUserRepository>();
-        builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
-        builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
-        builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
-        builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
-        builder.Services.AddScoped<IExternalResearcherRepository, ExternalResearcherRepository>();
-        builder.Services.AddScoped<IExternalResearcherProjectRepository, ExternalResearcherProjectRepository>();
-        builder.Services.AddScoped<IProjectDocumentRepository, ProjectDocumentRepository>();
-        builder.Services.AddScoped<IExportTemplateColumnRepository, ExportTemplateColumnRepository>();
-        builder.Services.AddScoped<IExportTemplateRepository, ExportTemplateRepository>();
-        builder.Services.AddScoped<IExportFieldRepository, ExportFieldRepository>();
-        builder.Services.AddScoped<IMatrixExcelExportService, MatrixExcelExportService>();
-        builder.Services.AddScoped<IMatrixTemplateExcelExportService, MatrixTemplateExcelExportService>();
-        builder.Services.AddScoped<IVisitObjectiveActivityProgressRepository, VisitObjectiveActivityProgressRepository>();
-        builder.Services.AddScoped<IFacultyScopeRepository, FacultyScopeRepository>();
-        builder.Services.AddScoped<IFacultyScopeFacultyRepository, FacultyScopeFacultyRepository>();
-        builder.Services.AddScoped<IUserFacultyScopeAssignmentRepository, UserFacultyScopeAssignmentRepository>();
-        builder.Services.AddScoped<IAppConfigurationRepository, AppConfigurationRepository>();
 
         // Gen�ricos
-        builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-        builder.Services.AddScoped(typeof(ICatalogRepository<>), typeof(CatalogRepository<>));
 
         // Servicios
-        builder.Services.AddMemoryCache();
-        builder.Services.AddScoped<ICatalogQueryService, CatalogQueryService>();
-        builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
-        builder.Services.AddScoped<IAuthService, AuthService>();
-        builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-        builder.Services.AddScoped<IArticleUserContext, ArticleUserContext>();
-        builder.Services.AddScoped<ITokenService, JwtTokenService>();
-        builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-        builder.Services.AddScoped<IProjectService, ProjectService>();
-        builder.Services.AddScoped<IGroupService, GroupService>();
-        builder.Services.AddScoped<IBudgetService, BudgetService>();
-        builder.Services.AddScoped<IVisitService, VisitService>();
-        builder.Services.AddScoped<IProjectExtensionService, ProjectExtensionService>();
-        builder.Services.AddScoped<IVisitIssueService, VisitIssueService>();
-        builder.Services.AddScoped<IConvocationService, ConvocationService>();
-        builder.Services.AddScoped<IProductService, ProductService>();
-        builder.Services.AddScoped<IProjectObjectiveService, ProjectObjectiveService>();
-        builder.Services.AddScoped<IObjectiveActivityService, ObjectiveActivityService>();
-        builder.Services.AddScoped<IObjectiveActivityUserService, ObjectiveActivityUserService>();
-        builder.Services.AddScoped<IDocumentService, DocumentService>();
-        builder.Services.AddScoped<IDocumentRecognitionService, DocumentRecognitionService>();
-        builder.Services.AddScoped<IMemberRoleTypeService, MemberRoleTypeService>();
-        builder.Services.AddScoped<IProjectResearchCategoryService, ProjectResearchCategoryService>();
-        builder.Services.AddScoped<IResearchCategoryService, ResearchCategoryService>();
-        builder.Services.AddScoped<IResearchCategoryTypeService, ResearchCategoryTypeService>();
-        builder.Services.AddScoped<IAppUserService, AppUserService>();
-        builder.Services.AddScoped<IExternalResearcherService, ExternalResearcherService>();
-        builder.Services.AddScoped<ICountryService, CountryService>();
-        builder.Services.AddScoped<IInstitutionService, InstitutionService>();
-        builder.Services.AddScoped<IExternalResearcherProjectService, ExternalResearcherProjectService>();
         builder.Services.AddScoped<IDwEtlService, DwEtlService>();
-        builder.Services.AddScoped<IIndexingSourceService, IndexingSourceService>();
-        builder.Services.AddScoped(typeof(ICatalogCrudService<>), typeof(CatalogCrudService<>));
-        builder.Services.AddScoped<IProductAttributeService, ProductAttributeService>();
-        builder.Services.AddScoped<IProductAttributeDefinitionService, ProductAttributeDefinitionService>();
-        builder.Services.AddScoped<IProductTypeDesignService, ProductTypeDesignService>();
-        builder.Services.AddScoped<IProjectMatrixService, ProjectMatrixService>();
-        builder.Services.AddScoped<IProjectFlatReportService, ProjectFlatReportService>();
-        builder.Services.AddScoped<IExportTemplateService, ExportTemplateService>();
-        builder.Services.AddScoped<IExportTemplateExcelService, ExportTemplateExcelService>();
-        builder.Services.AddScoped<IVisitObjectiveActivityProgressService, VisitObjectiveActivityProgressService>();
-        builder.Services.AddScoped<IFacultyScopeService, FacultyScopeService>();
-        builder.Services.AddScoped<IUserRoleService, UserRoleService>();
     }
 
     public static void ConfigureApiDocumentation(this WebApplicationBuilder builder)

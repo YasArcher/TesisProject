@@ -6,11 +6,8 @@ public class Article
     public int Id { get; set; }
     public int ProductId { get; set; }
     public Product Product { get; set; } = null!;
-    public string? Doi { get; set; }
-    public short? Year { get; set; }
     public DateTime? PublishedAt { get; set; }
     public int? PageCount { get; set; }
-    public string? PublicationUrl { get; set; }
     public bool HasInterculturalComponent { get; set; }
     public string? ProceedingsName { get; set; }
     public string? Proceedings { get; set; }

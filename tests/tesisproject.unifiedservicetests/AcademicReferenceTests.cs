@@ -102,7 +102,7 @@ internal static class AcademicReferenceTests
             var request = new AddProjectFullRequestDTO { Project = new() { FacultyId = 999, StartDate = new DateTime(2026, 2, 1) }, GroupMembers = [new() { MemberRole = MemberRoleTypeIds.Coordinador, Email = "teacher@example.test" }] };
             var result = await f.ProjectsService.PrepareFullProjectFacultyAsync(request);
             check(result.Success && result.Data!.FacultyId == 17 && request.Project.FacultyId == 999 && f.Saves == 0 && !f.Context.ChangeTracker.HasChanges(), "CreateFull preparation selects external career parent then resolves local Faculty, without mutating request.");
-            var group = new UnifiedGroupService(f.Uow, f.Directory, NullLogger<UnifiedGroupService>.Instance, f.PeriodClient, f.Distributivos, AcademicFixture.NoProvisioning, Stub.For<IUnifiedIdentityQueryService>((m, a) => throw new InvalidOperationException()));
+            var group = new UnifiedGroupService(f.Uow, f.Directory, NullLogger<UnifiedGroupService>.Instance, f.Distributivos, AcademicFixture.NoProvisioning, Stub.For<IUnifiedIdentityQueryService>((m, a) => throw new InvalidOperationException()));
             var groupFaculty = await group.PrepareCoordinatorFacultyAsync(new() { FacultyId = 700, Email = "teacher@example.test" });
             check(groupFaculty.Success && groupFaculty.Data!.FacultyId == 17 && f.Saves == 0, "Group legacy FacultyCareerId 700 -> external faculty 501 -> local 17.");
         }
@@ -130,8 +130,8 @@ internal static class AcademicReferenceTests
 internal sealed class AcademicFixture : IDisposable
 {
     internal UnifiedDideDbContext Context { get; } = new(new DbContextOptionsBuilder<UnifiedDideDbContext>().UseSqlServer("Server=(local);Database=AcademicReferenceTests;Trusted_Connection=True;TrustServerCertificate=True").Options);
-    internal List<Faculty> Faculties { get; } = [new() { FacultyId = 17, ExternalFacultyId = 501, Name = "Engineering" }, new() { FacultyId = 18, ExternalFacultyId = 502, Name = "Science" }];
-    internal List<AcademicTerm> Terms { get; } = [new() { AcademicTermId = 8, ExternalPeriodId = 20261, Name = "2026 FIRST" }, new() { AcademicTermId = 9, ExternalPeriodId = 20262, Name = "2026 SECOND" }];
+    internal List<Faculty> Faculties { get; } = [new() { FacultyId = 17, ExternalFacultyId = 501, Name = "Engineering" }, new() { FacultyId = 18, ExternalFacultyId = 502, Name = "Science" }, new() { FacultyId = 29, ExternalFacultyId = 700, ParentFacultyId = 17, Name = "Software" }];
+    internal List<AcademicTerm> Terms { get; } = [new() { AcademicTermId = 8, ExternalPeriodId = 20261, Name = "2026 FIRST", StartDate = new(2026, 1, 1), EndDate = new(2026, 6, 30) }, new() { AcademicTermId = 9, ExternalPeriodId = 20262, Name = "2026 SECOND", StartDate = new(2026, 7, 1), EndDate = new(2026, 12, 31) }];
     internal List<ExternalAcademicPeriodModel> Periods { get; } = [new() { PeriodId = 20261, Name = "2026 FIRST", StartDate = new(2026, 1, 1), EndDate = new(2026, 6, 30) }, new() { PeriodId = 20262, Name = "2026 SECOND", StartDate = new(2026, 7, 1), EndDate = new(2026, 12, 31) }];
     internal List<ExternalFacultyDTO> ExternalFaculties { get; } = [new() { FacultyId = 501, Name = "Engineering" }, new() { FacultyId = 502, Name = "Science" }];
     internal List<Project> Projects { get; } = [];
@@ -194,7 +194,7 @@ internal sealed class AcademicFixture : IDisposable
         var current = Stub.For<ICurrentUserService>((m, a) => 19);
         var academics = Stub.For<IExternalAcademicsService>((m, a) => throw new InvalidOperationException("Unexpected external academic fetch"));
         var categories = Stub.For<IUnifiedResearchCategoryService>((m, a) => throw new InvalidOperationException("Unexpected category call"));
-        ProjectsService = new(Uow, current, academics, categories, NullLogger<UnifiedProjectService>.Instance, Directory, PeriodClient, Distributivos, NoProvisioning);
+        ProjectsService = new(Uow, current, categories, NullLogger<UnifiedProjectService>.Instance, Directory, Distributivos, NoProvisioning);
         Scopes = new(Uow, current, NoProvisioning);
     }
 

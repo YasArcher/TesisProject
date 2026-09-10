@@ -1,5 +1,7 @@
 using tesisproject.backend.Data;
 using tesisproject.backend.Data.UnifiedEntities.Catalogs;
+using tesisproject.backend.Data.UnifiedEntities.Articles;
+using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Repositories.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 
@@ -12,6 +14,15 @@ namespace tesisproject.backend.UnitOfWork.Unified.Implementations;
 public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
 {
     private readonly UnifiedDideDbContext _context;
+
+    public IUnifiedArticleReadRepository ArticleReads { get; }
+    public IUnifiedArticleRegistrationRepository ArticleRegistration { get; }
+    public IUnifiedArticleConfigurationRepository ArticleConfiguration { get; }
+    public IUnifiedArticleRegistrationMatrixRepository ArticleRegistrationMatrices { get; }
+    public IGenericRepository<RegistrationMatrixColumn> RegistrationMatrixColumns { get; }
+    public IGenericRepository<RegistrationMatrixRow> RegistrationMatrixRows { get; }
+    public IGenericRepository<RegistrationMatrixCell> RegistrationMatrixCells { get; }
+    public IGenericRepository<FieldCatalogEntry> ArticleFields { get; }
 
     public IUnifiedFacultyRepository Faculties { get; }
     public IUnifiedAcademicTermRepository AcademicTerms { get; }
@@ -67,6 +78,14 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
 
     public UnifiedUnitOfWork(
         UnifiedDideDbContext context,
+        IUnifiedArticleReadRepository articleReads,
+        IUnifiedArticleRegistrationRepository articleRegistration,
+        IUnifiedArticleConfigurationRepository articleConfiguration,
+        IUnifiedArticleRegistrationMatrixRepository articleRegistrationMatrices,
+        IGenericRepository<RegistrationMatrixColumn> registrationMatrixColumns,
+        IGenericRepository<RegistrationMatrixRow> registrationMatrixRows,
+        IGenericRepository<RegistrationMatrixCell> registrationMatrixCells,
+        IGenericRepository<FieldCatalogEntry> articleFields,
         IUnifiedFacultyRepository faculties,
         IUnifiedAcademicTermRepository academicTerms,
         IUnifiedAppConfigurationRepository appConfigurations,
@@ -119,6 +138,14 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
         IUnifiedCatalogRepository<VisitState> visitStates)
     {
         _context = context;
+        ArticleReads = articleReads;
+        ArticleRegistration = articleRegistration;
+        ArticleConfiguration = articleConfiguration;
+        ArticleRegistrationMatrices = articleRegistrationMatrices;
+        RegistrationMatrixColumns = registrationMatrixColumns;
+        RegistrationMatrixRows = registrationMatrixRows;
+        RegistrationMatrixCells = registrationMatrixCells;
+        ArticleFields = articleFields;
         Faculties = faculties;
         AcademicTerms = academicTerms;
         AppConfigurations = appConfigurations;
@@ -174,5 +201,25 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
     public Task<int> SaveChangesAsync(CancellationToken ct = default) =>
         _context.SaveChangesAsync(ct);
 
-    public ValueTask DisposeAsync() => _context.DisposeAsync();
+    public async Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default)
+    {
+        if (_context.ChangeTracker.HasChanges() || _context.Database.CurrentTransaction is not null)
+            throw new InvalidOperationException("The operation requires a clean, independent UnitOfWork scope.");
+        await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+        try
+        {
+            var result = await operation(ct);
+            await transaction.CommitAsync(ct);
+            return result;
+        }
+        catch
+        {
+            try { await transaction.RollbackAsync(CancellationToken.None); }
+            finally { _context.ChangeTracker.Clear(); }
+            throw;
+        }
+    }
+
+    // The scoped DI container owns the injected context and disposes it once.
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

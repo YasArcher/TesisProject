@@ -1,0 +1,87 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Controllers.Extensions;
+using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Services.Unified.Interfaces;
+using tesisproject.shared.DTOs.ExternalResearcher.Request;
+using tesisproject.shared.DTOs.ExternalResearcher.Response;
+using tesisproject.shared.DTOs.Filters;
+using tesisproject.shared.Responses;
+
+namespace tesisproject.backend.Controllers.Unified
+{
+    [Authorize(Roles = "superadmin")]
+    [ApiController]
+    [Route("api/externalresearchers")]
+    public class UnifiedExternalResearchersController : ControllerBase
+    {
+        private readonly IUnifiedExternalResearcherService _service;
+
+        public UnifiedExternalResearchersController(IUnifiedExternalResearcherService service)
+        {
+            _service = service;
+        }
+
+        // ================================================================
+        // GET: api/externalresearchers
+        // Optional filters: term, institutionId
+        // ================================================================
+        [HttpGet]
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ExternalResearcherListItemDTO>>>> List(
+            [FromQuery] string? term,
+            [FromQuery] int? institutionId,
+            CancellationToken ct)
+        {
+            return (await _service.ListAsync(term, institutionId, ct)).ToActionResult();
+        }
+
+        // ================================================================
+        // GET: api/externalresearchers/{id}
+        // ================================================================
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<ServiceResult<ExternalResearcherDetailDTO>>> GetById(
+            int id,
+            CancellationToken ct)
+        {
+            return (await _service.GetByIdAsync(id, ct)).ToActionResult();
+        }
+
+        // ================================================================
+        // GET: api/externalresearchers/keyvalues
+        // For SelectInput components: id + name
+        // ================================================================
+        [HttpGet("keyvalues")]
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
+            [FromQuery] string? term,
+            [FromQuery] int? institutionId,
+            [FromQuery] int? take,
+            CancellationToken ct)
+        {
+            return (await _service.GetKeyValuesAsync(term, institutionId, take, ct)).ToActionResult();
+        }
+
+        // ================================================================
+        // POST: api/externalresearchers
+        // ================================================================
+        [HttpPost]
+        public async Task<ActionResult<ServiceResult<ExternalResearcherDetailDTO>>> Create(
+            ExternalResearcherCreateRequestDTO body,
+            CancellationToken ct)
+        {
+            return (await _service.CreateAsync(body, ct)).ToActionResult();
+        }
+
+        // ================================================================
+        // PUT: api/externalresearchers/{id}
+        // ================================================================
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<ServiceResult<ExternalResearcherDetailDTO>>> Update(
+            int id,
+            ExternalResearcherUpdateRequestDTO body,
+            CancellationToken ct)
+        {
+            body.Id = id;
+            return (await _service.UpdateAsync(body, ct)).ToActionResult();
+        }
+    }
+}

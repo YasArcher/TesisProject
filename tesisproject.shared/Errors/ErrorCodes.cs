@@ -8,6 +8,15 @@ namespace tesisproject.shared.Errors
 {
     public static class ErrorCodes
     {
+        public static class CatalogSynchronization
+        {
+            public const string ProviderUnavailable = "CATALOG_SYNC_PROVIDER_UNAVAILABLE";
+            public const string InvalidResponse = "CATALOG_SYNC_INVALID_RESPONSE";
+            public const string DuplicateExternalId = "CATALOG_SYNC_DUPLICATE_EXTERNAL_ID";
+            public const string PersistenceFailed = "CATALOG_SYNC_PERSISTENCE_FAILED";
+            public const string PendingChanges = "CATALOG_SYNC_PENDING_CHANGES";
+        }
+
         public static class IdentityProvisioning
         {
             public const string MappingConflict = "IDENTITY_MAPPING_CONFLICT";

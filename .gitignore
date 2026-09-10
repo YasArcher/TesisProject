@@ -510,3 +510,6 @@ pnpm-debug.log*
 
 # --- Área local de preparación para fusión de sistemas ---
 _fusion/
+
+# Local backend settings may contain JWT signing material.
+tesisproject.backend/appsettings.Local.json

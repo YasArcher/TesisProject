@@ -1,0 +1,84 @@
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
+builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
+builder.Services.AddScoped<IVisitRepository, VisitRepository>();
+builder.Services.AddScoped<IProjectExtensionRepository, ProjectExtensionRepository>();
+builder.Services.AddScoped<IAspNetUserRepository, AspNetUserRepository>();
+builder.Services.AddScoped<IVisitIssueRepository, VisitIssueRepository>();
+builder.Services.AddScoped<IConvocationRepository, ConvocationRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductAttributeDefinitionRepository, ProductAttributeDefinitionRepository>();
+builder.Services.AddScoped<IProductAuthorRepository, ProductAuthorRepository>();
+builder.Services.AddScoped<IProductValueRepository, ProductValueRepository>();
+builder.Services.AddScoped<IProjectObjectiveRepository, ProjectObjectiveRepository>();
+builder.Services.AddScoped<IObjectiveActivityRepository, ObjectiveActivityRepository>();
+builder.Services.AddScoped<IObjectiveActivityUserRepository, ObjectiveActivityUserRepository>();
+builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
+builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
+builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
+builder.Services.AddScoped<IExternalResearcherRepository, ExternalResearcherRepository>();
+builder.Services.AddScoped<IExternalResearcherProjectRepository, ExternalResearcherProjectRepository>();
+builder.Services.AddScoped<IProjectDocumentRepository, ProjectDocumentRepository>();
+builder.Services.AddScoped<IExportTemplateColumnRepository, ExportTemplateColumnRepository>();
+builder.Services.AddScoped<IExportTemplateRepository, ExportTemplateRepository>();
+builder.Services.AddScoped<IExportFieldRepository, ExportFieldRepository>();
+builder.Services.AddScoped<IMatrixExcelExportService, MatrixExcelExportService>();
+builder.Services.AddScoped<IMatrixTemplateExcelExportService, MatrixTemplateExcelExportService>();
+builder.Services.AddScoped<IVisitObjectiveActivityProgressRepository, VisitObjectiveActivityProgressRepository>();
+builder.Services.AddScoped<IFacultyScopeRepository, FacultyScopeRepository>();
+builder.Services.AddScoped<IFacultyScopeFacultyRepository, FacultyScopeFacultyRepository>();
+builder.Services.AddScoped<IUserFacultyScopeAssignmentRepository, UserFacultyScopeAssignmentRepository>();
+builder.Services.AddScoped<IAppConfigurationRepository, AppConfigurationRepository>();
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddScoped(typeof(ICatalogRepository<>), typeof(CatalogRepository<>));
+builder.Services.AddScoped<ICatalogQueryService, CatalogQueryService>();
+builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IArticleUserContext, ArticleUserContext>();
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<IBudgetService, BudgetService>();
+builder.Services.AddScoped<IVisitService, VisitService>();
+builder.Services.AddScoped<IProjectExtensionService, ProjectExtensionService>();
+builder.Services.AddScoped<IVisitIssueService, VisitIssueService>();
+builder.Services.AddScoped<IConvocationService, ConvocationService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProjectObjectiveService, ProjectObjectiveService>();
+builder.Services.AddScoped<IObjectiveActivityService, ObjectiveActivityService>();
+builder.Services.AddScoped<IObjectiveActivityUserService, ObjectiveActivityUserService>();
+builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IDocumentRecognitionService, DocumentRecognitionService>();
+builder.Services.AddScoped<IMemberRoleTypeService, MemberRoleTypeService>();
+builder.Services.AddScoped<IProjectResearchCategoryService, ProjectResearchCategoryService>();
+builder.Services.AddScoped<IResearchCategoryService, ResearchCategoryService>();
+builder.Services.AddScoped<IResearchCategoryTypeService, ResearchCategoryTypeService>();
+builder.Services.AddScoped<IAppUserService, AppUserService>();
+builder.Services.AddScoped<IExternalResearcherService, ExternalResearcherService>();
+builder.Services.AddScoped<ICountryService, CountryService>();
+builder.Services.AddScoped<IInstitutionService, InstitutionService>();
+builder.Services.AddScoped<IExternalResearcherProjectService, ExternalResearcherProjectService>();
+builder.Services.AddScoped<IIndexingSourceService, IndexingSourceService>();
+builder.Services.AddScoped(typeof(ICatalogCrudService<>), typeof(CatalogCrudService<>));
+builder.Services.AddScoped<IProductAttributeService, ProductAttributeService>();
+builder.Services.AddScoped<IProductAttributeDefinitionService, ProductAttributeDefinitionService>();
+builder.Services.AddScoped<IProductTypeDesignService, ProductTypeDesignService>();
+builder.Services.AddScoped<IProjectMatrixService, ProjectMatrixService>();
+builder.Services.AddScoped<IProjectFlatReportService, ProjectFlatReportService>();
+builder.Services.AddScoped<IExportTemplateService, ExportTemplateService>();
+builder.Services.AddScoped<IExportTemplateExcelService, ExportTemplateExcelService>();
+builder.Services.AddScoped<IVisitObjectiveActivityProgressService, VisitObjectiveActivityProgressService>();
+builder.Services.AddScoped<IFacultyScopeService, FacultyScopeService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
+
+Additional removed Articles conditional registrations:
+IArticleConfigurationService -> ArticleConfigurationService
+IArticleQueryService -> ArticleQueryService / DisabledArticleQueryService
+IArticleRegistrationCommandService -> ArticleRegistrationCommandService / DisabledArticleRegistrationCommandService
+IRegistrationMatrixService -> RegistrationMatrixService / DisabledRegistrationMatrixService
+IArticleUserContext -> ArticleUserContext
+
+Removed context registration: ArticlesDbContext

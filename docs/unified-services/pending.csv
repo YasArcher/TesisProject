@@ -1,13 +1,1 @@
 Service,Method,Decision,LegacyReference
-FacultyScopeService,AssignScopeToUserAsync,EnsureAppUserAsync depende de Identity y confirma anticipadamente. Separar provisión de identidad de asignación Unified.,legacy-reference/FacultyScopeService.md
-GroupService,AddMemberAsync,TODO IDENTITY: EnsureAppUserAsync y roles. PrepareCoordinatorFacultyAsync ya resuelve la facultad externa a local sin mutaciones ni commits.,legacy-reference/GroupService.md
-GroupService,GetExternalUserByAspNetIdAsync,Consulta AspNetUsers/Identity no disponible en IUnifiedUnitOfWork; acordar frontera de lectura Identity.,legacy-reference/GroupService.md
-GroupService,GetExternalUsersByGroupAsync,Consulta AspNetUsers/Identity no disponible en IUnifiedUnitOfWork; acordar frontera de lectura Identity.,legacy-reference/GroupService.md
-GroupService,GetProjectMembersReportAsync,Consulta AspNetUsers/Identity no disponible en IUnifiedUnitOfWork; acordar frontera de lectura Identity.,legacy-reference/GroupService.md
-ProjectMatrixService,UploadAsync,TODO IDENTITY: depende del entry point ImportFromMatrixAsync. Preparación Faculty/AcademicTerm implementada sin commits.,legacy-reference/ProjectMatrixService.md
-ProjectService,CreateFullAsync,TODO IDENTITY: EnsureAppUsersAsync y roles. PrepareFullProjectFacultyAsync ya devuelve Faculty local sin mutar el request.,legacy-reference/ProjectService.md
-ProjectService,ImportFromMatrixAsync,TODO IDENTITY: provisión de miembros. PrepareImportAcademicReferencesAsync resuelve Faculty y todos los AcademicTerm; ApplyTo construye visitas con FK local.,legacy-reference/ProjectService.md
-ProjectService,InsertGroupMembersFromDirectoryAsync,TODO IDENTITY: EnsureAppUsersAsync y roles. El cuerpo legacy de este helper no asigna Faculty ni AcademicTerm.,legacy-reference/ProjectService.md
-AppUserService,EnsureAppUserAsync,Provisión Identity y roles con saves implícitos/por usuario fuera de la transacción del dominio. Decidir frontera y compensación.,legacy-reference/AppUserService.md
-AppUserService,EnsureAppUsersAsync,Provisión Identity y roles con saves implícitos/por usuario fuera de la transacción del dominio. Decidir frontera y compensación.,legacy-reference/AppUserService.md
-AppUserService,EnsureSingleInternalAsync,Provisión Identity y roles con saves implícitos/por usuario fuera de la transacción del dominio. Decidir frontera y compensación.,legacy-reference/AppUserService.md

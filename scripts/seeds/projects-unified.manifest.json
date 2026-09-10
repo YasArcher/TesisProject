@@ -1,0 +1,104 @@
+{
+  "source": "9.txt",
+  "sha256": "6d73aaeda34002c5fbbd3a58353c311fee91e999dfd138b57eb3753303e18c0e",
+  "rows": {
+    "DocumentTypes": 6,
+    "GroupTypes": 2,
+    "Convocations": 47,
+    "ProjectStates": 6,
+    "ProjectTypes": 2,
+    "TransactionTypes": 3,
+    "VisitStates": 4,
+    "ObjectiveTypes": 2,
+    "ResearchCategoryGroups": 4,
+    "ResearchCategoryTypes": 8,
+    "ResearchCategories": 163,
+    "FundingTypes": 4,
+    "MemberRoleTypes": 4,
+    "Countries": 40,
+    "Institutions": 36,
+    "ProjectExtensionTypes": 2,
+    "ProjectOriginTypes": 3,
+    "ExportFields": 30,
+    "ExportTemplates": 1,
+    "ExportTemplateColumns": 30,
+    "ProductTypes": 7,
+    "ProductAttributes": 19,
+    "ProductAttributeDefinitions": 39
+  },
+  "excluded": {
+    "ExternalResearchers": 1,
+    "usuario": 12
+  },
+  "excludedPlaceholders": [
+    "Countries:41",
+    "Institutions:37",
+    "ExternalResearchers:1"
+  ],
+  "knownFixtureCorrections": {
+    "Convocations": [
+      {
+        "id": 1,
+        "name": "Cutover smoke",
+        "code": "CT",
+        "isactive": 1,
+        "islocked": 0
+      }
+    ],
+    "GroupTypes": [
+      {
+        "id": 1,
+        "name": "Integrantes",
+        "isactive": 1,
+        "islocked": 1
+      }
+    ],
+    "MemberRoleTypes": [
+      {
+        "id": 1,
+        "name": "Coordinador",
+        "flag": 1,
+        "isactive": 1,
+        "islocked": 1
+      },
+      {
+        "id": 3,
+        "name": "Investigador",
+        "flag": 1,
+        "isactive": 1,
+        "islocked": 1
+      }
+    ],
+    "ProjectTypes": [
+      {
+        "id": 1,
+        "name": "Investigación",
+        "isactive": 1,
+        "islocked": 1
+      }
+    ],
+    "ProjectStates": [
+      {
+        "id": 3,
+        "name": "En ejecución",
+        "isactive": 1,
+        "islocked": 1
+      }
+    ],
+    "ProductTypes": [
+      {
+        "id": 1,
+        "name": "Producto smoke",
+        "isactive": 1,
+        "islocked": 0
+      }
+    ]
+  },
+  "notes": [
+    "No Projects rows in source; catalog/template baseline only",
+    "No audit owner column exists on imported tables",
+    "ExportTemplateColumns 25/26 repeat BUDGET_CERTIFIED: preserved from source",
+    "ProjectOriginTypes 2 name Extern0: preserved from source",
+    "Regional ProductType 2 has only six definitions in source; no additional Article definitions invented"
+  ]
+}

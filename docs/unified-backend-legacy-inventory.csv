@@ -1,0 +1,309 @@
+Component,Classification,Reason
+tesisproject.backend/Controllers/AcademicPeriodsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ArticlesConfigurationController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ArticlesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ArticlesRegistrationMatricesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/AuthController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/BudgetsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/CatalogControllerBase.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ConvocationsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/CountriesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/DocumentRecognitionController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/DocumentsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/DocumentTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ExportTemplatesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/Extensions/ExternalResearcherProjectsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ExternalAcademicsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ExternalPeriodsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ExternalResearchersController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/FacultyScopesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/FundingTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/GroupsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/IndexingSourcesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/InstitutionsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/MemberRoleTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ObjectiveActivitiesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ObjectiveActivityUsersController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ObjectiveTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProductAttributeDefinitionsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProductAttributesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProductsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProductTypeDesignController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProductTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectExtensionsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectExtensionTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectMatrixController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectObjectivesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectOriginTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectResearchCategoryController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectsFiltersController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectStatesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ProjectTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ResearchCategoriesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ResearchCategoryGroupsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/ResearchCategoryTypeController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/TransactionTypesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/VisitIssuesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/VisitObjectiveActivityProgressesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/VisitsController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Controllers/VisitStatesController.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/AppUserRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ArticleReadRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/AspNetUserRepository.cs.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/BudgetRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/CatalogRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ConvocationRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/DocumentRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ExportFieldRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ExportTemplateColumnRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ExportTemplateRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ExternalResearcherProjectRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ExternalResearcherRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/FacultyScopeFacultyRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/FacultyScopeRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/GroupMemberRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/GroupRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ObjectiveActivityRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ObjectiveActivityUserRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProductAttributeDefinitionRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProductAuthorRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProductRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProductValueRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProjectDocumentRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProjectExtensionRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProjectObjectiveRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProjectRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ProjectResearchCategoryRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/ResearchCategoryRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/UserFacultyScopeAssignmentRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/VisitIssueRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/VisitObjectiveActivityProgressRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Implementations/VisitRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/AppConfigurationRepository.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/AppUserService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ArticleConfigurationService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ArticleQueryService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ArticleRegistrationCommandService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ArticleUserContext.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/AuthService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/BudgetService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/CatalogCrudService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/CatalogQueryService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ConvocationService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/CountryService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/DisabledArticleQueryService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/DisabledArticleRegistrationCommandService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/DisabledRegistrationMatrixService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/DocumentRecognitionService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/DocumentService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ExportTemplateExcelService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ExportTemplateService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ExternalResearcherProjectService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ExternalResearcherService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/FacultyScopeService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/GroupService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/IndexingSourceService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/InstitutionService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/MatrixExcelExportService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/MatrixTemplateExcelExportService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/MemberRoleTypeService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ObjectiveActivityService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ObjectiveActivityUserService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProductAttributeDefinitionService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProductAttributeService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProductService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProductTypeDesignService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectExtensionService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectFlatReportService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectMatrixService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectObjectiveService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectResearchCategoryService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ProjectsFiltersService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/RefreshTokenService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/RegistrationMatrixService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ResearchCategoryService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/ResearchCategoryTypeService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/VisitIssueService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/VisitObjectiveActivityProgressService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/VisitService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/UnitOfWork/Implementations/UnitOfWork.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/UnitOfWork/Interfaces/IUnitOfWork.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Services/Implementations/UserRoleService.cs,DELETE,Implementación reemplazada por Unified; sin consumidor necesario después de retirar DI legacy
+tesisproject.backend/Repositories/Interfaces/IAppUserRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IArticleReadRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IAspNetUserRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IBudgetRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/ICatalogRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IConvocationRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IDocumentRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IExportFieldRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IExportTemplateColumnRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IExportTemplateRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IExternalResearcherProjectRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IExternalResearcherRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IFacultyScopeFacultyRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IFacultyScopeRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IGroupMemberRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IGroupRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IObjectiveActivityRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IObjectiveActivityUserRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProductAttributeDefinitionRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProductAuthorRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProductRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProductValueRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProjectDocumentRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProjectExtensionRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProjectObjectiveRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProjectRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IProjectResearchCategoryRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IResearchCategoryRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IUserFacultyScopeAssignmentRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IVisitIssueRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IVisitObjectiveActivityProgressRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Repositories/Interfaces/IVisitRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IAppConfigurationRepository.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IAppUserService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IAuthService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IBudgetService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/ICatalogCrudService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/ICatalogQueryService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IConvocationService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/ICountryService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IDocumentRecognitionService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IDocumentService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IExportTemplateExcelService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IExportTemplateService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IExternalResearcherProjectService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IExternalResearcherService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IFacultyScopeService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IGroupService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IIndexingSourceService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IInstitutionService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IMatrixExcelExportService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IMatrixTemplateExcelExportService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IMemberRoleTypeService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IObjectiveActivityService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IObjectiveActivityUserService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProductAttributeDefinitionService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProductAttributeService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProductService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProductTypeDesignService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectExtensionService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectFiltersService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectFlatReportService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectMatrixService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectObjectiveService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectResearchCategoryService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IProjectsFiltersService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IRefreshTokenService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IResearchCategoryService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IResearchCategoryTypeService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IUserRoleService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IVisitIssueService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IVisitObjectiveActivityProgressService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IVisitService.cs,DELETE,Sin referencias en código backend/Shared/frontend activo tras retirar implementaciones
+tesisproject.backend/Services/Interfaces/IArticleConfigurationService.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IArticleQueryService.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IArticleRegistrationCommandService.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IArticleUserContext.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/ICurrentUserService.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IExternalAcademicsService.cs,KEEP_EXTERNAL_DEPENDENCY,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IExternalDirectoryClient.cs,KEEP_EXTERNAL_DEPENDENCY,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IExternalDistributivosService.cs,KEEP_EXTERNAL_DEPENDENCY,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IExternalPeriodsClient.cs,KEEP_EXTERNAL_DEPENDENCY,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/IRegistrationMatrixService.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Interfaces/ITokenService.cs,KEEP_SHARED_RUNTIME,Contrato heredado por Unified o boundary activo; conservar interfaz evita cambio contractual innecesario
+tesisproject.backend/Services/Implementations/CurrentUserService.cs,KEEP_SHARED_RUNTIME,Helper activo de claims/JWT o cliente externo reutilizado por Unified
+tesisproject.backend/Services/Implementations/ExternalAcademicsService.cs,KEEP_EXTERNAL_DEPENDENCY,Helper activo de claims/JWT o cliente externo reutilizado por Unified
+tesisproject.backend/Services/Implementations/ExternalDirectoryClient.cs,KEEP_EXTERNAL_DEPENDENCY,Helper activo de claims/JWT o cliente externo reutilizado por Unified
+tesisproject.backend/Services/Implementations/ExternalDistributivosService.cs,KEEP_EXTERNAL_DEPENDENCY,Helper activo de claims/JWT o cliente externo reutilizado por Unified
+tesisproject.backend/Services/Implementations/ExternalPeriodsClient.cs,KEEP_EXTERNAL_DEPENDENCY,Helper activo de claims/JWT o cliente externo reutilizado por Unified
+tesisproject.backend/Services/Implementations/JwtTokenService.cs,KEEP_SHARED_RUNTIME,Helper activo de claims/JWT o cliente externo reutilizado por Unified
+tesisproject.backend/Repositories/Interfaces/IGenericRepository.cs,KEEP_SHARED_RUNTIME,IGenericRepository es contrato activo de persistencia Unified
+tesisproject.backend/Repositories/Implementations/GenericRepository.cs,KEEP_SHARED_RUNTIME,GenericRepository es base activa de repositorios Unified; constructor protegido DbContext usado con Unified
+tesisproject.backend/Data/Articles/ArticlesDbContext.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/AcademicCatalogConfigurations.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/ArticleConfiguration.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/ArticleFileConfiguration.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/ArticleIndexingConfiguration.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/ArticleParticipantConfiguration.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/ArticlesModelConfigurationMarker.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/DynamicFormsConfigurations.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/OecdFieldConfigurations.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/RegistrationMatrixConfigurations.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Configurations/VenueConfigurations.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/AcademicTerm.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/Article.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/ArticleFile.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/ArticleIndexing.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/ArticleParticipant.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/ArticleParticipantDynamicFieldValue.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/BroadField.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/DetailedField.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/DynamicFieldOption.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/DynamicFieldValue.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/Faculty.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/FieldCatalogEntry.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/FormDefinition.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/FormFieldDefinition.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/IndexingSource.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/PublicationStatus.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/RegistrationMatrix.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/ResearchLine.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/SpecificField.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/Venue.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Data/Articles/Entities/VenueMetric.cs,ARCHIVED_ALREADY,"Modelo histórico preservado, excluido de compilación durante cleanup; sin DI/runtime"
+tesisproject.backend/Migrations/Articles/20260905234648_ActualizarArticulos.cs,ARCHIVED_ALREADY,"Historia preservada sin alterar migrations, excluida de compilación con su contexto"
+tesisproject.backend/Migrations/Articles/20260905234648_ActualizarArticulos.Designer.cs,ARCHIVED_ALREADY,"Historia preservada sin alterar migrations, excluida de compilación con su contexto"
+tesisproject.backend/Migrations/Articles/ArticlesDbContextModelSnapshot.cs,ARCHIVED_ALREADY,"Historia preservada sin alterar migrations, excluida de compilación con su contexto"
+tesisproject.backend/Data/AppDbContext.cs,KEEP_EXTERNAL_DEPENDENCY,DwEtlService.cs.cs constructor requiere AppDbContext; DW fuera de alcance
+tesisproject.backend/Data/DesignTimeDbContextFactories.cs,KEEP_EXTERNAL_DEPENDENCY,Factories App/DW conservadas; factory Articles retirada
+tesisproject.backend/ArticlesMigration/**,ARCHIVED_ALREADY,Exclusión preexistente en csproj; contenido no auditado
+tesisproject.backend/Migrations/Unified/**,KEEP_SHARED_RUNTIME,Migrations aplicadas Unified inmutables; ninguna eliminación/cambio
+tesisproject.backend/Migrations (App/DW),KEEP_EXTERNAL_DEPENDENCY,Historia de contextos retenidos; DW intacto
+"tesisproject.shared/Entities/{Auth,Base,Catalogs,Core,Export}/**",KEEP_EXTERNAL_DEPENDENCY,Modelo compartido histórico alcanzado por AppDbContext retenido; tipos reutilizados por contratos no se eliminan
+tesisproject.shared/Entities/External/**,KEEP_EXTERNAL_DEPENDENCY,Contratos de directorio e integraciones activas
+tesisproject.shared/Responses/**,KEEP_SHARED_RUNTIME,ServiceResult y envelopes reutilizados por runtime y clientes
+ArticlesModuleOptions / authorization policies,KEEP_SHARED_RUNTIME,Activación/autorización de controllers Unified
+ConnectionStrings:DefaultConnection,KEEP_EXTERNAL_DEPENDENCY,AppDbContext/DW retenidos
+ConnectionStrings:ArticlesOltpConnection,ARCHIVED_ALREADY,"Sin consumo de aplicación; se conserva como referencia histórica/operador BaselineSource, no DI"
+tesisproject.shared/DTOs/Articles/ArticleBiExportDto.cs,KEEP_EXTERNAL_DEPENDENCY,"Contrato BI/reporting fuera del alcance DW; sin consumidor OLTP activo encontrado. Conservado deliberadamente, no se afirma uso runtime"
+tesisproject.shared/DTOs/Articles/ArticleDtos.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesHome.razor; tesisproject.frontend/Services/Implementations/ArticleClientService.cs; tesisproject.frontend/Services/Interfaces/IArticleClientService.cs
+tesisproject.shared/DTOs/Articles/ArticleImportResultDto.cs,DELETE,"Sin referencias activas backend, frontend o Shared; verificación adicional en tests sin consumidores"
+tesisproject.shared/DTOs/Articles/ArticleListQuery.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesHome.razor; tesisproject.frontend/Features/Articles/Pages/ArticlesWorkflow.razor; tesisproject.frontend/Services/Implementations/ArticleClientService.cs; tesisproject.frontend/Services/Interfaces/IArticleClientService.cs
+tesisproject.shared/DTOs/Articles/ArticlePageDto.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesHome.razor; tesisproject.frontend/Features/Articles/Pages/ArticlesWorkflow.razor; tesisproject.frontend/Services/Implementations/ArticleClientService.cs; tesisproject.frontend/Services/Interfaces/IArticleClientService.cs
+tesisproject.shared/DTOs/Articles/ArticleParticipantRequest.cs,KEEP_SHARED_RUNTIME,tesisproject.shared/DTOs/Articles/CreateArticleRequest.cs
+tesisproject.shared/DTOs/Articles/CreateArticleRequest.cs,KEEP_SHARED_RUNTIME,tesisproject.shared/DTOs/Articles/UpdateArticleRequest.cs
+tesisproject.shared/DTOs/Articles/RegisterArticleAggregateDtos.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesRegister.razor; tesisproject.frontend/Services/Implementations/ArticleClientService.cs; tesisproject.frontend/Services/Interfaces/IArticleClientService.cs
+tesisproject.shared/DTOs/Articles/UpdateArticleRequest.cs,DELETE,"Sin referencias activas backend, frontend o Shared; verificación adicional en tests sin consumidores"
+tesisproject.shared/DTOs/ArticlesConfiguration/AdminCatalogDtos.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Services/Implementations/FormConfigurationClient.cs; tesisproject.frontend/Services/Interfaces/IFormConfigurationClient.cs
+tesisproject.shared/DTOs/ArticlesConfiguration/AdminConfigurationDtos.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesConfiguration.razor; tesisproject.frontend/Services/Implementations/FormConfigurationClient.cs; tesisproject.frontend/Services/Interfaces/IFormConfigurationClient.cs
+tesisproject.shared/DTOs/ArticlesConfiguration/ResolvedFormDtos.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesConfiguration.razor; tesisproject.frontend/Features/Articles/Pages/ArticlesRegister.razor; tesisproject.frontend/Features/Articles/Pages/ArticlesRegistrationMatrix.razor; tesisproject.frontend/Services/Implementations/FormConfigurationClient.cs; tesisproject.frontend/Services/Interfaces/IFormConfigurationClient.cs
+tesisproject.shared/DTOs/Project/Request/AddProjectFullRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Pages/ProjectCreate.razor; tesisproject.frontend/Services/Implementations/ProjectClientService.cs; tesisproject.frontend/Services/Interfaces/IProjectClientService.cs
+tesisproject.shared/DTOs/Project/Request/AddProjectRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Pages/ProjectCreate.razor
+tesisproject.shared/DTOs/Project/Request/UnifiedAddProjectRequestDTO.cs,KEEP_SHARED_RUNTIME,tesisproject.backend/Controllers/Unified/UnifiedProjectsController.cs; tesisproject.backend/Services/Unified/Implementations/UnifiedProjectService.cs; tesisproject.backend/Services/Unified/Interfaces/IUnifiedProjectService.cs
+tesisproject.shared/DTOs/Project/Request/UpdateProjectRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectEditGeneralTab.razor; tesisproject.frontend/Features/Projects/Components/ProjectFinalizationTab.razor; tesisproject.frontend/Features/Projects/Pages/ProjectEdit.razor; tesisproject.frontend/Services/Implementations/ProjectClientService.cs; tesisproject.frontend/Services/Interfaces/IProjectClientService.cs
+tesisproject.shared/DTOs/Project/Request/UpdateProjectResearchCategoriesRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectEditCategoriesTab.razor; tesisproject.frontend/Features/Projects/Pages/ProjectEdit.razor; tesisproject.frontend/Services/Implementations/ProjectClientService.cs; tesisproject.frontend/Services/Interfaces/IProjectClientService.cs
+tesisproject.shared/DTOs/Project/Response/ProjectDetailResponseDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectEditBudgetTab.razor; tesisproject.frontend/Features/Projects/Components/ProjectEditCategoriesTab.razor; tesisproject.frontend/Features/Projects/Components/ProjectEditGeneralTab.razor; tesisproject.frontend/Features/Projects/Components/ProjectFinalizationTab.razor; tesisproject.frontend/Features/Projects/Components/ProjectOverviewTab.razor; tesisproject.frontend/Features/Projects/Pages/ProjectDetail.razor; tesisproject.frontend/Features/Projects/Pages/ProjectEdit.razor; tesisproject.frontend/Services/Implementations/ProjectClientService.cs; tesisproject.frontend/Services/Interfaces/IProjectClientService.cs
+tesisproject.shared/DTOs/Project/Response/ProjectListResponseDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectCard.razor.cs; tesisproject.frontend/Features/Projects/Pages/ProjectsHome.razor; tesisproject.frontend/Services/Implementations/ProjectClientService.cs; tesisproject.frontend/Services/Interfaces/IProjectClientService.cs
+tesisproject.shared/DTOs/Products/Product/Request/ProductCreateRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectProductsEditor.razor; tesisproject.frontend/Features/Projects/Components/VisitDetailPanel.razor; tesisproject.frontend/Services/Implementations/ProductClientService.cs; tesisproject.frontend/Services/Interfaces/IProductClientService.cs
+tesisproject.shared/DTOs/Products/Product/Request/ProductUpdateRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectProductsEditor.razor; tesisproject.frontend/Features/Projects/Components/VisitDetailPanel.razor; tesisproject.frontend/Services/Implementations/ProductClientService.cs; tesisproject.frontend/Services/Interfaces/IProductClientService.cs
+tesisproject.shared/DTOs/Products/Product/Request/ProductValueUpsertDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectProductsEditor.razor; tesisproject.frontend/Features/Projects/Components/VisitDetailPanel.razor
+tesisproject.shared/DTOs/Products/Product/Response/ProductAuthorResponseDTO.cs,KEEP_SHARED_RUNTIME,tesisproject.backend/Services/Unified/Implementations/UnifiedProductService.cs; tesisproject.shared/DTOs/Products/Product/Response/ProductDetailResponseDTO.cs
+tesisproject.shared/DTOs/Products/Product/Response/ProductDetailResponseDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Services/Implementations/ProductClientService.cs; tesisproject.frontend/Services/Interfaces/IProductClientService.cs
+tesisproject.shared/DTOs/Products/Product/Response/ProductListItemResponseDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Projects/Components/ProjectFinalizationTab.razor; tesisproject.frontend/Features/Projects/Components/ProjectProductsEditor.razor; tesisproject.frontend/Features/Projects/Components/VisitDetailPanel.razor; tesisproject.frontend/Features/Projects/Pages/ProjectDetail.razor; tesisproject.frontend/Services/Implementations/ProductClientService.cs; tesisproject.frontend/Services/Interfaces/IProductClientService.cs
+tesisproject.shared/DTOs/Products/Product/Response/ProductValueResponseDTO.cs,KEEP_SHARED_RUNTIME,tesisproject.backend/Services/Unified/Implementations/UnifiedProductService.cs; tesisproject.shared/DTOs/Products/Product/Response/ProductDetailResponseDTO.cs
+tesisproject.shared/DTOs/Products/ProductAttributeDefinition/Request/AddProductAttributeDefinitionRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Services/Implementations/ProductAttributeDefinitionClientService.cs; tesisproject.frontend/Services/Interfaces/IProductAttributeDefinitionClientService.cs
+tesisproject.shared/DTOs/Products/ProductAttributeDefinition/Request/ProductAttributeDefinitionUpsertDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/AppSettings/Components/ProductTypeDesignerTab.razor; tesisproject.frontend/Features/AppSettings/Pages/Settings.razor
+tesisproject.shared/DTOs/Products/ProductAttributeDefinition/Request/UpdateProductAttributeDefinitionRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Services/Implementations/ProductAttributeDefinitionClientService.cs; tesisproject.frontend/Services/Interfaces/IProductAttributeDefinitionClientService.cs
+tesisproject.shared/DTOs/Products/ProductAttributeDefinition/Response/ProductAttributeDefinitionDetailDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Services/Implementations/ProductAttributeDefinitionClientService.cs; tesisproject.frontend/Services/Interfaces/IProductAttributeDefinitionClientService.cs
+tesisproject.shared/DTOs/Products/ProductAttributeDefinition/Response/ProductAttributeDefinitionListItemDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Services/Implementations/ProductAttributeDefinitionClientService.cs; tesisproject.frontend/Services/Interfaces/IProductAttributeDefinitionClientService.cs
+tesisproject.shared/DTOs/Products/ProductTypeDesign/Request/ProductAttributeUpsertDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/AppSettings/Pages/Settings.razor
+tesisproject.shared/DTOs/Products/ProductTypeDesign/Request/ProductTypeUpsertDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/AppSettings/Pages/Settings.razor
+tesisproject.shared/DTOs/Products/ProductTypeDesign/Request/SaveProductTypeDesignRequestDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/AppSettings/Pages/Settings.razor; tesisproject.frontend/Services/Implementations/ProductTypeDesignClientService.cs; tesisproject.frontend/Services/Interfaces/IProductTypeDesignClientService.cs
+tesisproject.shared/DTOs/Products/ProductTypeDesign/Response/ProductTypeDesignDetailDTO.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/AppSettings/Components/ProductTypeDesignerTab.razor; tesisproject.frontend/Features/AppSettings/Pages/Settings.razor; tesisproject.frontend/Services/Implementations/ProductTypeDesignClientService.cs; tesisproject.frontend/Services/Interfaces/IProductTypeDesignClientService.cs
+tesisproject.shared/DTOs/Auth/AuthDtos.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Pages/Login.razor.cs; tesisproject.frontend/Services/Implementations/AuthClientService.cs; tesisproject.frontend/Services/Interfaces/IAuthClientService.cs
+tesisproject.shared/DTOs/Auth/CurrentSessionResponse.cs,KEEP_FRONTEND_CONTRACT,tesisproject.frontend/Features/Articles/Pages/ArticlesProfile.razor; tesisproject.frontend/Pages/Login.razor.cs; tesisproject.frontend/Services/Implementations/AuthClientService.cs; tesisproject.frontend/Services/Interfaces/IAuthClientService.cs

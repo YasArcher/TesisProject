@@ -1,0 +1,148 @@
+﻿registration,source
+services.AddDbContext<UnifiedDideDbContext>(configureDatabase);,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedUnitOfWork, UnifiedUnitOfWork>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<ICurrentUserService, CurrentUserService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<ITokenService, JwtTokenService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddHttpClient<IExternalDirectoryClient, ExternalDirectoryClient>(""ExternalApi"");",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddHttpClient<IExternalPeriodsClient, ExternalPeriodsClient>(""ExternalApi"");",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddHttpClient<IExternalAcademicsService, ExternalAcademicsService>(""ExternalApi"");",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddHttpClient<IExternalDistributivosService, ExternalDistributivosService>(""ExternalApi"");",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedFacultyRepository, UnifiedFacultyRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedAcademicTermRepository, UnifiedAcademicTermRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedAppConfigurationRepository, UnifiedAppConfigurationRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedAppUserRepository, UnifiedAppUserRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedAuthorRepository, UnifiedAuthorRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedBudgetRepository, UnifiedBudgetRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedConvocationRepository, UnifiedConvocationRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedDocumentRepository, UnifiedDocumentRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExportFieldRepository, UnifiedExportFieldRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExportTemplateColumnRepository, UnifiedExportTemplateColumnRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExportTemplateRepository, UnifiedExportTemplateRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExternalResearcherProjectRepository, UnifiedExternalResearcherProjectRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExternalResearcherRepository, UnifiedExternalResearcherRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedFacultyScopeFacultyRepository, UnifiedFacultyScopeFacultyRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedFacultyScopeRepository, UnifiedFacultyScopeRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedGroupMemberRepository, UnifiedGroupMemberRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedGroupRepository, UnifiedGroupRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedObjectiveActivityRepository, UnifiedObjectiveActivityRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedObjectiveActivityUserRepository, UnifiedObjectiveActivityUserRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductAuthorRepository, UnifiedProductAuthorRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductAttributeDefinitionRepository, UnifiedProductAttributeDefinitionRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductRepository, UnifiedProductRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductValueRepository, UnifiedProductValueRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectDocumentRepository, UnifiedProjectDocumentRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectExtensionRepository, UnifiedProjectExtensionRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectObjectiveRepository, UnifiedProjectObjectiveRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectRepository, UnifiedProjectRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectResearchCategoryRepository, UnifiedProjectResearchCategoryRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedResearchCategoryRepository, UnifiedResearchCategoryRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedUserFacultyScopeAssignmentRepository, UnifiedUserFacultyScopeAssignmentRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedVisitIssueRepository, UnifiedVisitIssueRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedVisitObjectiveActivityProgressRepository, UnifiedVisitObjectiveActivityProgressRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedVisitRepository, UnifiedVisitRepository>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<Country>, UnifiedCatalogRepository<Country>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<DocumentType>, UnifiedCatalogRepository<DocumentType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<FundingType>, UnifiedCatalogRepository<FundingType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<IndexingSource>, UnifiedCatalogRepository<IndexingSource>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<Institution>, UnifiedCatalogRepository<Institution>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<MemberRoleType>, UnifiedCatalogRepository<MemberRoleType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ObjectiveType>, UnifiedCatalogRepository<ObjectiveType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ProductAttribute>, UnifiedCatalogRepository<ProductAttribute>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ProductType>, UnifiedCatalogRepository<ProductType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ProjectExtensionType>, UnifiedCatalogRepository<ProjectExtensionType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ProjectOriginType>, UnifiedCatalogRepository<ProjectOriginType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ProjectState>, UnifiedCatalogRepository<ProjectState>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ProjectType>, UnifiedCatalogRepository<ProjectType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ResearchCategoryGroup>, UnifiedCatalogRepository<ResearchCategoryGroup>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<ResearchCategoryType>, UnifiedCatalogRepository<ResearchCategoryType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<TransactionType>, UnifiedCatalogRepository<TransactionType>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogRepository<VisitState>, UnifiedCatalogRepository<VisitState>>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedAuthorService, UnifiedAuthorService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedAuthService, UnifiedAuthService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedBudgetService, UnifiedBudgetService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped(typeof(IUnifiedCatalogCrudService<>), typeof(UnifiedCatalogCrudService<>));",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCatalogQueryService, UnifiedCatalogQueryService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedConvocationService, UnifiedConvocationService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedCountryService, UnifiedCountryService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedDocumentRecognitionService, UnifiedDocumentRecognitionService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedDocumentService, UnifiedDocumentService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExportTemplateExcelService, UnifiedExportTemplateExcelService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExportTemplateService, UnifiedExportTemplateService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExternalResearcherProjectService, UnifiedExternalResearcherProjectService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedExternalResearcherService, UnifiedExternalResearcherService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedFacultyScopeService, UnifiedFacultyScopeService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedGroupService, UnifiedGroupService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedIndexingSourceService, UnifiedIndexingSourceService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedInstitutionService, UnifiedInstitutionService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedMatrixExcelExportService, UnifiedMatrixExcelExportService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedMatrixTemplateExcelExportService, UnifiedMatrixTemplateExcelExportService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedMemberRoleTypeService, UnifiedMemberRoleTypeService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedObjectiveActivityService, UnifiedObjectiveActivityService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedObjectiveActivityUserService, UnifiedObjectiveActivityUserService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductAttributeDefinitionService, UnifiedProductAttributeDefinitionService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductAttributeService, UnifiedProductAttributeService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductService, UnifiedProductService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProductTypeDesignService, UnifiedProductTypeDesignService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectExtensionService, UnifiedProjectExtensionService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectFlatReportService, UnifiedProjectFlatReportService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectMatrixService, UnifiedProjectMatrixService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectObjectiveService, UnifiedProjectObjectiveService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectResearchCategoryService, UnifiedProjectResearchCategoryService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectService, UnifiedProjectService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedProjectsFiltersService, UnifiedProjectsFiltersService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedRefreshTokenService, UnifiedRefreshTokenService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedResearchCategoryService, UnifiedResearchCategoryService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedResearchCategoryTypeService, UnifiedResearchCategoryTypeService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedVisitIssueService, UnifiedVisitIssueService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedVisitObjectiveActivityProgressService, UnifiedVisitObjectiveActivityProgressService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedVisitService, UnifiedVisitService>();",tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedAcademicPeriodsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedAuthController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedBudgetsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedConvocationsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedCountriesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedDocumentRecognitionController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedDocumentsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedDocumentTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedExportTemplatesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedExternalAcademicsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedExternalPeriodsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedExternalResearcherProjectsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedExternalResearchersController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedFacultyScopesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedFundingTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedGroupsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedIndexingSourcesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedInstitutionsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedMemberRoleTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedObjectiveActivitiesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedObjectiveActivityUsersController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedObjectiveTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProductAttributeDefinitionsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProductAttributesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProductsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProductTypeDesignController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProductTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectExtensionsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectExtensionTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectMatrixController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectObjectivesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectOriginTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectResearchCategoryController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectsFiltersController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectStatesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedProjectTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedResearchCategoriesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedResearchCategoryGroupsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedResearchCategoryTypeController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedTransactionTypesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedVisitIssuesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedVisitObjectiveActivityProgressesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedVisitsController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+services.AddScoped<UnifiedVisitStatesController>();,tesisproject.backend/Services/Unified/UnifiedApplicationRegistration.cs
+"services.AddScoped<IUnifiedIdentityProvisioningService, UnifiedIdentityProvisioningService>();",tesisproject.backend/Services/Unified/UnifiedIdentityRegistration.cs
+"services.AddScoped<IUnifiedIdentityQueryService, UnifiedIdentityQueryService>();",tesisproject.backend/Services/Unified/UnifiedIdentityRegistration.cs
+"services.AddScoped<IUnifiedAppUserService, UnifiedAppUserService>();",tesisproject.backend/Services/Unified/UnifiedIdentityRegistration.cs
+return services.AddIdentityCore<IdentityUser<int>>(options =>,tesisproject.backend/Services/Unified/UnifiedIdentityRegistration.cs
+.AddEntityFrameworkStores<UnifiedDideDbContext>(),tesisproject.backend/Services/Unified/UnifiedIdentityRegistration.cs

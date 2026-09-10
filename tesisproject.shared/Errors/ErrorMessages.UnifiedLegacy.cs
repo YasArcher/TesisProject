@@ -6,6 +6,46 @@ public static partial class ErrorMessages
     // Kept separate to preserve current ServiceResult messages during the migration.
     public static class UnifiedLegacy
     {
+        public const string FacultyScopeService_ScopeAssignedMessage = "Scope assigned.";
+        public const string FacultyScopeService_ScopeUnassignedMessage = "Scope unassigned.";
+        public const string FacultyScopeService_UnableToResolveAppUserMessage = "Unable to resolve AppUser.";
+        public const string GroupService_AspNetUserNotFoundMessage = "ASP.NET user not found.";
+        public const string GroupService_DocumentRequiredMessage = "Document is required.";
+        public const string GroupService_ExternalPeriodsAndDistributivosLoadedMessage = "External periods and distributivos loaded";
+        public const string GroupService_ExternalUserNotFoundForGivenEmailMessage = "External user not found for the given email.";
+        public const string GroupService_ExternalUserResolvedByAspNetUserIdMessage = "External user resolved by ASP.NET user id";
+        public const string GroupService_ExternalUserRetrievedByEmailMessage = "External user retrieved by email";
+        public const string GroupService_ExternalUsersByGroupRetrievedMessage = "External users by group retrieved";
+        public const string GroupService_ExternalUsersRetrievedMessage = "External users retrieved";
+        public const string GroupService_FailedLoadingExternalDataMessage = "Failed loading external data.";
+        public const string GroupService_GroupCreatedMessage = "Group created";
+        public const string GroupService_GroupRetrievedMessage = "Group retrieved";
+        public const string GroupService_GroupUpdatedMessage = "Group updated";
+        public const string GroupService_GroupsByProjectRetrievedMessage = "Groups by project retrieved";
+        public const string GroupService_GroupsRetrievedMessage = "Groups retrieved";
+        public const string GroupService_InstitutionalEmailRequiredMessage = "Institutional email is required.";
+        public const string GroupService_MemberAddedToGroupMessage = "Member added to group";
+        public const string GroupService_MemberAlreadyDisabledMessage = "Member already disabled";
+        public const string GroupService_MemberDisabledMessage = "Member disabled";
+        public const string GroupService_MemberRoleRequiredMessage = "Member role is required.";
+        public const string GroupService_NoAssociatedAppUsersForProjectMembersMessage = "No associated app users found for project members.";
+        public const string GroupService_NoAssociatedAppUsersFoundMessage = "No associated app users found.";
+        public const string GroupService_NoExternalUsersMatchedGroupMembersMessage = "No external users matched the group members.";
+        public const string GroupService_NoGroupMembersFoundForProjectMessage = "No group members found for the project.";
+        public const string GroupService_NoGroupMembersFoundMessage = "No group members found.";
+        public const string GroupService_NoInstitutionalEmailsForProjectMembersMessage = "No institutional emails found for project members.";
+        public const string GroupService_NoLocalIdentityIdsForGroupMembersMessage = "No local identity ids found for group members.";
+        public const string GroupService_NoLocalIdentityIdsForProjectMembersMessage = "No local identity ids found for project members.";
+        public const string GroupService_NoProjectAssociatedToGroupMessage = "No project is associated to this group.";
+        public const string GroupService_NoValidEmailsFoundForUsersMessage = "No valid emails found for users.";
+        public const string GroupService_ProjectMembersReportGeneratedMessage = "Project members report generated.";
+        public const string GroupService_ProjectNotFoundOrNoAssociatedGroupMessage = "Project not found or it has no associated group.";
+        public const string GroupService_ProjectStartDateRequiredForReportMessage = "Project StartDate is required to generate the report.";
+        public const string GroupService_UserAlreadyMemberOfGroupMessage = "This user is already a member of the group.";
+        public const string GroupService_UserHasNoInstitutionalEmailMessage = "User has no institutional email.";
+        public const string ProjectMatrixService_MatrixFileProcessedMessage = "Matrix file processed.";
+        public const string ProjectMatrixService_WorkbookMissingThirdWorksheetMessage = "Workbook does not contain the expected third worksheet.";
+        public const string ProjectMatrixService_WorksheetNoDataMessage = "Worksheet does not contain data.";
         public const string ObjectiveActivityProgressBelowPreviousVisit = "You cannot set progress below {0}% because that was achieved before this visit.";
         public const string CatalogCrudService_NoItemsFoundMessage = "No items found for this catalog.";
         public const string CatalogQueryService_MsgNoItemsFound = "No items found.";

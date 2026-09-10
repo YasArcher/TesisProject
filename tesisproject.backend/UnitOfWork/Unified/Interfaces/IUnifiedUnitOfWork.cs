@@ -1,4 +1,6 @@
 using tesisproject.backend.Data.UnifiedEntities.Catalogs;
+using tesisproject.backend.Data.UnifiedEntities.Articles;
+using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Repositories.Unified.Interfaces;
 
 namespace tesisproject.backend.UnitOfWork.Unified.Interfaces;
@@ -8,6 +10,14 @@ namespace tesisproject.backend.UnitOfWork.Unified.Interfaces;
 /// </summary>
 public interface IUnifiedUnitOfWork : IAsyncDisposable
 {
+    IUnifiedArticleReadRepository ArticleReads { get; }
+    IUnifiedArticleRegistrationRepository ArticleRegistration { get; }
+    IUnifiedArticleConfigurationRepository ArticleConfiguration { get; }
+    IUnifiedArticleRegistrationMatrixRepository ArticleRegistrationMatrices { get; }
+    IGenericRepository<RegistrationMatrixColumn> RegistrationMatrixColumns { get; }
+    IGenericRepository<RegistrationMatrixRow> RegistrationMatrixRows { get; }
+    IGenericRepository<RegistrationMatrixCell> RegistrationMatrixCells { get; }
+    IGenericRepository<FieldCatalogEntry> ArticleFields { get; }
     IUnifiedFacultyRepository Faculties { get; }
     IUnifiedAcademicTermRepository AcademicTerms { get; }
     IUnifiedAppConfigurationRepository AppConfigurations { get; }
@@ -61,4 +71,6 @@ public interface IUnifiedUnitOfWork : IAsyncDisposable
     IUnifiedCatalogRepository<VisitState> VisitStates { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+    /// <summary>Owns a clean scope aggregate transaction. Provision Identity beforehand. Throw to roll back.</summary>
+    Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default);
 }

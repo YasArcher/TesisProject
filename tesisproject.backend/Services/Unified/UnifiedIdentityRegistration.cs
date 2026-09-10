@@ -6,9 +6,8 @@ using tesisproject.backend.Services.Unified.Interfaces;
 
 namespace tesisproject.backend.Services.Unified;
 
-// Deliberately not called by Program.cs: current controllers still use legacy services.
-// Future composition must register one scoped UnifiedDideDbContext and its Unified UoW
-// before using this extension; never combine it with the legacy Identity registration.
+// Called by AddUnifiedDide in the runtime composition. One scoped UnifiedDideDbContext
+// is shared with its Unified UoW; never combine this with a legacy Identity store.
 public static class UnifiedIdentityRegistration
 {
     public static IdentityBuilder AddUnifiedIdentityBoundary(this IServiceCollection services)

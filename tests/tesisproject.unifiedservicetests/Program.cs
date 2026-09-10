@@ -111,13 +111,18 @@ foreach (var type in classes)
             $"Legacy persistence dependency: {type.Name} -> {signature}");
     }
 }
-Check(typeof(IUnifiedUnitOfWork).GetProperties().Length == 50, "Handoff UoW contract includes 50 repositories after adding synchronized academic catalogs.");
+Check(typeof(IUnifiedUnitOfWork).GetProperties().Length == 58, "Unified UoW contract includes 58 repositories with Articles.");
 Check(typeof(IUnifiedProductService).GetMethod("CreateAsync") is not null && typeof(IUnifiedProductService).GetMethod("GetByIdAsync") is not null,
     "Product author-dependent methods are now operational.");
 await AtomicityTests.RunAsync(Check);
 await ProductTests.RunAsync(Check);
 await AcademicReferenceTests.RunAsync(Check);
 await IdentityProvisioningTests.RunAsync(Check);
+await UnifiedControllerTests.RunAsync(Check);
+await UnifiedRequestAdapterTests.RunAsync(Check);
+await CatalogSynchronizationTests.RunAsync(Check);
+await FacultyHierarchyTests.RunAsync(Check);
+await LocalCatalogConsumerTests.RunAsync(Check);
 Console.WriteLine($"PASS: {assertions} assertions; Author CRUD, distinct IDs, errors, commit boundaries, compiled dependency isolation. No database connection.");
 
 public class Stub : DispatchProxy

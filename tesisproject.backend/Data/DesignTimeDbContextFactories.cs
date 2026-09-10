@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using tesisproject.backend.Data.Articles;
 
 namespace tesisproject.backend.Data;
 
@@ -35,8 +34,6 @@ internal static class DesignTimeDatabaseConfiguration
         {
             if (typeof(TContext) == typeof(DwContext))
                 sql.MigrationsHistoryTable("__EFMigrationsHistory", "DW");
-            else if (typeof(TContext) == typeof(ArticlesDbContext))
-                sql.MigrationsHistoryTable("__EFMigrationsHistoryArticles", "dbo");
         }).Options;
     }
 }
@@ -51,10 +48,4 @@ public sealed class DwContextFactory : IDesignTimeDbContextFactory<DwContext>
 {
     public DwContext CreateDbContext(string[] args) =>
         new(DesignTimeDatabaseConfiguration.CreateOptions<DwContext>(args, "DefaultConnection"));
-}
-
-public sealed class ArticlesDbContextFactory : IDesignTimeDbContextFactory<ArticlesDbContext>
-{
-    public ArticlesDbContext CreateDbContext(string[] args) =>
-        new(DesignTimeDatabaseConfiguration.CreateOptions<ArticlesDbContext>(args, "ArticlesOltpConnection"));
 }

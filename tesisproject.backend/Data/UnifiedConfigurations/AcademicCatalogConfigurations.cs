@@ -43,6 +43,9 @@ public sealed class FacultyConfiguration : IEntityTypeConfiguration<Faculty>
     public void Configure(EntityTypeBuilder<Faculty> entity)
     {
         entity.HasIndex(x => x.ExternalFacultyId).IsUnique().HasFilter("[ExternalFacultyId] IS NOT NULL");
+        entity.HasOne(x => x.Parent).WithMany(x => x.Children)
+            .HasForeignKey(x => x.ParentFacultyId).OnDelete(DeleteBehavior.NoAction);
+        entity.HasIndex(x => x.ParentFacultyId);
         entity.Property(x => x.LastSyncedAt).HasColumnType("datetime2");
 
         entity.Property(x => x.Name).HasMaxLength(200).IsRequired();

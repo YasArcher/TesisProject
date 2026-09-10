@@ -49,8 +49,14 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 // =======================
                 // Faculties (local synchronized catalog)
                 // =======================
-                dto.Faculties = await _uow.Faculties.Query().Where(f => f.IsActive)
-                    .OrderBy(f => f.Name).Select(f => new KeyValueItemDTO { Id = f.FacultyId, Name = f.Name }).ToListAsync(ct);
+                var roots = await _uow.Faculties.Query().Where(f => f.ParentFacultyId == null)
+                    .OrderBy(f => f.Name).ToListAsync(ct);
+                if (roots.Count == 0)
+                    return ServiceResult<ProjectsFilterBootstrapDTO>.Fail(
+                        tesisproject.shared.Errors.ErrorMessages.AcademicReferences.FacultyNotSynchronized,
+                        ErrorType.NotFound, tesisproject.shared.Errors.ErrorCodes.AcademicReferences.FacultyNotSynchronized);
+                dto.Faculties = roots.Where(f => f.IsActive)
+                    .Select(f => new KeyValueItemDTO { Id = f.FacultyId, Name = f.Name }).ToList();
 
                 // =======================
                 // Funding

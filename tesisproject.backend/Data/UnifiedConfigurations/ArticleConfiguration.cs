@@ -14,8 +14,6 @@ public sealed class ArticleConfiguration : IEntityTypeConfiguration<Article>
 
         entity.HasIndex(x => x.ProductId).IsUnique();
 
-        entity.Property(x => x.Doi).HasMaxLength(200);
-        entity.Property(x => x.PublicationUrl).HasMaxLength(500);
         entity.Property(x => x.ProceedingsName).HasMaxLength(300);
         entity.Property(x => x.Proceedings).HasMaxLength(300);
         entity.Property(x => x.EventName).HasMaxLength(300);
@@ -65,10 +63,6 @@ public sealed class ArticleConfiguration : IEntityTypeConfiguration<Article>
             .HasForeignKey(x => x.VenueId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        entity.HasIndex(a => a.Doi)
-            .HasDatabaseName("UX_Articles_Doi_NotBlank")
-            .IsUnique()
-            .HasFilter("[Doi] IS NOT NULL AND [Doi] <> N''");
 
         entity.HasIndex(a => new { a.ExternalSource, a.ExternalId })
             .HasDatabaseName("IX_Articles_ExternalSource_ExternalId")

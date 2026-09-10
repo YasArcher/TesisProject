@@ -39,11 +39,17 @@ public sealed class UnifiedIdentityProvisioningService(
     {
         // These entry points provision institutional participants. Missing IdAsp is rejected;
         // no local-only institutional identity is inferred from an email address.
-        if (request is null || request.AspUserId is not > 0 || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Username))
+        if (request is null)
+            return ServiceResult<Resolution>.Fail(ErrorMessages.Common.RequestRequired, ErrorType.Validation, ErrorCodes.Common.RequestRequired);
+        var invalid = new Dictionary<string, string[]>();
+        if (request.AspUserId is not > 0) invalid[nameof(RegisterRequest.AspUserId)] = [ErrorMessages.Common.InvalidId];
+        if (string.IsNullOrWhiteSpace(request.Email)) invalid[nameof(RegisterRequest.Email)] = [ErrorMessages.Common.InvalidRequest];
+        if (string.IsNullOrWhiteSpace(request.Username)) invalid[nameof(RegisterRequest.Username)] = [ErrorMessages.Common.InvalidRequest];
+        if (invalid.Count > 0)
             return ServiceResult<Resolution>.Fail(ErrorMessages.Common.InvalidRequest, ErrorType.Validation, ErrorCodes.Common.InvalidRequest,
-                new Dictionary<string, string[]> { [nameof(RegisterRequest.AspUserId)] = [ErrorMessages.Common.InvalidRequest] });
+                invalid);
 
-        var bridge = await uow.AppUsers.GetByAspIdAsync(request.AspUserId.Value, ct);
+        var bridge = await uow.AppUsers.GetByAspIdAsync(request.AspUserId!.Value, ct);
         var byEmail = await users.FindByEmailAsync(request.Email.Trim());
         // IdAsp is the canonical identifier for an institutional user already known by DIDE.
         // Email and other profile data come from the external institutional source and may change

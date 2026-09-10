@@ -24,7 +24,6 @@ namespace tesisproject.backend.Services.Unified.Implementations
         private readonly IUnifiedIdentityQueryService _identityQuery;
         private readonly IExternalDirectoryClient _directory;
         private readonly ILogger<UnifiedGroupService> _logger;
-        private readonly IExternalPeriodsClient _periods;
         private readonly IExternalDistributivosService _distributivos;
 
 
@@ -116,7 +115,6 @@ namespace tesisproject.backend.Services.Unified.Implementations
             IUnifiedUnitOfWork uow,
             IExternalDirectoryClient directory,
             ILogger<UnifiedGroupService> logger,
-            IExternalPeriodsClient periods,
             IExternalDistributivosService distributivos,
             IUnifiedIdentityProvisioningService identity, IUnifiedIdentityQueryService identityQuery)
         {
@@ -125,7 +123,6 @@ namespace tesisproject.backend.Services.Unified.Implementations
             _identityQuery = identityQuery;
             _directory = directory;
             _logger = logger;
-            _periods = periods;
             _distributivos = distributivos;
         }
 
@@ -268,7 +265,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 if (!extLoad.Success || extLoad.Data is null)
                     return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(
                         extLoad.Message ?? ErrorMessages.UnifiedLegacy.GroupService_FailedLoadingExternalDataMessage,
-                        extLoad.Error);
+                        extLoad.Error, extLoad.ErrorCode, extLoad.ValidationErrors);
 
                 var periods = extLoad.Data.Periods;
                 var distributivos = extLoad.Data.Distributivos;
@@ -330,7 +327,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 if (!extLoad.Success || extLoad.Data is null)
                     return ServiceResult<ResolvedUserProfileDTO>.Fail(
                         extLoad.Message ?? ErrorMessages.UnifiedLegacy.GroupService_FailedLoadingExternalPeriodsDistributivosMessage,
-                        extLoad.Error
+                        extLoad.Error, extLoad.ErrorCode, extLoad.ValidationErrors
                     );
 
                 var dto = await ToExternalUserDTOAsync(
@@ -372,7 +369,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 if (!extLoad.Success || extLoad.Data is null)
                     return ServiceResult<ResolvedUserProfileDTO>.Fail(
                         extLoad.Message ?? ErrorMessages.UnifiedLegacy.GroupService_FailedLoadingExternalPeriodsDistributivosMessage,
-                        extLoad.Error
+                        extLoad.Error, extLoad.ErrorCode, extLoad.ValidationErrors
                     );
 
                 var dto = await ToExternalUserDTOAsync(
@@ -420,7 +417,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 if (!extLoad.Success || extLoad.Data is null)
                     return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(
                         extLoad.Message ?? ErrorMessages.UnifiedLegacy.GroupService_FailedLoadingExternalPeriodsDistributivosMessage,
-                        extLoad.Error
+                        extLoad.Error, extLoad.ErrorCode, extLoad.ValidationErrors
                     );
 
                 // 3) Mapear en paralelo usando lo ya cargado
@@ -484,19 +481,19 @@ namespace tesisproject.backend.Services.Unified.Implementations
         {
             if (request.FacultyId is null or <= 0)
                 return UnifiedAcademicReferencePreparation.Invalid<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>(nameof(request.FacultyId));
-            // ProjectDetail sends FacultyCareerId in this legacy field. Resolve its parent
-            // from the directory before looking up the synchronized local faculty.
+            // The legacy request carries an external career/root ID. Directory still
+            // verifies the person's affiliations; the academic parent is resolved locally.
             var profiles = await _directory.GetByEmailsAsync(new[] { request.Email.Trim() }, ct);
             if (!profiles.Success)
                 return UnifiedAcademicReferencePreparation.Relay<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty, IReadOnlyList<ExternalUserProfileModel>>(profiles);
             var careers = profiles.Data?.SelectMany(p => p.Careers ?? []).ToList() ?? [];
             var selected = careers.FirstOrDefault(c => c.FacultyCareerId == request.FacultyId);
-            var externalFacultyId = selected?.FacultyId ?? selected?.FacultyCareerId;
-            externalFacultyId ??= careers.Any(c => c.FacultyId == request.FacultyId) ? request.FacultyId : null;
-            if (!externalFacultyId.HasValue)
+            var externalNodeId = selected?.FacultyCareerId;
+            externalNodeId ??= careers.Any(c => c.FacultyId == request.FacultyId) ? request.FacultyId : null;
+            if (!externalNodeId.HasValue)
                 return ServiceResult<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>.Fail(
                     ErrorMessages.Project.FacultyCareerResolutionFailed, ErrorType.Validation, ErrorCodes.Project.FacultyCareerResolutionFailed);
-            return await UnifiedAcademicReferencePreparation.FacultyAsync(_uow, externalFacultyId.Value, ct);
+            return await UnifiedAcademicReferencePreparation.RootForCareerAsync(_uow, externalNodeId.Value, ct);
         }
 
         public async Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(
@@ -758,18 +755,12 @@ namespace tesisproject.backend.Services.Unified.Implementations
             IEnumerable<string> emails,
             CancellationToken ct)
         {
-            // ===== 1) Periodos (1 llamada)
-            var periodsRes = await _periods.GetAllAsync(ct);
+            // One local catalog read; distributivos remain live below.
+            var periodsRes = await UnifiedAcademicCatalogReads.PeriodsAsync(_uow, ct);
+            if (!periodsRes.Success)
+                return UnifiedAcademicReferencePreparation.Relay<ExternalPeriodsAndDistributivos, List<ExternalAcademicPeriodModel>>(periodsRes);
 
-            if (!periodsRes.Success || periodsRes.Data is null || periodsRes.Data.Count == 0)
-            {
-                return ServiceResult<ExternalPeriodsAndDistributivos>.Fail(
-                    periodsRes.Message ?? ErrorMessages.UnifiedLegacy.GroupService_NoAcademicPeriodsFoundMessage,
-                    periodsRes.Error == 0 ? ErrorType.NotFound : periodsRes.Error
-                );
-            }
-
-            var periods = periodsRes.Data
+            var periods = periodsRes.Data!
                 .Where(p => p is not null)
                 .Where(p => p.StartDate <= p.EndDate)
                 .OrderBy(p => p.StartDate)
@@ -882,7 +873,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                     .FirstOrDefaultAsync(ct);
 
                 if (projectInfo is null)
-                    return ServiceResult<ProjectMembersReportDTO>.Fail(ErrorMessages.UnifiedLegacy.GroupService_ProjectNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                    return ServiceResult<ProjectMembersReportDTO>.Fail(ErrorMessages.UnifiedLegacy.ProjectExtensionService_ProjectNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (projectInfo.GroupId <= 0)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
@@ -1007,14 +998,14 @@ namespace tesisproject.backend.Services.Unified.Implementations
                     : new Dictionary<string, ExternalUserProfileModel>(StringComparer.OrdinalIgnoreCase);
 
                 // =========================
-                // 8) Periodos académicos (externos) + Distributivos (externos)
+                // 8) Periodos académicos (snapshot local) + Distributivos (live)
                 // =========================
                 var extLoad = await LoadExternalPeriodsAndDistributivosAsync(emailsDistinct, ct);
                 if (!extLoad.Success || extLoad.Data is null)
                 {
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         extLoad.Message ?? ErrorMessages.UnifiedLegacy.GroupService_FailedLoadingExternalPeriodsDistributivosMessage,
-                        extLoad.Error
+                        extLoad.Error, extLoad.ErrorCode, extLoad.ValidationErrors
                     );
                 }
 

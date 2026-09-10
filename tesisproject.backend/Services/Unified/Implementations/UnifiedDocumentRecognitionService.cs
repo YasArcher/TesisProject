@@ -1,3 +1,4 @@
+using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,7 +24,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
         private readonly IExternalDirectoryClient _externalDirectory;
         private readonly IUnifiedMemberRoleTypeService _memberRoleTypeService;
         private readonly IUnifiedCatalogCrudService<ProjectType> _projectTypeService;
-        private readonly IExternalPeriodsClient _periods;
+        private readonly IUnifiedUnitOfWork _uow;
         private readonly IExternalDistributivosService _distributivos;
         private readonly DocumentRecognitionOptions _opt;
 
@@ -32,7 +33,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
             IExternalDirectoryClient externalDirectory,
             IUnifiedMemberRoleTypeService memberRoleTypeService,
             IUnifiedCatalogCrudService<ProjectType> projectTypeService,
-            IExternalPeriodsClient periods,
+            IUnifiedUnitOfWork uow,
             IExternalDistributivosService distributivos,
             IOptions<DocumentRecognitionOptions> options)
         {
@@ -40,7 +41,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
             _externalDirectory = externalDirectory;
             _memberRoleTypeService = memberRoleTypeService;
             _projectTypeService = projectTypeService;
-            _periods = periods;
+            _uow = uow;
             _distributivos = distributivos;
             _opt = options.Value;
         }
@@ -102,8 +103,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 await file.CopyToAsync(memoryStream, ct);
                 memoryStream.Position = 0;
 
-                var result = await ExtractDideProjectDataAsync(memoryStream, ct);
-                return ServiceResult<DideProjectFormInfo>.Ok(result);
+                return await ExtractDideProjectDataAsync(memoryStream, ct);
             }
             catch (OperationCanceledException)
             {
@@ -152,7 +152,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
             return Task.FromResult(info);
         }
 
-        private async Task<DideProjectFormInfo> ExtractDideProjectDataAsync(
+        private async Task<ServiceResult<DideProjectFormInfo>> ExtractDideProjectDataAsync(
             Stream pdfStream,
             CancellationToken ct)
         {
@@ -176,7 +176,8 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
             var researchers = DideProjectFormParser.ExtractResearchersFromMembersSection(membersSectionRaw);
 
-            await EnrichResearchersWithExternalDirectoryAsync(researchers, ct);
+            var enrichment = await EnrichResearchersWithExternalDirectoryAsync(researchers, ct);
+            if (!enrichment.Success) return UnifiedAcademicReferencePreparation.Relay<DideProjectFormInfo, bool>(enrichment);
             await ResolveMemberRolesAsync(researchers);
 
             var investigationType = DideProjectFormParser.DetectResearchType(rawText);
@@ -196,17 +197,17 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
             var objectives = DideProjectFormParser.ExtractAllSpecificObjectives(actividadesSectionRaw);
 
-            return new DideProjectFormInfo
+            return ServiceResult<DideProjectFormInfo>.Ok(new DideProjectFormInfo
             {
                 ProjectName = tituloBlockRaw,
                 Researchers = researchers,
                 ResearchLines = researchLines,
                 Objectives = objectives,
                 ResearchTypeId = investigationTypeId
-            };
+            });
         }
 
-        private async Task EnrichResearchersWithExternalDirectoryAsync(
+        internal async Task<ServiceResult<bool>> EnrichResearchersWithExternalDirectoryAsync(
             IList<ResearcherInfo> researchers,
             CancellationToken ct)
         {
@@ -218,25 +219,19 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 .ToList();
 
             if (emails.Count == 0)
-                return;
+                return ServiceResult<bool>.Ok(true);
 
             var externalResult = await _externalDirectory.GetByEmailsAsync(emails, ct);
             if (!externalResult.Success || externalResult.Data is null || externalResult.Data.Count == 0)
             {
                 _logger.LogWarning("No external profiles matched the detected emails.");
-                return;
+                return ServiceResult<bool>.Ok(true);
             }
 
-            var periodsRes = await _periods.GetAllAsync(ct);
-            var periods = (periodsRes.Success && periodsRes.Data is not null)
-                ? [.. periodsRes.Data
-                    .Where(p => p is not null)
-                    .Where(p => p.StartDate <= p.EndDate)
-                    .OrderBy(p => p.StartDate)]
-                : new List<ExternalAcademicPeriodModel>();
-
-            if (periods.Count == 0)
-                _logger.LogWarning("Academic periods not available; ProjectCareer selection may fallback to BestCareer.");
+            var periodsRes = await UnifiedAcademicCatalogReads.PeriodsAsync(_uow, ct);
+            if (!periodsRes.Success)
+                return UnifiedAcademicReferencePreparation.Relay<bool, List<ExternalAcademicPeriodModel>>(periodsRes);
+            var periods = periodsRes.Data!;
 
             var distRes = await _distributivos.GetDistributivosByCorreosAsync(emails, ct);
             var distributivos = (distRes.Success && distRes.Data is not null)
@@ -294,6 +289,10 @@ namespace tesisproject.backend.Services.Unified.Implementations
                         r.FacultyCareerId = chosen.FacultyCareerId;
                 }
             }
+            var references = await UnifiedAcademicReferencePreparation.FacultiesAsync(_uow,
+                researchers.Where(x => x.FacultyCareerId > 0).Select(x => x.FacultyCareerId), ct);
+            return references.Success ? ServiceResult<bool>.Ok(true)
+                : UnifiedAcademicReferencePreparation.Relay<bool, List<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>>(references);
         }
 
         private async Task<int?> ResolveInvestigationTypeAsync(

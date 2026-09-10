@@ -15,6 +15,7 @@ using tesisproject.backend.Services.Unified;
 using tesisproject.backend.Services.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
+using tesisproject.backend.UnitOfWork.Unified.Implementations;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.FacultyScope.Request;
@@ -53,6 +54,8 @@ internal static class IdentityProvisioningTests
             var query = f.Provider.GetRequiredService<IUnifiedIdentityQueryService>();
             check((await query.GetEmailByUserIdAsync(user!.Id))?.Email == user.Email, "Identity query uses same Unified store.");
             check((await query.GetUsernamesByUserIdsAsync([user.Id]))[user.Id] == "doc500", "Identity query resolves usernames by local ID.");
+            var defaultRole = await f.Identity.EnsureAsync(Request(501, "default@example.test", null));
+            check(defaultRole.Success && await f.Users.IsInRoleAsync((await f.Users.FindByEmailAsync("default@example.test"))!, "user"), "Unspecified role defaults to user.");
         }
         using (var f = await IdentityFixture.Create())
         {
@@ -92,6 +95,13 @@ internal static class IdentityProvisioningTests
         }
         using (var f = await IdentityFixture.Create())
         {
+            f.Probe.FailBridge = true;
+            var incomplete = await f.Identity.EnsureAsync(Request());
+            check(!incomplete.Success && await f.Context.Users.CountAsync() == 0 && await f.Context.AppUsers.CountAsync() == 0 && await f.Context.UserRoles.CountAsync() == 0,
+                "Failure inside new provisioning cleans up its incomplete account and roles, not a Project rollback.");
+        }
+        using (var f = await IdentityFixture.Create())
+        {
             await f.SeedDomain(); f.Probe.FailDomain = true;
             var result = await f.ProjectService().CreateFullAsync(f.FullRequest());
             check(!result.Success && await f.Context.Users.CountAsync() == 2 && await f.Context.AppUsers.CountAsync() == 2, "Project save failure preserves provisioned account and business bridge.");
@@ -113,9 +123,17 @@ internal static class IdentityProvisioningTests
             check(await f.Context.Users.CountAsync() == 2 && await f.Context.ExternalResearcherProjects.CountAsync() == 1, "ExternalResearcher linked without an Identity or AppUser provision.");
             check(f.Probe.Batches.Count(b => b.Contains(nameof(Project))) == 1, "CreateFull domain has one save.");
             var member = await f.Context.GroupMembers.AsNoTracking().SingleAsync(); f.Probe.Batches.Clear();
-            var group = new UnifiedGroupService(f.Uow, f.Directory, NullLogger<UnifiedGroupService>.Instance, f.Periods, f.Distributivos, f.Identity, f.Provider.GetRequiredService<IUnifiedIdentityQueryService>());
+            var group = new UnifiedGroupService(f.Uow, f.Directory, NullLogger<UnifiedGroupService>.Instance, f.Distributivos, f.Identity, f.Provider.GetRequiredService<IUnifiedIdentityQueryService>());
             var dup = await group.AddMemberAsync(new() { GroupId = member.GroupId, MemberRole = MemberRoleTypeIds.Coordinador, Email = "teacher@example.test", Document = "teacher", AspUserId = 501, FacultyId = 700 });
             check(!dup.Success && f.Probe.Batches.Count == 0 && (await f.Context.Users.CountAsync()) == 2, "Duplicate GroupMember fails without provisioning or role writes.");
+            var invalid = await group.AddMemberAsync(new() { GroupId = member.GroupId, MemberRole = MemberRoleTypeIds.Coordinador, Email = "new@example.test", Document = "new", AspUserId = 600, FacultyId = 999 });
+            check(!invalid.Success && f.Probe.Batches.Count == 0 && await f.Context.Users.CountAsync() == 2, "Invalid coordinator faculty fails before provisioning.");
+            var added = await group.AddMemberAsync(new() { GroupId = member.GroupId, MemberRole = MemberRoleTypeIds.Subrogante, Email = "alternate@example.test", Document = "alternate", AspUserId = 601 });
+            check(added.Success && await f.Context.GroupMembers.CountAsync() == 2 && f.Probe.Batches.Count(b => b.Contains(nameof(GroupMember))) == 1, "Group provisions selected alternate then saves membership once.");
+            var local = (await f.Users.FindByEmailAsync("teacher@example.test"))!.Id;
+            check((await group.GetExternalUserByAspNetIdAsync(local)).Success, "Group single Identity read is functional.");
+            check((await group.GetExternalUsersByGroupAsync(member.GroupId)).Success, "Group batch Identity read is functional.");
+            check((await group.GetProjectMembersReportAsync(r.Data!.ProjectId)).Success, "Members report uses Identity query boundary.");
         }
         using (var f = await IdentityFixture.Create())
         {
@@ -137,6 +155,18 @@ internal static class IdentityProvisioningTests
             check(await f.Context.Visits.AnyAsync(v => v.AcademicTermId == 8) && f.Probe.Batches.Count(b => b.Contains(nameof(Project))) == 1, "Import preserves local term ID and one domain save for entire batch.");
             check(f.Probe.Batches.Where(b => b.Contains(nameof(AppUser))).All(b => !b.Contains(nameof(Project)) && !b.Contains(nameof(Group))), "No Identity provisioning flushes prior imported rows.");
         }
+        {
+            // Upload must relay identity conflicts instead of reporting successful processing.
+            var project = Stub.For<IUnifiedProjectService>((m, a) => Task.FromResult(ServiceResult<int>.Fail(
+                ErrorMessages.IdentityProvisioning.MappingConflict, ErrorType.Conflict, ErrorCodes.IdentityProvisioning.MappingConflict)));
+            var matrix = new UnifiedProjectMatrixService(project, NullLogger<UnifiedProjectMatrixService>.Instance);
+            using var book = new ClosedXML.Excel.XLWorkbook(); book.AddWorksheet("One"); book.AddWorksheet("Two");
+            var sheet = book.AddWorksheet("Matrix"); sheet.Cell(1, 1).Value = "ESTADO"; sheet.Cell(2, 1).Value = "EN EJECUCION";
+            using var stream = new MemoryStream(); book.SaveAs(stream); stream.Position = 0;
+            var result = await matrix.UploadAsync(stream, "matrix.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            check(!result.Success && result.ErrorCode == ErrorCodes.IdentityProvisioning.MappingConflict && result.Error == ErrorType.Conflict,
+                "Matrix Upload relays Identity conflict metadata without false Success.");
+        }
     }
 }
 
@@ -144,10 +174,12 @@ internal sealed class IdentitySaveProbe : SaveChangesInterceptor
 {
     internal List<HashSet<string>> Batches { get; } = [];
     internal bool FailDomain;
+    internal bool FailBridge;
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        var names = eventData.Context!.ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).Select(e => e.Entity.GetType().Name).ToHashSet();
+        var names = eventData.Context!.ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted).Select(e => e.Entity.GetType().Name.Split('`')[0]).ToHashSet();
         Batches.Add(names);
+        if (FailBridge && names.Contains(nameof(AppUser))) throw new DbUpdateException("Injected bridge failure");
         if (FailDomain && names.Contains(nameof(Project))) throw new DbUpdateException("Injected domain failure");
         return ValueTask.FromResult(result);
     }
@@ -180,11 +212,13 @@ internal sealed class IdentityFixture : IDisposable
             foreach (var prop in typeof(IUnifiedUnitOfWork).GetProperties())
             {
                 // Test composition only: all repositories are the concrete Unified implementations.
-                var type = prop.PropertyType.IsGenericType ? typeof(UnifiedCatalogRepository<>).MakeGenericType(prop.PropertyType.GetGenericArguments())
+                var type = prop.PropertyType.IsGenericType ? (prop.PropertyType.GetGenericTypeDefinition() == typeof(IUnifiedCatalogRepository<>) ? typeof(UnifiedCatalogRepository<>) : typeof(UnifiedGenericRepository<>)).MakeGenericType(prop.PropertyType.GetGenericArguments())
                     : typeof(UnifiedFacultyRepository).Assembly.GetTypes().Single(t => t.Namespace == typeof(UnifiedFacultyRepository).Namespace && !t.IsAbstract && !t.IsInterface && prop.PropertyType.IsAssignableFrom(t));
                 repos[prop.Name] = Activator.CreateInstance(type, ctx)!;
             }
-            return Stub.For<IUnifiedUnitOfWork>((m, a) => m.Name == "DisposeAsync" ? ValueTask.CompletedTask : m.Name == "SaveChangesAsync" ? ctx.SaveChangesAsync((CancellationToken)a[0]!) : repos[m.Name[4..]]);
+            var parameters = typeof(UnifiedUnitOfWork).GetConstructors().Single().GetParameters()
+                .Select(p => p.ParameterType == typeof(UnifiedDideDbContext) ? (object)ctx : repos.Values.Single(r => p.ParameterType.IsInstanceOfType(r))).ToArray();
+            return (IUnifiedUnitOfWork)Activator.CreateInstance(typeof(UnifiedUnitOfWork), parameters)!;
         });
         services.AddUnifiedIdentityBoundary(); root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true }); scope = root.CreateScope();
     }
@@ -203,17 +237,17 @@ internal sealed class IdentityFixture : IDisposable
     internal async Task SeedDomain()
     {
         await SeedIdentity(17, "actor@example.test");
-        Context.AddRange(new AppUser { IdUser = 41, IdLocal = 17, IdAsp = 99 }, new Faculty { FacultyId = 7, ExternalFacultyId = 501, Name = "Engineering", Acronym = "ENG" }, new AcademicTerm { AcademicTermId = 8, ExternalPeriodId = 20261, Name = "2026 FIRST" },
+        Context.AddRange(new AppUser { IdUser = 41, IdLocal = 17, IdAsp = 99 }, new Faculty { FacultyId = 7, ExternalFacultyId = 501, Name = "Engineering", Acronym = "ENG" }, new Faculty { FacultyId = 29, ExternalFacultyId = 700, ParentFacultyId = 7, Name = "Software" }, new AcademicTerm { AcademicTermId = 8, ExternalPeriodId = 20261, Name = "2026 FIRST", StartDate = new(2026, 1, 1), EndDate = new(2026, 6, 30) },
+            new ProjectOriginType { Id = ProjectOriginTypeIds.Interno, Name = "Internal" }, new DocumentType { Id = DocumentTypeIds.ResolucionVisita, Name = "Visit resolution" },
             new Convocation { Id = 1, Name = "Call", Code = "CALL" }, new ProjectType { Id = ProjectTypeIds.Aplicada, Name = "Applied" }, new ProjectState { Id = ProjectStateIds.EnEjecucion, Name = "EN EJECUCION" },
             new GroupType { Id = GroupTypeIds.Integrantes, Name = "Members" }, new MemberRoleType { Id = MemberRoleTypeIds.Coordinador, Name = "Coordinator" }, new MemberRoleType { Id = MemberRoleTypeIds.Subrogante, Name = "Alternate" },
             new FacultyScope { FacultyScopeId = 4, Name = "Scope" }, new ExternalResearcher { ExternalResearcherId = 12, FullName = "External Person", Email = "external@example.test" });
         await Context.SaveChangesAsync(); Context.ChangeTracker.Clear(); Probe.Batches.Clear();
     }
-    internal AddProjectFullRequestDTO FullRequest() => new() { Project = new() { ProjectName = "Complete", ProjectTypeId = ProjectTypeIds.Aplicada, ProjectStateId = ProjectStateIds.EnEjecucion, ProjectCode = "ENG", ConvocationId = 1, StartDate = new(2026, 2, 1) },
+    internal AddProjectFullRequestDTO FullRequest() => new() { Project = new() { ProjectName = "Complete", ProjectTypeId = ProjectTypeIds.Aplicada, ProjectOriginTypeId = ProjectOriginTypeIds.Interno, ProjectStateId = ProjectStateIds.EnEjecucion, ProjectCode = "ENG", ConvocationId = 1, StartDate = new(2026, 2, 1) },
         GroupMembers = [new() { MemberRole = MemberRoleTypeIds.Coordinador, Email = "teacher@example.test", Document = "teacher", AspUserId = 501 }] };
     internal UnifiedProjectService ProjectService(IReadOnlyList<ExternalUserProfileModel>? profiles = null) => new(Uow, Current,
-        Stub.For<IExternalAcademicsService>((m, a) => Task.FromResult(ServiceResult<List<ExternalFacultyDTO>>.Ok([new() { FacultyId = 501, Name = "Engineering" }]))),
         Stub.For<IUnifiedResearchCategoryService>((m, a) => Task.FromResult(ServiceResult<IReadOnlyList<ResearchCategoryListItemDTO>>.Ok([]))),
-        NullLogger<UnifiedProjectService>.Instance, profiles is null ? Directory : DirectoryFor(profiles), Periods, Distributivos, Identity);
+        NullLogger<UnifiedProjectService>.Instance, profiles is null ? Directory : DirectoryFor(profiles), Distributivos, Identity);
     public void Dispose() { ((IAsyncDisposable)scope).DisposeAsync().AsTask().GetAwaiter().GetResult(); root.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
 }

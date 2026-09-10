@@ -96,3 +96,13 @@ línea 46 y AcademicReferenceTests línea 166, inspeccionados. Trazas bidireccio
 de FacultyAsync y AcademicTermAsync sin páginas pendientes; receptores tipados
 verificados para aristas heurísticas. Detalle de caminos, cobertura y limitaciones
 en [academic-references-report.md](academic-references-report.md#j-codebase-memory).
+
+
+## Cierre Identity / AppUser
+
+Refresh full terminado: 21308 nodos / 85346 aristas; generación reportada
+2026-09-07T18:17:23Z, registro 2026-09-07T18:22:19Z. Se verificaron las
+fronteras Identity, la composición de stores Unified y los callers del dominio.
+Las aristas heurísticas incorrectas se descartaron por receptor tipado en fuente.
+Persiste metadata_changed; se completó la evidencia con lectura directa y pruebas
+compiladas/ejecutadas. Detalle en [identity-boundary-report.md](identity-boundary-report.md#o-codebase-memory).

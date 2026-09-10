@@ -28,8 +28,6 @@ namespace tesisproject.backend.Services.Unified.Implementations
         private readonly IUnifiedUnitOfWork _uow;
         private readonly IUnifiedIdentityProvisioningService _identity;
         private readonly ICurrentUserService _currentUser;
-        private readonly IExternalPeriodsClient _externalPeriods;
-        private readonly IExternalAcademicsService _externalAcademics;
         private readonly IUnifiedResearchCategoryService _researchCategoryService;
         private readonly ILogger<UnifiedProjectService> _logger;
         private readonly IExternalDirectoryClient _externalDirectory;
@@ -65,22 +63,18 @@ namespace tesisproject.backend.Services.Unified.Implementations
         public UnifiedProjectService(
             IUnifiedUnitOfWork uow,
             ICurrentUserService currentUser,
-            IExternalAcademicsService externalAcademics,
             IUnifiedResearchCategoryService researchCategoryService,
             ILogger<UnifiedProjectService> logger,
             IExternalDirectoryClient externalDirectory,
-            IExternalPeriodsClient externalPeriods,
             IExternalDistributivosService externalDistributivosRaw,
             IUnifiedIdentityProvisioningService identity)
         {
             _uow = uow;
             _identity = identity;
             _currentUser = currentUser;
-            _externalAcademics = externalAcademics;
             _researchCategoryService = researchCategoryService;
             _logger = logger;
             _externalDirectory = externalDirectory;
-            _externalPeriods = externalPeriods;
             _externalDistributivosRaw = externalDistributivosRaw;
         }
 
@@ -532,6 +526,14 @@ namespace tesisproject.backend.Services.Unified.Implementations
                         return FailValidation<ProjectDetailResponseDTO>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
                 if (d is not null && d.DocumentId > 0 && !await _uow.Documents.ExistsAsync(x => x.DocumentId == d.DocumentId, ct))
                     return FailValidation<ProjectDetailResponseDTO>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
+                if (!await _uow.ProjectOriginTypes.ExistsAsync(x => x.Id == p.ProjectOriginTypeId, ct))
+                    return FailValidation<ProjectDetailResponseDTO>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
+                foreach (var budget in (request.Budgets ?? []).Where(b => b.FundingTypeId > 0 && b.InitialAmount > 0))
+                    if (!await _uow.FundingTypes.ExistsAsync(x => x.Id == budget.FundingTypeId, ct))
+                        return FailValidation<ProjectDetailResponseDTO>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
+                foreach (var objective in request.Objectives ?? [])
+                    if (!await _uow.ObjectiveTypes.ExistsAsync(x => x.Id == objective.ObjectiveTypeId, ct))
+                        return FailValidation<ProjectDetailResponseDTO>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
                     var registerDtos = request.GroupMembers!
                         .Select(m => new RegisterRequest
                         {
@@ -820,12 +822,14 @@ namespace tesisproject.backend.Services.Unified.Implementations
             ProjectStateId = dto.ProjectStateId,
             ProjectGroupId = dto.ProjectGroupId,
             ProjectName = dto.ProjectName,
+            ApprovalDate = dto.ApprovalDate,
             StartDate = dto.StartDate,
             TentativeEndDate = dto.StartDate?.AddMonths(dto.DurationInMonths),
             ExecutionPercentage = 0,
             DurationInMonths = dto.DurationInMonths,
             FacultyId = localFacultyId,
-            ConvocationId = dto.ConvocationId
+            ConvocationId = dto.ConvocationId,
+            ProjectOriginTypeId = dto.ProjectOriginTypeId
         };
 
         private static ICollection<ProjectObjectiveListItemDTO> MapToDTO(
@@ -1012,14 +1016,11 @@ namespace tesisproject.backend.Services.Unified.Implementations
             {
                 PhaseLog("Init", "Starting ImportFromMatrixAsync...");
 
-                var periodsResult = await _externalPeriods.GetAllAsync(ct);
-                if (!periodsResult.Success || periodsResult.Data is null || periodsResult.Data.Count == 0)
-                {
-                    PhaseLog("Init-Periods", "Cannot retrieve academic periods from external API.");
-                }
-
-                var academicPeriodsCache = periodsResult.Data?.ToList() ?? new List<ExternalAcademicPeriodModel>();
-                PhaseLog("Init", $"AcademicPeriods loaded (external): {academicPeriodsCache.Count}");
+                var localTerms = await UnifiedAcademicCatalogReads.TermsAsync(_uow, ct);
+                if (!localTerms.Success)
+                    return UnifiedAcademicReferencePreparation.Relay<int, List<tesisproject.backend.Data.UnifiedEntities.Articles.AcademicTerm>>(localTerms);
+                var academicPeriodsCache = UnifiedAcademicCatalogReads.Periods(localTerms.Data!);
+                var localPeriodIds = localTerms.Data!.ToDictionary(x => x.ExternalPeriodId!.Value, x => x.AcademicTermId);
 
                 var categoriesResult = await _researchCategoryService.ListAsync(
                     onlyActives: true,
@@ -1043,17 +1044,11 @@ namespace tesisproject.backend.Services.Unified.Implementations
                     .ToListAsync(ct);
                 PhaseLog("Init", $"Convocations loaded: {convocationsCache.Count}");
 
-                var facultiesResult = await _externalAcademics.GetFacultiesAsync(ct);
-                if (!facultiesResult.Success || facultiesResult.Data is null || facultiesResult.Data.Count == 0)
-                {
-                    PhaseLog("Init-Faculties", "Cannot retrieve faculties from external API.");
-                    return FailUnexpected<int>(
-                        ErrorMessages.Project.CannotRetrieveFaculties,
-                        ErrorCodes.Project.CannotRetrieveFaculties);
-                }
-
-                var externalFacultiesCache = facultiesResult.Data;
-                PhaseLog("Init-Faculties", $"External faculties loaded: {externalFacultiesCache.Count}");
+                var localFaculties = await UnifiedAcademicCatalogReads.FacultiesAsync(_uow, ct);
+                if (!localFaculties.Success)
+                    return UnifiedAcademicReferencePreparation.Relay<int, List<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>>(localFaculties);
+                var externalFacultiesCache = UnifiedAcademicCatalogReads.FacultyRoots(localFaculties.Data!);
+                var localFacultyIds = localFaculties.Data!.ToDictionary(x => x.ExternalFacultyId!.Value, x => x.FacultyId);
 
                 var projectStatesCache = await _uow.ProjectStates
                     .Query(asNoTracking: true)
@@ -1120,7 +1115,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
                         continue;
                     }
 
-                    var academic = await PrepareImportAcademicReferencesAsync(dto, externalFacultiesCache, academicPeriodsCache, ct);
+                    var academic = await PrepareImportAcademicReferencesAsync(dto, externalFacultiesCache, academicPeriodsCache, ct, localFacultyIds, localPeriodIds);
                     if (!academic.Success) return UnifiedAcademicReferencePreparation.Relay<int, PreparedImportAcademicReferences>(academic);
                     int? facultyId = academic.Data!.FacultyId;
                     int convocationId;
@@ -1191,6 +1186,23 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
                     if (!projectStateId.HasValue || projectStateId.Value <= 0) { skippedCount++; continue; }
                     if (!await _uow.Convocations.ExistsAsync(c => c.Id == convocationId, ct))
+                        return FailValidation<int>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
+                    var origin = (dto.ProjectCode ?? string.Empty).Trim().StartsWith("PE", StringComparison.OrdinalIgnoreCase)
+                        ? ProjectOriginTypeIds.Externo : ProjectOriginTypeIds.Interno;
+                    if (!await _uow.ProjectOriginTypes.ExistsAsync(x => x.Id == origin, ct) ||
+                        !await _uow.ProjectTypes.ExistsAsync(x => x.Id == ProjectTypeIds.Aplicada, ct) ||
+                        !await _uow.ProjectStates.ExistsAsync(x => x.Id == projectStateId.Value, ct) ||
+                        (dto.HasExternalParticipants && !await _uow.ExternalResearchers.ExistsAsync(x => x.ExternalResearcherId == 1, ct)) ||
+                        (dto.AssignedValue > 0 && !await _uow.FundingTypes.ExistsAsync(x => x.Id == FundingTypeIds.Interno, ct)) ||
+                        (!string.IsNullOrWhiteSpace(dto.GeneralObjective) && !await _uow.ObjectiveTypes.ExistsAsync(x => x.Id == ObjectiveTypeIds.General, ct)))
+                        return FailValidation<int>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
+                    var requiredDocumentTypes = new List<int>();
+                    if (academic.Data!.Visits.Count > 0) requiredDocumentTypes.Add(DocumentTypeIds.ResolucionVisita);
+                    if (dto.Extensions?.Count > 0) requiredDocumentTypes.Add(DocumentTypeIds.ResolucionProrroga);
+                    var finalDocumentInput = dto.Documents?.FirstOrDefault(d => d.DocumentType == "RESOLUCION INFORME FINAL HCU");
+                    if (finalDocumentInput is not null)
+                        requiredDocumentTypes.Add(ResolveDocumentTypeId(documentTypes, finalDocumentInput.DocumentType) ?? DocumentTypeIds.ResolucionInformeFinal);
+                    if (requiredDocumentTypes.Any(id => !documentTypes.Any(d => d.Id == id)))
                         return FailValidation<int>(ErrorMessages.Common.InvalidRequest, ErrorCodes.Common.InvalidRequest);
                     prepared.Add((dto, academic.Data!, convocationId, convocationEntity, projectStateId.Value,
                         SelectImportedMembers(dto, directoryCache, ct)));
@@ -1780,18 +1792,10 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
                 var profile = profRes.Data[0];
 
-                var periodsRes = await _externalPeriods.GetAllAsync(ct);
-                if (!periodsRes.Success || periodsRes.Data is null || periodsRes.Data.Count == 0)
-                {
-                    PhaseLog("Fase 1.2 - External Faculty Resolve",
-                        $"External periods not available. Error={periodsRes.Error}, Msg={periodsRes.Message}");
-
-                    return FailUnexpected<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>(
-                        ErrorMessages.Project.ExternalAcademicPeriodsNotAvailable,
-                        ErrorCodes.Project.ExternalAcademicPeriodsNotAvailable);
-                }
-
-                var periods = periodsRes.Data;
+                var periodsRes = await UnifiedAcademicCatalogReads.PeriodsAsync(_uow, ct);
+                if (!periodsRes.Success)
+                    return UnifiedAcademicReferencePreparation.Relay<tesisproject.backend.Data.UnifiedEntities.Articles.Faculty, List<ExternalAcademicPeriodModel>>(periodsRes);
+                var periods = periodsRes.Data!;
 
                 var distRawRes = await _externalDistributivosRaw.GetDistributivosByCorreosAsync(
                     new[] { principalCoordinatorEmail.Trim() },
@@ -1835,20 +1839,32 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 }
 
 
-            var externalFacultyId = selected.FacultyId ?? selected.FacultyCareerId;
-            return await UnifiedAcademicReferencePreparation.FacultyAsync(_uow, externalFacultyId, ct);
+            return await UnifiedAcademicReferencePreparation.RootForCareerAsync(_uow, selected.FacultyCareerId, ct);
         }
 
         // Does not create Project/Visit/Document or invoke Identity. Resolve the complete row first.
         internal async Task<ServiceResult<PreparedImportAcademicReferences>> PrepareImportAcademicReferencesAsync(
             ImportedProjectDTO dto, List<ExternalFacultyDTO> faculties,
-            List<ExternalAcademicPeriodModel> periods, CancellationToken ct = default)
+            List<ExternalAcademicPeriodModel> periods, CancellationToken ct = default,
+            IReadOnlyDictionary<int, int>? localFacultyIds = null, IReadOnlyDictionary<int, int>? localPeriodIds = null)
         {
+            ct.ThrowIfCancellationRequested();
             var externalFacultyId = ResolveFacultyExternalId(faculties, dto.Faculty ?? string.Empty);
             if (!externalFacultyId.HasValue)
                 return UnifiedAcademicReferencePreparation.Invalid<PreparedImportAcademicReferences>(nameof(dto.Faculty));
-            var faculty = await UnifiedAcademicReferencePreparation.FacultyAsync(_uow, externalFacultyId.Value, ct);
-            if (!faculty.Success) return UnifiedAcademicReferencePreparation.Relay<PreparedImportAcademicReferences, tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>(faculty);
+            int facultyId;
+            if (localFacultyIds is not null)
+            {
+                if (!localFacultyIds.TryGetValue(externalFacultyId.Value, out facultyId))
+                    return ServiceResult<PreparedImportAcademicReferences>.Fail(ErrorMessages.AcademicReferences.FacultyNotSynchronized,
+                        ErrorType.NotFound, ErrorCodes.AcademicReferences.FacultyNotSynchronized);
+            }
+            else
+            {
+                var faculty = await UnifiedAcademicReferencePreparation.FacultyAsync(_uow, externalFacultyId.Value, ct);
+                if (!faculty.Success) return UnifiedAcademicReferencePreparation.Relay<PreparedImportAcademicReferences, tesisproject.backend.Data.UnifiedEntities.Articles.Faculty>(faculty);
+                facultyId = faculty.Data!.FacultyId;
+            }
 
             var visits = new List<PreparedImportedVisit>();
             var executed = (dto.VisitPeriods ?? []).Where(v => v.HasReport && !string.IsNullOrWhiteSpace(v.RawValue)).ToList();
@@ -1856,18 +1872,27 @@ namespace tesisproject.backend.Services.Unified.Implementations
             {
                 var defaultExternalPeriodId = periods.OrderByDescending(p => p.PeriodId).Select(p => p.PeriodId).FirstOrDefault();
                 if (defaultExternalPeriodId <= 0)
-                    return ServiceResult<PreparedImportAcademicReferences>.Fail(ErrorMessages.Project.ExternalAcademicPeriodsNotAvailable,
-                        ErrorType.NotFound, ErrorCodes.Project.ExternalAcademicPeriodsNotAvailable);
-                foreach (var visit in executed)
+                    return ServiceResult<PreparedImportAcademicReferences>.Fail(ErrorMessages.AcademicReferences.AcademicTermNotSynchronized,
+                        ErrorType.NotFound, ErrorCodes.AcademicReferences.AcademicTermNotSynchronized);
+                // Resolve all visits as a batch; import callers reuse the initial catalog maps.
+                var resolved = executed.Select(visit => new { Visit = visit,
+                    ExternalId = ResolveExternalAcademicPeriodId(periods, visit.PeriodLabel) ?? defaultExternalPeriodId }).ToList();
+                if (localPeriodIds is null)
                 {
-                    // Preserve the legacy name similarity rule and latest-external-period fallback.
-                    var externalPeriodId = ResolveExternalAcademicPeriodId(periods, visit.PeriodLabel) ?? defaultExternalPeriodId;
-                    var term = await UnifiedAcademicReferencePreparation.AcademicTermAsync(_uow, externalPeriodId, ct);
-                    if (!term.Success) return UnifiedAcademicReferencePreparation.Relay<PreparedImportAcademicReferences, tesisproject.backend.Data.UnifiedEntities.Articles.AcademicTerm>(term);
-                    visits.Add(new PreparedImportedVisit(term.Data!.AcademicTermId, visit.RawValue!.Trim()));
+                    var ids = resolved.Select(x => x.ExternalId).Distinct().ToList();
+                    localPeriodIds = await _uow.AcademicTerms.Query()
+                        .Where(x => x.ExternalPeriodId.HasValue && ids.Contains(x.ExternalPeriodId.Value))
+                        .ToDictionaryAsync(x => x.ExternalPeriodId!.Value, x => x.AcademicTermId, ct);
+                }
+                foreach (var item in resolved)
+                {
+                    if (!localPeriodIds.TryGetValue(item.ExternalId, out var termId))
+                        return ServiceResult<PreparedImportAcademicReferences>.Fail(ErrorMessages.AcademicReferences.AcademicTermNotSynchronized,
+                            ErrorType.NotFound, ErrorCodes.AcademicReferences.AcademicTermNotSynchronized);
+                    visits.Add(new PreparedImportedVisit(termId, item.Visit.RawValue!.Trim()));
                 }
             }
-            return ServiceResult<PreparedImportAcademicReferences>.Ok(new(faculty.Data!.FacultyId, visits));
+            return ServiceResult<PreparedImportAcademicReferences>.Ok(new(facultyId, visits));
         }
 
         private static int? ResolveFacultyExternalId(
