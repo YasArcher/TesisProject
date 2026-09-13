@@ -15,12 +15,12 @@ public static class UnifiedDatabaseDeployment
         if (string.IsNullOrWhiteSpace(target.DataSource) || string.IsNullOrWhiteSpace(target.InitialCatalog) ||
             new[] { "master", "model", "msdb", "tempdb", "tesis_unified_poc" }.Contains(target.InitialCatalog, StringComparer.OrdinalIgnoreCase))
             throw new InvalidOperationException("Unified deployment requires a dedicated database, not a system database or historical POC.");
-        foreach (var name in new[] { "DefaultConnection", "ArticlesOltpConnection", "ArticlesOlapConnection" })
+        foreach (var name in new[] { "ProjectsDwConnection", "ArticlesDwConnection" })
         {
             var other = configuration.GetConnectionString(name);
             if (!string.IsNullOrWhiteSpace(other) && string.Equals(target.InitialCatalog,
                 new SqlConnectionStringBuilder(other).InitialCatalog, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Unified destination matches a legacy/DW database. Stopping.");
+                throw new InvalidOperationException("Unified destination matches a DW database. Stopping.");
         }
         return connection;
     }

@@ -17,8 +17,6 @@ var services = new ServiceCollection();
 services.AddUnifiedDide(new ConfigurationBuilder().Build(), o => o.UseSqlServer(
     $@"Server=.\DINNOVA;Database={database};Integrated Security=True;TrustServerCertificate=True",
     sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
-// The application's mixed composition must never make these repositories choose a legacy context.
-services.AddScoped<AppDbContext>(_ => throw new InvalidOperationException("Legacy context was resolved"));
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
 var db = scope.ServiceProvider.GetRequiredService<UnifiedDideDbContext>();

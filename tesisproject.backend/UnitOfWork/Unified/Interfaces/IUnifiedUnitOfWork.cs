@@ -73,4 +73,5 @@ public interface IUnifiedUnitOfWork : IAsyncDisposable
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     /// <summary>Owns a clean scope aggregate transaction. Provision Identity beforehand. Throw to roll back.</summary>
     Task<T> ExecuteInTransactionAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct = default);
+    Task SaveChangesInTransactionAsync(Func<CancellationToken, Task> afterSave, CancellationToken ct = default);
 }

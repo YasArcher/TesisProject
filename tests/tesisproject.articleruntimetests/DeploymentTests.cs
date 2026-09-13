@@ -8,11 +8,12 @@ internal static class DeploymentTests
     public static async Task RunAsync()
     {
         var count = 0;
-        IConfiguration Config(string? target, string? legacy = null) => new ConfigurationBuilder()
+        IConfiguration Config(string? target, string? warehouse = null) => new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:UnifiedDideConnection"] = target,
-                ["ConnectionStrings:DefaultConnection"] = legacy
+                ["ConnectionStrings:ProjectsDwConnection"] = warehouse,
+                ["ConnectionStrings:ArticlesDwConnection"] = warehouse
             }).Build();
         void Reject(IConfiguration config)
         {
@@ -23,8 +24,8 @@ internal static class DeploymentTests
         Reject(Config(null));
         foreach (var name in new[] { "master", "model", "msdb", "tempdb", "tesis_unified_poc" })
             Reject(Config($"Server=sql;Database={name};User Id=test;Password=test"));
-        Reject(Config("Server=sql;Database=legacy", "Server=other-alias;Database=LEGACY"));
-        _ = UnifiedDatabaseDeployment.GetValidatedConnection(Config("Server=sql;Database=unified;User Id=test;Password=test", "Server=sql;Database=legacy"));
+        Reject(Config("Server=sql;Database=warehouse", "Server=other-alias;Database=WAREHOUSE"));
+        _ = UnifiedDatabaseDeployment.GetValidatedConnection(Config("Server=sql;Database=unified;User Id=test;Password=test", "Server=sql;Database=warehouse"));
         count++;
 
         var database = "tesis_unified_deployment_test_" + Guid.NewGuid().ToString("N");
@@ -34,7 +35,7 @@ internal static class DeploymentTests
         try
         {
             // The actual published entry point in Production, without JWT/external config.
-            // An unreachable legacy source proves the migration job never opens it.
+            // Unreachable DW sources prove the Unified migration job never opens them.
             for (var run = 0; run < 2; run++)
             {
                 var start = new ProcessStartInfo(Path.Combine(Environment.GetEnvironmentVariable("DOTNET_ROOT")!, "dotnet.exe"))
@@ -44,7 +45,8 @@ internal static class DeploymentTests
                 start.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
                 start.Environment["DOTNET_ENVIRONMENT"] = "Production";
                 start.Environment["ConnectionStrings__UnifiedDideConnection"] = connection;
-                start.Environment["ConnectionStrings__DefaultConnection"] = "Server=127.0.0.1,1;Database=legacy;Integrated Security=True;Connect Timeout=1";
+                start.Environment["ConnectionStrings__ProjectsDwConnection"] = "Server=127.0.0.1,1;Database=projects_dw;Integrated Security=True;Connect Timeout=1";
+                start.Environment["ConnectionStrings__ArticlesDwConnection"] = "Server=127.0.0.1,1;Database=articles_dw;Integrated Security=True;Connect Timeout=1";
                 using var process = Process.Start(start)!;
                 var output = process.StandardOutput.ReadToEndAsync();
                 var error = process.StandardError.ReadToEndAsync();
@@ -59,6 +61,6 @@ internal static class DeploymentTests
             count++;
         }
         finally { await db.Database.EnsureDeletedAsync(); }
-        Console.WriteLine($"PASS: {count} deployment checks; Production CLI, fresh SQL migration chain, idempotent rerun, no legacy connection or invented seeds.");
+        Console.WriteLine($"PASS: {count} deployment checks; Production CLI, fresh SQL migration chain, idempotent rerun, no DW connection opened and no invented seeds.");
     }
 }

@@ -6,9 +6,14 @@ x-database-environment: &database-environment
     Password=${DB_PASS:?Set DB_PASS};
     TrustServerCertificate=True;
 
-  # AppDbContext se conserva únicamente por la dependencia actual de DW/ETL.
-  # migrate-unified NO toca esta base.
-  ConnectionStrings__DefaultConnection: >-
+  ConnectionStrings__ProjectsDwConnection: >-
+    Server=${DB_HOST:?Set DB_HOST},${DB_PORT:-1433};
+    Database=${DB_NAME:?Set DB_NAME};
+    User Id=${DB_USER:?Set DB_USER};
+    Password=${DB_PASS:?Set DB_PASS};
+    TrustServerCertificate=True;
+
+  ConnectionStrings__ArticlesDwConnection: >-
     Server=${DB_HOST:?Set DB_HOST},${DB_PORT:-1433};
     Database=${DB_NAME:?Set DB_NAME};
     User Id=${DB_USER:?Set DB_USER};
@@ -55,9 +60,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
 
-      # El job migrate-unified ya se encarga del contexto Unified.
-      # No ejecutar automáticamente migrations legacy/DW.
-      DatabaseBootstrap__ApplyMigrations: "false"
+      # Unified is migrated by migrate-unified. DW migrations remain explicit.
+      DatabaseBootstrap__ApplyDwMigrations: "false"
 
       ArticlesModule__Enabled: "true"
 
@@ -75,6 +79,9 @@ services:
       BootstrapSuperadmin__Email: ${BOOTSTRAP_SUPERADMIN_EMAIL:-}
       BootstrapSuperadmin__Username: ${BOOTSTRAP_SUPERADMIN_USERNAME:-}
       BootstrapSuperadmin__Password: ${BOOTSTRAP_SUPERADMIN_PASSWORD:-}
+
+      AdministrativeOperations__Enabled: ${ADMINISTRATIVE_OPERATIONS_ENABLED:-false}
+      AdministrativeOperations__Secret: ${ADMINISTRATIVE_OPERATIONS_SECRET:-}
 
       Storage__RootPath: /app/files
 

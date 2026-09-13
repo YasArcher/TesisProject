@@ -32,20 +32,22 @@ internal static class DesignTimeDatabaseConfiguration
 
         return new DbContextOptionsBuilder<TContext>().UseSqlServer(connection, sql =>
         {
-            if (typeof(TContext) == typeof(DwContext))
+            if (typeof(TContext) == typeof(ProjectsDwContext))
                 sql.MigrationsHistoryTable("__EFMigrationsHistory", "DW");
+            else if (typeof(TContext) == typeof(ArticlesDwContext))
+                sql.MigrationsHistoryTable("__EFMigrationsHistory", "ArticlesDW");
         }).Options;
     }
 }
 
-public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
+public sealed class ProjectsDwContextFactory : IDesignTimeDbContextFactory<ProjectsDwContext>
 {
-    public AppDbContext CreateDbContext(string[] args) =>
-        new(DesignTimeDatabaseConfiguration.CreateOptions<AppDbContext>(args, "DefaultConnection"));
+    public ProjectsDwContext CreateDbContext(string[] args) =>
+        new(DesignTimeDatabaseConfiguration.CreateOptions<ProjectsDwContext>(args, "ProjectsDwConnection"));
 }
 
-public sealed class DwContextFactory : IDesignTimeDbContextFactory<DwContext>
+public sealed class ArticlesDwContextFactory : IDesignTimeDbContextFactory<ArticlesDwContext>
 {
-    public DwContext CreateDbContext(string[] args) =>
-        new(DesignTimeDatabaseConfiguration.CreateOptions<DwContext>(args, "DefaultConnection"));
+    public ArticlesDwContext CreateDbContext(string[] args) =>
+        new(DesignTimeDatabaseConfiguration.CreateOptions<ArticlesDwContext>(args, "ArticlesDwConnection"));
 }

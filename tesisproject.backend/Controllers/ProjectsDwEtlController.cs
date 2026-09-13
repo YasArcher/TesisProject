@@ -1,0 +1,47 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Controllers.Extensions;
+using tesisproject.backend.Services.Analytic.Interfaces;
+using tesisproject.shared.Responses;
+
+namespace tesisproject.backend.Controllers
+{
+    [Authorize(Roles = "superadmin")]
+    [ApiController]
+    [Route("api/analytics/etl")]
+    //[Authorize(Roles = "Admin")] // o el rol que tú uses
+    public class ProjectsDwEtlController : ControllerBase
+    {
+        private readonly IProjectsDwEtlService _etlService;
+
+        public ProjectsDwEtlController(IProjectsDwEtlService etlService)
+        {
+            _etlService = etlService;
+        }
+
+        /// <summary>
+        /// Ejecuta el ETL completo del DW bajo demanda.
+        /// </summary>
+        [HttpPost("run-full")]
+        [HttpPost("~/api/etl/projects/full-load")]
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunFull(CancellationToken ct)
+        {
+            var result = await _etlService.RunFullLoadAsync(ct);
+            return result.ToActionResult();
+        }
+
+        // (Opcional) Endpoints separados si quieres lanzar partes específicas:
+
+        [HttpPost("dimensions")]
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunDimensions(CancellationToken ct)
+            => (await _etlService.LoadDimensionsAsync(ct)).ToActionResult();
+
+        [HttpPost("bridges")]
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunBridges(CancellationToken ct)
+            => (await _etlService.LoadBridgesAsync(ct)).ToActionResult();
+
+        [HttpPost("facts")]
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunFacts(CancellationToken ct)
+            => (await _etlService.LoadFactsAsync(ct)).ToActionResult();
+    }
+}

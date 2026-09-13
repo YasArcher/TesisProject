@@ -22,7 +22,7 @@ public sealed class UnifiedDideDbContextFactory : IDesignTimeDbContextFactory<Un
             .AddEnvironmentVariables().Build();
         var connection = configuration.GetConnectionString("UnifiedDideConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:UnifiedDideConnection is required.");
-        ValidateDestination(connection, new[] { "DefaultConnection", "ArticlesOltpConnection", "ArticlesOlapConnection" }
+        ValidateDestination(connection, new[] { "ProjectsDwConnection", "ArticlesDwConnection" }
             .Select(configuration.GetConnectionString));
 
         return new UnifiedDideDbContext(new DbContextOptionsBuilder<UnifiedDideDbContext>()

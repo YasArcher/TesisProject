@@ -123,7 +123,14 @@ await UnifiedRequestAdapterTests.RunAsync(Check);
 await CatalogSynchronizationTests.RunAsync(Check);
 await FacultyHierarchyTests.RunAsync(Check);
 await LocalCatalogConsumerTests.RunAsync(Check);
-Console.WriteLine($"PASS: {assertions} assertions; Author CRUD, distinct IDs, errors, commit boundaries, compiled dependency isolation. No database connection.");
+ProjectMatrixDateParsingTests.Run(Check);
+await AdministrationInfrastructureTests.RunAsync(Check);
+await DwEtlOperationTrackingTests.RunAsync(Check);
+await ArticlesDwSourceTests.RunAsync(Check);
+ArticlesDwModelTests.Run(Check);
+DwContextIsolationTests.Run(Check);
+await ArticlesDwEtlTests.RunAsync(Check);
+Console.WriteLine($"PASS: {assertions} assertions; Unified services, persistence boundaries and focused SQL integration checks completed.");
 
 public class Stub : DispatchProxy
 {

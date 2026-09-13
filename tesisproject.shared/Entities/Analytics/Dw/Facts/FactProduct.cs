@@ -18,7 +18,16 @@ namespace tesisproject.shared.Entities.Analytics.Dw.Facts
         public int ProductId { get; set; }
         public int ProjectId { get; set; }
 
+        [Required]
+        [MaxLength(1024)]
+        public string Title { get; set; } = string.Empty;
+
+        public string? Doi { get; set; }
+        public int? PublicationYear { get; set; }
+        public string? IssnIsbn { get; set; }
+
         public int ProductCount { get; set; }
+        public int AuthorCount { get; set; }
         public bool IsActiveFlag { get; set; }
 
         public int FacultyKey { get; set; }
@@ -28,6 +37,7 @@ namespace tesisproject.shared.Entities.Analytics.Dw.Facts
         // Nueva FK opcional
         public int? IndexingDatabaseKey { get; set; }
         public int? QuartileKey { get; set; }
+        public int? JournalKey { get; set; }
 
         // Navigations
         public DimFaculty Faculty { get; set; } = null!;
@@ -38,5 +48,7 @@ namespace tesisproject.shared.Entities.Analytics.Dw.Facts
 
         public DimIndexingDatabase? IndexingDatabase { get; set; }
         public DimQuartile? Quartile { get; set; }
+        public DimJournal? Journal { get; set; }
+        public ICollection<BridgeProductAuthor> Authors { get; set; } = new List<BridgeProductAuthor>();
     }
 }

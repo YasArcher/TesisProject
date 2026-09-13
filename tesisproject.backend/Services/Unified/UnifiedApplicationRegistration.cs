@@ -13,6 +13,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.backend.Services.Unified.Implementations;
+using tesisproject.backend.Services.Unified.DataMigrations.ProjectsInitialCatalog;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Implementations;
 
@@ -40,6 +41,14 @@ public static class UnifiedApplicationRegistration
         services.AddAuthorization();
         services.AddDbContext<UnifiedDideDbContext>(configureDatabase);
         services.AddScoped<IUnifiedUnitOfWork, UnifiedUnitOfWork>();
+        services.AddScoped<IOperationExecutionHistoryRepository, OperationExecutionHistoryRepository>();
+        services.AddScoped<IOperationExecutionHistoryService, OperationExecutionHistoryService>();
+        services.AddScoped<IDataMigrationService, DataMigrationService>();
+        services.AddScoped<IDataMigration, ProjectsInitialCatalogV1>();
+        services.AddOptions<AdministrativeOperationsOptions>()
+            .Bind(configuration.GetSection(AdministrativeOperationsOptions.SectionName));
+        services.AddScoped<IUnifiedProjectsDwSource, UnifiedProjectsDwSource>();
+        services.AddScoped<IUnifiedArticlesDwSource, UnifiedArticlesDwSource>();
         services.AddScoped<IUnifiedArticleRegistrationMatrixRepository, UnifiedArticleRegistrationMatrixRepository>();
         services.AddScoped<IGenericRepository<RegistrationMatrixColumn>, UnifiedGenericRepository<RegistrationMatrixColumn>>();
         services.AddScoped<IGenericRepository<RegistrationMatrixRow>, UnifiedGenericRepository<RegistrationMatrixRow>>();
@@ -83,6 +92,7 @@ public static class UnifiedApplicationRegistration
         services.AddScoped<IUnifiedFacultySynchronizationService, UnifiedFacultySynchronizationService>();
         services.AddScoped<IUnifiedAcademicTermSynchronizationService, UnifiedAcademicTermSynchronizationService>();
         services.AddScoped<UnifiedCatalogSynchronizationController>();
+        services.AddScoped<UnifiedAdministrativeOperationsController>();
         services.AddScoped<IUnifiedFacultyQueryService, UnifiedFacultyQueryService>();
         services.AddScoped<UnifiedFacultiesController>();
         services.AddUnifiedIdentityBoundary();

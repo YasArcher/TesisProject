@@ -60,33 +60,22 @@ Unique<AcademicTerm>("[ExternalPeriodId] IS NOT NULL", "ExternalPeriodId");
 Check(Fk<ProductAuthorDynamicFieldValue, ProductAuthor>("ProductAuthorId").IsRequired, "Participant extensions lost");
 Check(entities.Count(e => e.ClrType.Name == "IndexingSource") == 1, "Duplicate indexing catalog");
 
-// Build the existing contexts with inert options: adding Unified must not alter their model discovery.
-using var originalProjects = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
-    .UseSqlServer("Server=127.0.0.1,1;Database=OriginalModelOnly;Integrated Security=True").Options);
-Check(typeof(UnifiedDideDbContext).Assembly.GetType("tesisproject.backend.Data.Articles.ArticlesDbContext") == null,
-    "Historical Articles context must be excluded from runtime");
-Check(originalProjects.Model.GetEntityTypes().All(e => !e.ClrType.Namespace!.Contains("UnifiedEntities")),
-    "Unified types leaked into retained external context");
+Check(typeof(UnifiedDideDbContext).Assembly.GetType("tesisproject.backend.Data.AppDbContext") is null
+    && typeof(UnifiedDideDbContext).Assembly.GetType("tesisproject.backend.Data.Articles.ArticlesDbContext") is null,
+    "Legacy OLTP contexts must be absent from runtime");
 Check(readModels.Length == 1 && readModels[0].GetViewName() == "ArticleReadView" && readModels[0].FindPrimaryKey() == null,
     "Article read view must remain keyless");
-var unifiedTypeNames = entities.Select(e => e.ClrType.Name).ToHashSet();
-foreach (var oldEntity in originalProjects.Model.GetEntityTypes())
-{
-    var replacement = oldEntity.ClrType.Name switch
-    {
-        "ArticleParticipant" => "ProductAuthor",
-        "ArticleParticipantDynamicFieldValue" => "ProductAuthorDynamicFieldValue",
-        var name => name
-    };
-    Check(unifiedTypeNames.Contains(replacement), $"Operational entity was omitted: {oldEntity.ClrType.Name}");
-}
 
 var assembly = context.GetService<IMigrationsAssembly>();
-Check(assembly.Migrations.Keys.SequenceEqual(new[] { "20260906042715_InitialUnifiedDide", "20260908025200_AddFacultyHierarchy", "20260908194950_AddArticleReadView", "20260908201802_HardenArticleReadModel" }), "Unified migration selection changed or leaked other contexts");
+Check(assembly.Migrations.Keys.SequenceEqual(new[] { "20260906042715_InitialUnifiedDide", "20260908025200_AddFacultyHierarchy", "20260908194950_AddArticleReadView", "20260908201802_HardenArticleReadModel", "20260912174420_AddOperationExecutionHistory" }), "Unified migration selection changed or leaked other contexts");
 Check(!context.Database.HasPendingModelChanges(), "Migration snapshot differs from the final model");
 var migration = assembly.CreateMigration(assembly.Migrations.First().Value, context.Database.ProviderName!);
 var tables = migration.UpOperations.OfType<CreateTableOperation>().ToArray();
-Check(tables.Length == entities.Length, "Migration does not cover all model entities");
+var laterTables = assembly.Migrations.Skip(1)
+    .SelectMany(item => assembly.CreateMigration(item.Value, context.Database.ProviderName!).UpOperations)
+    .OfType<CreateTableOperation>().ToArray();
+Check(tables.Concat(laterTables).Select(t => t.Name).ToHashSet().SetEquals(entities.Select(e => e.GetTableName()!)),
+    "The complete Unified migration stream does not cover all model entities");
 Check(migration.UpOperations.All(o => o is EnsureSchemaOperation { Name: "dbo" }
     or CreateTableOperation { Schema: "dbo" } or CreateIndexOperation { Schema: "dbo" }), "Initial migration mutates existing objects");
 Check(tables.SelectMany(t => t.ForeignKeys).All(f => f.PrincipalSchema == "dbo" && f.OnDelete == ReferentialAction.NoAction), "Migration FK crosses schema or cascades");

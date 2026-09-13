@@ -16,6 +16,7 @@ using tesisproject.backend.Data.UnifiedEntities.Articles;
 using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Contracts;
+using tesisproject.backend.Services.Unified.Contracts.Administration;
 using tesisproject.backend.Services.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
@@ -37,6 +38,8 @@ internal static class CatalogSynchronizationTests
             Task<ServiceResult<CatalogSynchronizationResult>> Sync() => faculty ? fixture.FacultySync.SynchronizeAsync(cancellation.Token) : fixture.TermSync.SynchronizeAsync(cancellation.Token);
             var first = await Sync();
             check(first.Success && first.Data!.Inserted == (faculty ? 3 : 2) && first.Data.Updated == 0 && fixture.Saves == 1, "Initial catalog: all nodes inserted, one save");
+            check(fixture.HistoryStarts == 1 && fixture.HistorySuccesses == 1 && fixture.HistoryFailures == 0,
+                "Successful catalog synchronization records RUNNING then SUCCEEDED");
             check(first.Data!.Skipped == 0 && first.Data.TotalExternal == (faculty ? 3 : 2), "Snapshot counts include all hierarchy nodes");
             var timestamp = faculty ? fixture.Context.Set<Faculty>().Single(x => x.ExternalFacultyId == 501).LastSyncedAt : fixture.Context.Set<AcademicTerm>().Single(x => x.ExternalPeriodId == 20261).LastSyncedAt;
             var localId = faculty ? fixture.Context.Set<Faculty>().Single(x => x.ExternalFacultyId == 501).FacultyId : fixture.Context.Set<AcademicTerm>().Single(x => x.ExternalPeriodId == 20261).AcademicTermId;
@@ -85,8 +88,11 @@ internal static class CatalogSynchronizationTests
             if (faculty) check(!fixture.Context.Set<Faculty>().Single(x => x.ExternalFacultyId == 501).IsActive, "Absent faculty activation state preserved");
 
             fixture.Failure = true;
+            var failuresBefore = fixture.HistoryFailures;
             var failed = await Sync();
             check(!failed.Success && failed.ErrorCode == ErrorCodes.CatalogSynchronization.ProviderUnavailable && fixture.Saves == 3 && !fixture.Context.ChangeTracker.HasChanges(), "Provider failure: no changes/save");
+            check(fixture.HistoryFailures == failuresBefore + 1,
+                "Failed catalog synchronization remains recorded as FAILED");
             fixture.Failure = false; fixture.NullResponse = true;
             check((await Sync()).ErrorCode == ErrorCodes.CatalogSynchronization.InvalidResponse && fixture.Saves == 3, "Null successful payload rejected");
             fixture.NullResponse = false;
@@ -213,6 +219,9 @@ internal sealed class SyncFixture : IAsyncDisposable, IUnifiedAcademicCatalogSna
     public Action? CancelOnAdd { get; set; }
     public int Calls { get; private set; }
     public int Saves { get; private set; }
+    public int HistoryStarts { get; private set; }
+    public int HistorySuccesses { get; private set; }
+    public int HistoryFailures { get; private set; }
     public UnifiedFacultySynchronizationService FacultySync { get; }
     public UnifiedAcademicTermSynchronizationService TermSync { get; }
     public SyncFixture()
@@ -231,9 +240,39 @@ internal sealed class SyncFixture : IAsyncDisposable, IUnifiedAcademicCatalogSna
                 CancelOnAdd?.Invoke();
                 return Context.SaveChangesAsync((CancellationToken)args[0]!);
             }
+            if (method.Name == "ExecuteInTransactionAsync")
+                return ((Func<CancellationToken, Task<int>>)args[0]!)((CancellationToken)args[1]!);
             throw new InvalidOperationException(method.Name);
         });
-        FacultySync = new(uow, this, Context); TermSync = new(uow, this, Context);
+        var executionId = Guid.NewGuid();
+        var history = Stub.For<IOperationExecutionHistoryService>((method, _) => Track(method.Name));
+        var user = Stub.For<IUnifiedArticleUserContext>((method, _) => method.Name switch
+        {
+            "GetAppUserIdAsync" => Task.FromResult<int?>(1),
+            "get_DisplayName" => "Test Admin",
+            _ => false
+        });
+        FacultySync = new(uow, this, Context, history, user);
+        TermSync = new(uow, this, Context, history, user);
+
+        OperationExecutionItem Item(string status) => new(1, executionId,
+            OperationExecutionTypes.Synchronization, "TEST", null, status,
+            DateTime.UtcNow, status == OperationExecutionStatuses.Running ? null : DateTime.UtcNow,
+            1, "Test Admin", "test", null, null, null, null, null);
+        object Track(string methodName)
+        {
+            var status = methodName switch
+            {
+                "StartAsync" => OperationExecutionStatuses.Running,
+                "CompleteSuccessAsync" => OperationExecutionStatuses.Succeeded,
+                "CompleteFailureAsync" => OperationExecutionStatuses.Failed,
+                _ => throw new InvalidOperationException(methodName)
+            };
+            if (status == OperationExecutionStatuses.Running) HistoryStarts++;
+            else if (status == OperationExecutionStatuses.Succeeded) HistorySuccesses++;
+            else HistoryFailures++;
+            return Task.FromResult(Item(status));
+        }
     }
     public Task<ServiceResult<List<ExternalFacultyCareerFlatModel>>> GetFacultiesAsync(CancellationToken ct = default) => Snapshot(Faculties, ct);
     public Task<ServiceResult<List<ExternalAcademicPeriodModel>>> GetAcademicTermsAsync(CancellationToken ct = default) => Snapshot(Terms, ct);
