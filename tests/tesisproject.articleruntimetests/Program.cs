@@ -4,7 +4,7 @@ using tesisproject.backend.Data;
 if (args.Contains("baseline-source")) { await BaselineSource.InspectAsync(); return; }
 if (args.Contains("deployment-test")) { await DeploymentTests.RunAsync(); return; }
 if (args.Contains("superadmin-test")) { await SuperadminBootstrapTests.RunAsync(); return; }
-if (args.Contains("project-seed-test")) { await ProjectSeedTests.RunAsync(); return; }
+if (args.Contains("data-migration-test")) { await DataMigrationRuntimeTests.RunAsync(); return; }
 
 if (args.Contains("export-contracts")) { ControllerContractSnapshot.Export(typeof(tesisproject.backend.Controllers.Unified.UnifiedArticlesController).Assembly); return; }
 

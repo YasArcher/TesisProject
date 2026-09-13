@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
-using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
 
 namespace tesisproject.backend.Repositories.Implementations
@@ -9,8 +8,6 @@ namespace tesisproject.backend.Repositories.Implementations
     {
         protected readonly DbContext _ctx;
         protected readonly DbSet<T> _db;
-
-        public GenericRepository(AppDbContext ctx) : this((DbContext)ctx) { }
 
         protected GenericRepository(DbContext ctx)
         {

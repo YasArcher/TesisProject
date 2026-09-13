@@ -8,6 +8,17 @@ namespace tesisproject.shared.Errors
 {
     public static class ErrorCodes
     {
+        public static class AdministrativeOperations
+        {
+            public const string Disabled = "ADMIN_OPERATION_DISABLED";
+            public const string ConfigurationInvalid = "ADMIN_OPERATION_CONFIGURATION_INVALID";
+            public const string SecretInvalid = "ADMIN_OPERATION_SECRET_INVALID";
+            public const string DataMigrationNotFound = "DATA_MIGRATION_NOT_FOUND";
+            public const string DataMigrationAlreadyApplied = "DATA_MIGRATION_ALREADY_APPLIED";
+            public const string DataMigrationFailed = "DATA_MIGRATION_FAILED";
+            public const string OperationExecutionNotFound = "OPERATION_EXECUTION_NOT_FOUND";
+            public const string BulkImportAlreadyProcessed = "BULK_IMPORT_ALREADY_PROCESSED";
+        }
         public static class CatalogSynchronization
         {
             public const string ProviderUnavailable = "CATALOG_SYNC_PROVIDER_UNAVAILABLE";
@@ -281,6 +292,7 @@ namespace tesisproject.shared.Errors
         public static class ProjectMatrix
         {
             public const string FileStreamRequired = "PROJECT_MATRIX_FILE_STREAM_REQUIRED";
+            public const string InvalidFile = "PROJECT_MATRIX_INVALID_FILE";
         }
         public static class ResearchCategory
         {

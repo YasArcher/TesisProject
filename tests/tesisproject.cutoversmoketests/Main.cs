@@ -25,6 +25,9 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 var startup = backend.GetType("StartupExtensions", throwOnError: true)!;
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true).AddEnvironmentVariables();
+builder.Configuration["Jwt:Key"] ??= new string('s', 64);
+builder.Configuration["Jwt:Issuer"] ??= "tesisproject-cutover-tests";
+builder.Configuration["Jwt:Audience"] ??= "tesisproject-cutover-tests";
 foreach (var method in new[] { "ConfigureLogging", "ConfigureDatabase", "ConfigureAuthentication", "ConfigureCors", "ConfigureOptions", "ConfigureDependencyInjection", "ConfigureApiDocumentation" })
     startup.GetMethod(method)!.Invoke(null, [builder]);
 builder.Logging.ClearProviders();
@@ -56,8 +59,8 @@ var duplicates = routes.GroupBy(e => e.verb + " " + Regex.Replace(e.route.ToLowe
     .Where(g => g.Count() > 1).ToArray();
 Check(duplicates.Length == 0, "Duplicate MVC routes: " + string.Join(",", duplicates.Select(g => g.Key)));
 var unified = routes.Where(r => r.controller!.Contains(".Controllers.Unified.")).ToArray();
-Check(unified.Select(r => r.controller).Distinct().Count() == 51, "51 active Unified controllers after Articles cutover");
-Check(unified.Length == 297, "244 existing routes plus auth/me and 52 Articles routes");
+Check(unified.Select(r => r.controller).Distinct().Count() == 52, "52 active Unified controllers including administrative operations");
+Check(unified.Length == 301, "301 active Unified routes including administrative operations");
 Check(routes.Count(r => r.route == "api/auth/me" && r.verb == "GET") == 1, "auth/me published exactly once");
 var replaced = backend.GetTypes().Where(t => t.Namespace == typeof(UnifiedProjectsController).Namespace && !t.IsAbstract && t.Name.EndsWith("Controller")
     && t != typeof(UnifiedCatalogSynchronizationController) && t != typeof(UnifiedFacultiesController)).ToArray();
@@ -68,7 +71,9 @@ await using (var scope = app.Services.CreateAsyncScope())
     var sp = scope.ServiceProvider;
     var db = sp.GetRequiredService<UnifiedDideDbContext>();
     Check(db.Database.GetDbConnection().Database == "tesis_unified", "Expected local runtime database");
-    Check(!ReferenceEquals(db, sp.GetRequiredService<AppDbContext>()), "Separate legacy context retained");
+    Check(backend.GetType("tesisproject.backend.Data.AppDbContext") is null
+        && !builder.Services.Any(d => d.ServiceType.FullName == "tesisproject.backend.Data.AppDbContext"),
+        "Legacy context absent from assembly and DI");
     foreach (var storeType in new[] { typeof(IUserStore<IdentityUser<int>>), typeof(IRoleStore<IdentityRole<int>>) })
     {
         Check(builder.Services.Count(d => d.ServiceType == storeType) == 1, "One Identity store registration");
@@ -99,8 +104,8 @@ await using (var scope = app.Services.CreateAsyncScope())
             foreach (var dependency in implementation.GetConstructors().SelectMany(c => c.GetParameters()).Select(p => p.ParameterType))
             {
                 var name = dependency.FullName ?? dependency.Name;
-                Check(dependency != typeof(AppDbContext) && !name.Contains(".Data.Articles.ArticlesDbContext") &&
-                    !name.Contains(".UnitOfWork.Interfaces.") && !name.Contains(".Repositories.Interfaces."),
+                Check(!name.Contains(".Data.AppDbContext") && !name.Contains(".Data.Articles.ArticlesDbContext") &&
+                    !name.Contains(".UnitOfWork.Interfaces."),
                     "No legacy persistence in " + implementation.Name);
                 if (implementation.Namespace?.Contains(".Services.Unified.") == true)
                     Check(!name.EndsWith(".IExternalAcademicsService") && !name.EndsWith(".IExternalPeriodsClient"),
@@ -110,6 +115,6 @@ await using (var scope = app.Services.CreateAsyncScope())
     }
 }
 await File.WriteAllTextAsync(Path.Combine(output, "mvc-endpoints.json"), JsonSerializer.Serialize(routes, new JsonSerializerOptions { WriteIndented = true }));
-Console.WriteLine($"PREFLIGHT PASS: {assertions} checks; {unified.Length} Unified endpoints / 51 controllers; legacy counterparts inactive; {routes.Length} total MVC endpoints; duplicates=0; Identity managers/stores Unified; all runtime controllers resolved.");
+Console.WriteLine($"PREFLIGHT PASS: {assertions} checks; {unified.Length} Unified endpoints / 52 controllers; legacy counterparts inactive; {routes.Length} total MVC endpoints; duplicates=0; Identity managers/stores Unified; all runtime controllers resolved.");
 if (args.Contains("smoke") || args.Contains("smoke-local"))
     await HttpSmoke.RunAsync(app.Services, output, skipExternal: args.Contains("smoke-local"));

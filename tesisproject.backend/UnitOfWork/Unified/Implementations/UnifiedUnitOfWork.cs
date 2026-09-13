@@ -220,6 +220,25 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
         }
     }
 
+    public async Task SaveChangesInTransactionAsync(Func<CancellationToken, Task> afterSave, CancellationToken ct = default)
+    {
+        if (_context.Database.CurrentTransaction is not null)
+            throw new InvalidOperationException("A transaction is already active.");
+        await using var transaction = await _context.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+            await afterSave(ct);
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            try { await transaction.RollbackAsync(CancellationToken.None); }
+            finally { _context.ChangeTracker.Clear(); }
+            throw;
+        }
+    }
+
     // The scoped DI container owns the injected context and disposes it once.
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

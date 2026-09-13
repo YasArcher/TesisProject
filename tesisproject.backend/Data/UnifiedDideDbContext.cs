@@ -5,7 +5,7 @@ using tesisproject.backend.Data.UnifiedConfigurations;
 
 namespace tesisproject.backend.Data;
 
-/// <summary>Complete operational DIDE model. Application DI still uses the original contexts.</summary>
+/// <summary>Canonical operational DIDE model and Identity store.</summary>
 public sealed partial class UnifiedDideDbContext
     : IdentityDbContext<IdentityUser<int>, IdentityRole<int>, int>
 {

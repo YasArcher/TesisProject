@@ -8,6 +8,16 @@ namespace tesisproject.shared.Errors
 {
     public static partial class ErrorMessages
     {
+        public static class AdministrativeOperations
+        {
+            public const string Disabled = "Las operaciones administrativas están deshabilitadas.";
+            public const string ConfigurationInvalid = "La configuración de operaciones administrativas no es válida.";
+            public const string SecretInvalid = "El secreto de operación administrativa no es válido.";
+            public const string DataMigrationNotFound = "No se encontró la migración de datos solicitada.";
+            public const string DataMigrationAlreadyApplied = "La migración de datos ya fue aplicada.";
+            public const string DataMigrationFailed = "La migración de datos no pudo completarse.";
+            public const string BulkImportAlreadyProcessed = "El mismo contenido ya fue importado correctamente.";
+        }
         public static class IdentityProvisioning
         {
             public const string MappingConflict = "Institutional identity conflicts with the existing local account link.";

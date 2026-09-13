@@ -1,6 +1,11 @@
-using tesisproject.backend.Services.Interfaces;
+using tesisproject.shared.DTOs.Articles;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Unified.Interfaces;
 
-// Opt-in contract: legacy HTTP registration remains bound to its existing service.
-public interface IUnifiedArticleRegistrationCommandService : IArticleRegistrationCommandService { }
+public interface IUnifiedArticleRegistrationCommandService
+{
+    Task<ServiceResult<RegisterArticleAggregateResponse>> RegisterAsync(
+        RegisterArticleAggregateRequest request,
+        CancellationToken ct = default);
+}

@@ -8,7 +8,6 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Data.UnifiedEntities.Articles;
 using tesisproject.backend.Data.UnifiedEntities.Auth;
 using tesisproject.backend.Data.UnifiedEntities.Core;
-using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Unified;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.shared.Auth.Articles;
@@ -46,8 +45,9 @@ async Task<T> Matrix<T>(Func<IUnifiedRegistrationMatrixService, Task<T>> action)
 try
 {
     Check(true, "Full AddUnifiedDide composition passes ValidateOnBuild/ValidateScopes");
-    Check(!builder.Services.Any(d => d.ServiceType == typeof(IRegistrationMatrixService) || d.ServiceType == typeof(IArticleQueryService) || d.ServiceType == typeof(IArticleUserContext)),
-        "Unified registrations do not cut over legacy service contracts");
+    Check(typeof(UnifiedDideDbContext).Assembly.GetType("tesisproject.backend.Data.AppDbContext") is null
+        && typeof(UnifiedDideDbContext).Assembly.GetType("tesisproject.backend.Services.Interfaces.IArticleUserContext") is null,
+        "Legacy context and Article service contracts are absent");
     await db.Database.MigrateAsync();
     var title = new FieldCatalogEntry { EntityName = "Article", FieldKey = "Title", FieldLabel = "Title", DataType = "string", SourceType = "Physical",
         IsActive = true, IsVisible = true, IsEditable = true, CreatedAt = DateTime.UtcNow };

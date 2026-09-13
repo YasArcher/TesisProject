@@ -22,6 +22,8 @@ namespace tesisproject.backend.Services.Unified.Interfaces
         Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(AddProjectFullRequestDTO request, CancellationToken ct = default);
         Task<ServiceResult<NoContent>> UpdateResearchCategoriesAsync(int projectId, List<int> researchCategoryIds, CancellationToken ct = default);
 
-        Task<ServiceResult<int>> ImportFromMatrixAsync(ProjectMatrixUploadSummaryDTO summary, CancellationToken ct = default);
+        Task<ServiceResult<int>> ImportFromMatrixAsync(ProjectMatrixUploadSummaryDTO summary,
+            CancellationToken ct = default,
+            Func<int, CancellationToken, Task>? afterDomainSave = null);
     }
 }

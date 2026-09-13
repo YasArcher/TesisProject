@@ -1005,7 +1005,8 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
         public async Task<ServiceResult<int>> ImportFromMatrixAsync(
             ProjectMatrixUploadSummaryDTO summary,
-            CancellationToken ct = default)
+            CancellationToken ct = default,
+            Func<int, CancellationToken, Task>? afterDomainSave = null)
         {
             void PhaseLog(string phase, string message)
             {
@@ -1549,7 +1550,11 @@ namespace tesisproject.backend.Services.Unified.Implementations
                     createdCount++;
                 }
 
-                await _uow.SaveChangesAsync(ct);
+                if (afterDomainSave is null)
+                    await _uow.SaveChangesAsync(ct);
+                else
+                    await _uow.SaveChangesInTransactionAsync(
+                        transactionCt => afterDomainSave(createdCount, transactionCt), ct);
 
                 PhaseLog("Result",
                     $"Created={createdCount}, Skipped={skippedCount}");

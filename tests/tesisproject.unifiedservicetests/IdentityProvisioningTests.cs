@@ -14,6 +14,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Unified;
 using tesisproject.backend.Services.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
+using tesisproject.backend.Services.Unified.Contracts.Administration;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Implementations;
 using tesisproject.shared.DTOs.Auth;
@@ -159,7 +160,29 @@ internal static class IdentityProvisioningTests
             // Upload must relay identity conflicts instead of reporting successful processing.
             var project = Stub.For<IUnifiedProjectService>((m, a) => Task.FromResult(ServiceResult<int>.Fail(
                 ErrorMessages.IdentityProvisioning.MappingConflict, ErrorType.Conflict, ErrorCodes.IdentityProvisioning.MappingConflict)));
-            var matrix = new UnifiedProjectMatrixService(project, NullLogger<UnifiedProjectMatrixService>.Instance);
+            var executionId = Guid.NewGuid();
+            var running = new OperationExecutionItem(1, executionId, OperationExecutionTypes.BulkImport,
+                OperationCodes.ProjectsMatrixImport, null, OperationExecutionStatuses.Running,
+                DateTime.UtcNow, null, 1, "Test", "test", "matrix.xlsx", null, null, null, null);
+            var history = Stub.For<IOperationExecutionHistoryService>((m, a) => m.Name switch
+            {
+                "StartAsync" => Task.FromResult(running),
+                "FindSuccessfulAsync" => Task.FromResult<OperationExecutionItem?>(null),
+                "GetAsync" => Task.FromResult<OperationExecutionItem?>(running),
+                "CompleteFailureAsync" => Task.FromResult(running with { Status = OperationExecutionStatuses.Failed }),
+                _ => throw new InvalidOperationException(m.Name)
+            });
+            var uow = Stub.For<IUnifiedUnitOfWork>((m, a) => m.Name == "ExecuteInTransactionAsync"
+                ? ((Func<CancellationToken, Task<int>>)a[0]!)((CancellationToken)a[1]!)
+                : throw new InvalidOperationException(m.Name));
+            var user = Stub.For<IUnifiedArticleUserContext>((m, _) => m.Name switch
+            {
+                "GetAppUserIdAsync" => Task.FromResult<int?>(1),
+                "get_DisplayName" => "Test",
+                _ => false
+            });
+            var matrix = new UnifiedProjectMatrixService(project,
+                NullLogger<UnifiedProjectMatrixService>.Instance, uow, history, user);
             using var book = new ClosedXML.Excel.XLWorkbook(); book.AddWorksheet("One"); book.AddWorksheet("Two");
             var sheet = book.AddWorksheet("Matrix"); sheet.Cell(1, 1).Value = "ESTADO"; sheet.Cell(2, 1).Value = "EN EJECUCION";
             using var stream = new MemoryStream(); book.SaveAs(stream); stream.Position = 0;

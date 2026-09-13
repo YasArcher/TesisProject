@@ -12,9 +12,9 @@ Compose ahora inicia:
 2. `api`: arranca solo si el job terminó correctamente. Projects, Articles e Identity usan UnifiedDideConnection; Articles queda habilitado. Luego el arranque habitual asegura los roles Identity.
 3. `web`: expone el puerto WEB_HOST_PORT y conserva el proxy al servicio `api`.
 
-El comando de migración se ejecuta antes de componer HTTP/Identity/servicios. Acepta SQL Authentication de despliegue y no modifica el factory local, que conserva su restricción Development/Windows. Rechaza bases de sistema, el POC histórico y nombres de BD coincidentes con las conexiones legacy/DW configuradas. Un conflicto SQL produce salida distinta de cero y bloquea el inicio dependiente; no se corrigen datos automáticamente.
+El comando de migración se ejecuta antes de componer HTTP/Identity/servicios. Acepta SQL Authentication de despliegue y no modifica el factory local, que conserva su restricción Development/Windows. Rechaza bases de sistema, el POC histórico y nombres de BD coincidentes con las conexiones DW configuradas. Un conflicto SQL produce salida distinta de cero y bloquea el inicio dependiente; no se corrigen datos automáticamente.
 
-`DatabaseBootstrap__ApplyMigrations=false` evita ejecutar el bootstrap anterior de AppDbContext/DW. DefaultConnection se conserva exclusivamente para la dependencia DW/ETL existente. Esa base debe estar aprovisionada como antes: este Compose no la crea ni migra. Las conexiones archivadas ArticlesOltp/ArticlesOlap ya no forman parte del despliegue OLTP.
+`DatabaseBootstrap__ApplyDwMigrations=false` mantiene las migrations de ambos DW fuera del arranque normal. `DefaultConnection`, `AppDbContext` y las conexiones OLTP históricas ya no forman parte del runtime.
 
 ## Configuración y uso
 
@@ -23,9 +23,9 @@ Crear `.env` a partir de `.env.example` sin sobrescribir un `.env` existente. Co
 Las conexiones de Docker se suministran exclusivamente por Compose desde `.env`; no agregarlas a `appsettings.Development.json`. Para ejecutar el backend o las herramientas EF fuera de Docker, usar `tesisproject.backend/appsettings.Local.json` (ignorado por Git y excluido de las imágenes) o variables de entorno. El arranque Development y el factory local ya cargan ese archivo.
 
 - DB_HOST/DB_PORT: SQL Server accesible por TCP desde contenedores. No usar autenticación integrada de Windows dentro de Linux.
-- DB_USER/DB_PASS: login SQL con permisos para aplicar migrations en UNIFIED_DB_NAME y con el acceso legacy requerido por las funciones DW conservadas.
+- DB_USER/DB_PASS: login SQL con permisos para aplicar migrations en UNIFIED_DB_NAME y acceder a los warehouses.
 - UNIFIED_DB_NAME: base canónica separada, por defecto `tesis_unified`.
-- DB_NAME: base legacy/DW existente; debe ser diferente de UNIFIED_DB_NAME.
+- DB_NAME: base física de DW; debe ser diferente de UNIFIED_DB_NAME.
 - JWT_KEY: secreto aleatorio de al menos 32 caracteres; JWT_ISSUER/JWT_AUDIENCE deben coincidir entre emisores/validadores del despliegue.
 - STORAGE_HOST_PATH: directorio persistente del host; en Linux usar una ruta absoluta Linux con permisos apropiados.
 - EXTERNAL_APIS_BASE_URL: directorio/APIs institucionales accesibles desde el backend.

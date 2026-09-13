@@ -8,6 +8,9 @@ namespace tesisproject.shared.DTOs.Matrices.Response
         public int DataRows { get; set; }
         public int SkippedRows { get; set; }
 
+        /// <summary>Successful execution that already processed the same file content.</summary>
+        public Guid? PreviousExecutionId { get; set; }
+
         public List<string> Headers { get; set; } = new();
 
         public List<ProjectMatrixUploadErrorDTO> Errors { get; set; } = new();

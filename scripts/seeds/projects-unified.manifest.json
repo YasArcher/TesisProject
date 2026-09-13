@@ -1,5 +1,5 @@
 {
-  "source": "9.txt",
+  "source": "historical 9.txt; runtime canonical source is ProjectsSeedData.cs",
   "sha256": "6d73aaeda34002c5fbbd3a58353c311fee91e999dfd138b57eb3753303e18c0e",
   "rows": {
     "DocumentTypes": 6,
@@ -15,8 +15,9 @@
     "ResearchCategories": 163,
     "FundingTypes": 4,
     "MemberRoleTypes": 4,
-    "Countries": 40,
-    "Institutions": 36,
+    "Countries": 41,
+    "Institutions": 37,
+    "ExternalResearchers": 1,
     "ProjectExtensionTypes": 2,
     "ProjectOriginTypes": 3,
     "ExportFields": 30,
@@ -27,10 +28,9 @@
     "ProductAttributeDefinitions": 39
   },
   "excluded": {
-    "ExternalResearchers": 1,
     "usuario": 12
   },
-  "excludedPlaceholders": [
+  "operationalPlaceholders": [
     "Countries:41",
     "Institutions:37",
     "ExternalResearchers:1"

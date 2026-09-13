@@ -9,7 +9,7 @@ internal static class BaselineSource
         var config = new ConfigurationBuilder().SetBasePath(Path.GetFullPath("tesisproject.backend"))
             .AddJsonFile("appsettings.Development.json").AddJsonFile("appsettings.Local.json", optional:true).AddEnvironmentVariables().Build();
         var output = Path.GetFullPath("artifacts/articles-baseline-source"); Directory.CreateDirectory(output);
-        foreach (var key in new[] { "DefaultConnection", "ArticlesOltpConnection", "UnifiedDideConnection" })
+        foreach (var key in new[] { "UnifiedDideConnection", "ProjectsDwConnection", "ArticlesDwConnection" })
         {
             var connection = config.GetConnectionString(key);
             if (string.IsNullOrWhiteSpace(connection)) { Console.WriteLine(key + ": missing configuration"); continue; }

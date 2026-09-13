@@ -22,7 +22,7 @@ using tesisproject.shared.Responses;
 internal static class UnifiedControllerTests
 {
     private static readonly Assembly Backend = typeof(UnifiedProjectsController).Assembly;
-    private static readonly Type[] Controllers = Backend.GetTypes().Where(t => t.Namespace == typeof(UnifiedProjectsController).Namespace && !t.IsAbstract && t.Name.EndsWith("Controller") && t != typeof(UnifiedCatalogSynchronizationController) && t != typeof(UnifiedFacultiesController)).OrderBy(t => t.Name).ToArray();
+    private static readonly Type[] Controllers = Backend.GetTypes().Where(t => t.Namespace == typeof(UnifiedProjectsController).Namespace && !t.IsAbstract && t.Name.EndsWith("Controller") && t != typeof(UnifiedCatalogSynchronizationController) && t != typeof(UnifiedAdministrativeOperationsController) && t != typeof(UnifiedFacultiesController)).OrderBy(t => t.Name).ToArray();
     private static readonly Dictionary<string, string[]> Validation = new() { ["identity"] = ["conflicting mapping"] };
 
     public static async Task RunAsync(Action<bool, string> check)
@@ -75,12 +75,8 @@ internal static class UnifiedControllerTests
         try { services.AddUnifiedDide(configuration, _ => { }); }
         catch (InvalidOperationException) { duplicateRejected = true; }
         check(duplicateRejected, "Reject duplicate composition");
-        var mixed = new ServiceCollection();
-        mixed.AddIdentityCore<IdentityUser<int>>().AddEntityFrameworkStores<tesisproject.backend.Data.AppDbContext>();
-        var mixedRejected = false;
-        try { mixed.AddUnifiedDide(configuration, _ => { }); }
-        catch (InvalidOperationException) { mixedRejected = true; }
-        check(mixedRejected, "Reject legacy Identity store mix");
+        check(Backend.GetType("tesisproject.backend.Data.AppDbContext") is null,
+            "Legacy Identity/AppDbContext store type is absent");
 
         var manager = new ApplicationPartManager();
         manager.ApplicationParts.Add(new AssemblyPart(Backend));
@@ -129,7 +125,7 @@ internal static class UnifiedControllerTests
                     if (result.GetType().IsGenericType && result.GetType().GetGenericTypeDefinition() == typeof(ActionResult<>))
                         result = result.GetType().GetProperty("Result")!.GetValue(result)!;
                     check(calls.Count > 0, "Service reached " + unified.Name + "." + action.Name);
-                    check(calls.All(c => c.Method.DeclaringType!.Namespace!.Contains(".Unified") || c.Method.DeclaringType.Name.StartsWith("IExternal") || c.Method.Name == "get_Value" || c.Method.DeclaringType.Name.StartsWith("IArticle") || c.Method.DeclaringType.Name == "IRegistrationMatrixService"), "Unified service target " + unified.Name);
+                    check(calls.All(c => c.Method.DeclaringType!.Namespace!.Contains(".Unified") || c.Method.DeclaringType.Name.StartsWith("IExternal") || c.Method.Name == "get_Value"), "Unified service target " + unified.Name);
                     var expected = error switch { ErrorType.Validation => 400, ErrorType.NotFound => 404, ErrorType.Conflict => 409, ErrorType.Unauthorized => 401, ErrorType.Forbidden => 403, _ => legacyName == "ExportTemplatesController" && action.Name == "CreateTemplate" ? 201 : 200 };
                     var status = result is ObjectResult obj ? obj.StatusCode ?? 200 : result is FileResult ? 200 : -1;
                     check(status == expected, $"HTTP {unified.Name}.{action.Name} {error}: {status}/{expected}");

@@ -14,5 +14,9 @@ namespace tesisproject.backend.Repositories.Unified.Interfaces
         /// Returns projects filtered by ProjectTypeId.
         /// </summary>
         Task<List<Project>> GetByTypeAsync(int projectTypeId, CancellationToken ct = default);
+        Task<IReadOnlyList<ProjectIdentifierRow>> ListIdentifiersByCodesAsync(
+            IReadOnlyCollection<string> projectCodes, CancellationToken ct = default);
     }
+
+    public sealed record ProjectIdentifierRow(int ProjectId, string ProjectCode, int ProjectNumber);
 }

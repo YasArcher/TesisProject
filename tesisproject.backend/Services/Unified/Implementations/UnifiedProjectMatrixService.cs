@@ -3,6 +3,9 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
+using tesisproject.backend.Services.Unified.Contracts.Administration;
+using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.shared.Common.Utils;
@@ -17,6 +20,9 @@ namespace tesisproject.backend.Services.Unified.Implementations
     {
         private readonly IUnifiedProjectService _projectService;
         private readonly ILogger<UnifiedProjectMatrixService> _logger;
+        private readonly IUnifiedUnitOfWork _uow;
+        private readonly IOperationExecutionHistoryService _history;
+        private readonly IUnifiedArticleUserContext _userContext;
 
 
 
@@ -26,18 +32,23 @@ namespace tesisproject.backend.Services.Unified.Implementations
         private static readonly string[] DateFormats = new[]
         {
             "yyyy",
-            "yyyy-MM-dd","yyyy/MM/dd","yyyy-M-d","yyyy/M/d",
-            "dd/MM/yyyy","d/M/yyyy","dd-MM-yyyy","d-M-yyyy","dd.MM.yyyy","d.M.yyyy",
-            "dd/MM/yy","d/M/yy","dd-MM-yy","d-M-yy",
-            "yyyy-MM-dd HH:mm:ss","dd/MM/yyyy HH:mm:ss","dd-MM-yyyy HH:mm:ss"
+            "yyyy-MM-dd",
+            "dd/MM/yyyy", "d/M/yyyy",
+            "dd-MM-yyyy", "d-M-yyyy"
         };
 
         public UnifiedProjectMatrixService(
             IUnifiedProjectService projectService,
-            ILogger<UnifiedProjectMatrixService> logger)
+            ILogger<UnifiedProjectMatrixService> logger,
+            IUnifiedUnitOfWork uow,
+            IOperationExecutionHistoryService history,
+            IUnifiedArticleUserContext userContext)
         {
             _projectService = projectService;
             _logger = logger;
+            _uow = uow;
+            _history = history;
+            _userContext = userContext;
         }
 
         public async Task<ServiceResult<ProjectMatrixUploadSummaryDTO>> UploadAsync(
@@ -46,6 +57,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
             string contentType,
             CancellationToken ct = default)
         {
+            OperationExecutionItem? execution = null;
             try
             {
                 if (fileStream is null)
@@ -60,6 +72,34 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 await fileStream.CopyToAsync(memory, ct);
                 memory.Position = 0;
 
+                var fileHash = Convert.ToHexString(SHA256.HashData(memory.ToArray()));
+                execution = await _history.StartAsync(new(
+                    OperationExecutionTypes.BulkImport,
+                    OperationCodes.ProjectsMatrixImport,
+                    ExecutedByAppUserId: await _userContext.GetAppUserIdAsync(ct),
+                    ExecutedByName: _userContext.DisplayName,
+                    Source: "projects-matrix",
+                    FileName: fileName,
+                    FileHash: fileHash), ct);
+                var previous = await _history.FindSuccessfulAsync(OperationExecutionTypes.BulkImport,
+                    OperationCodes.ProjectsMatrixImport, fileHash, ct);
+                if (previous is not null)
+                {
+                    await _history.CompleteFailureAsync(execution.ExecutionId,
+                        ErrorCodes.AdministrativeOperations.BulkImportAlreadyProcessed,
+                        ErrorMessages.AdministrativeOperations.BulkImportAlreadyProcessed,
+                        new { previous.ExecutionId }, ct);
+                    return new ServiceResult<ProjectMatrixUploadSummaryDTO>
+                    {
+                        Success = false,
+                        Message = ErrorMessages.AdministrativeOperations.BulkImportAlreadyProcessed,
+                        Error = ErrorType.Conflict,
+                        ErrorCode = ErrorCodes.AdministrativeOperations.BulkImportAlreadyProcessed,
+                        Data = new ProjectMatrixUploadSummaryDTO { PreviousExecutionId = previous.ExecutionId }
+                    };
+                }
+                memory.Position = 0;
+
                 var summary = new ProjectMatrixUploadSummaryDTO();
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
 
@@ -72,6 +112,9 @@ namespace tesisproject.backend.Services.Unified.Implementations
                     {
                         AddSummaryError(summary, 0, ErrorMessages.UnifiedLegacy.ProjectMatrixService_WorkbookMissingThirdWorksheetMessage);
 
+                        await CompleteRejectedAsync(execution.ExecutionId,
+                            ErrorCodes.ProjectMatrix.InvalidFile,
+                            ErrorMessages.UnifiedLegacy.ProjectMatrixService_WorkbookMissingThirdWorksheetMessage, ct);
                         return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                             summary,
                             ErrorMessages.UnifiedLegacy.ProjectMatrixService_WorkbookMissingThirdWorksheetMessage);
@@ -84,6 +127,9 @@ namespace tesisproject.backend.Services.Unified.Implementations
                     {
                         AddSummaryError(summary, 0, ErrorMessages.UnifiedLegacy.ProjectMatrixService_WorksheetNoDataMessage);
 
+                        await CompleteRejectedAsync(execution.ExecutionId,
+                            ErrorCodes.ProjectMatrix.InvalidFile,
+                            ErrorMessages.UnifiedLegacy.ProjectMatrixService_WorksheetNoDataMessage, ct);
                         return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                             summary,
                             ErrorMessages.UnifiedLegacy.ProjectMatrixService_WorksheetNoDataMessage);
@@ -122,7 +168,7 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
                         var row = worksheet.Row(r);
                         var values = row.Cells(1, lastColumn)
-                            .Select(c => c.GetString())
+                            .Select(GetDeterministicCellValue)
                             .ToList();
 
                         if (IsAllEmpty(values))
@@ -240,17 +286,34 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
                     _logger.LogInformation(
                         "[ProjectMatrixService] Projects to import: {Count}",
-                        summary.ImportedProjects?.Count ?? 0);
+                        summary.ImportedProjects.Count);
 
                     // ============================
                     //  LLAMAR A ProjectService.ImportFromMatrixAsync
                     // ============================
-                    var importResult = await _projectService.ImportFromMatrixAsync(
-                        summary,
-                        ct);
+                    var importResult = await _projectService.ImportFromMatrixAsync(summary, ct,
+                        async (inserted, transactionCt) =>
+                        {
+                        var codes = summary.ImportedProjects
+                            .Where(x => x.Number.HasValue)
+                            .Select(x => $"{x.ProjectCode?.Trim()}-{x.Number!.Value}")
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
+                        var identifiers = await _uow.Projects.ListIdentifiersByCodesAsync(codes, transactionCt);
+                        var result = new ProjectsMatrixImportResult(summary.TotalRows,
+                            inserted, 0, summary.SkippedRows,
+                            summary.Errors.Count,
+                            identifiers.Select(x => new ProjectImportIdentifier(
+                                x.ProjectId, x.ProjectCode, x.ProjectNumber)).ToArray());
+                        await _history.CompleteSuccessAsync(execution.ExecutionId, result, transactionCt);
+                    });
 
                     if (!importResult.Success)
                     {
+                        await CompleteRejectedAsync(execution.ExecutionId,
+                            importResult.ErrorCode ?? ErrorCodes.Common.UnexpectedError,
+                            importResult.Message ?? ErrorMessages.Common.UnexpectedError, CancellationToken.None);
                         return UnifiedAcademicReferencePreparation.Relay<ProjectMatrixUploadSummaryDTO, int>(importResult);
                     }
 
@@ -264,18 +327,35 @@ namespace tesisproject.backend.Services.Unified.Implementations
 
                 AddSummaryError(summary, 0, notSupportedMessage);
 
+                await CompleteRejectedAsync(execution.ExecutionId,
+                    ErrorCodes.ProjectMatrix.InvalidFile, notSupportedMessage, ct);
+
                 return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                     summary,
                     notSupportedMessage);
             }
             catch (OperationCanceledException)
             {
+                if (execution is not null)
+                    await CompleteRejectedAsync(execution.ExecutionId, ErrorCodes.Common.OperationCanceled,
+                        ErrorMessages.Common.OperationCanceled, CancellationToken.None);
                 return FailOperationCanceled<ProjectMatrixUploadSummaryDTO>();
             }
             catch (Exception)
             {
+                if (execution is not null)
+                    await CompleteRejectedAsync(execution.ExecutionId,
+                        ErrorCodes.Common.UnexpectedError, ErrorMessages.Common.UnexpectedError, CancellationToken.None);
                 return FailUnexpected<ProjectMatrixUploadSummaryDTO>();
             }
+        }
+
+        private async Task CompleteRejectedAsync(Guid executionId, string errorCode,
+            string message, CancellationToken ct)
+        {
+            var current = await _history.GetAsync(executionId, ct);
+            if (current?.Status == OperationExecutionStatuses.Running)
+                await _history.CompleteFailureAsync(executionId, errorCode, message, null, ct);
         }
 
         private static ServiceResult<T> FailUnexpected<T>()
@@ -1507,7 +1587,21 @@ namespace tesisproject.backend.Services.Unified.Implementations
             return null;
         }
 
-        private static DateTime? ParseDate(string? value)
+        internal static string GetDeterministicCellValue(IXLCell cell)
+        {
+            if (cell.IsEmpty())
+                return string.Empty;
+
+            if (cell.DataType == XLDataType.DateTime &&
+                cell.TryGetValue<DateTime>(out var excelDate))
+            {
+                return excelDate.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+
+            return cell.GetString();
+        }
+
+        internal static DateTime? ParseDate(string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return null;
@@ -1552,42 +1646,19 @@ namespace tesisproject.backend.Services.Unified.Implementations
                 return dtExact;
             }
 
-            if (DateTime.TryParse(
-                    value,
-                    CultureInfo.CurrentCulture,
-                    DateTimeStyles.AllowWhiteSpaces,
-                    out var dtCurrent))
-            {
-                return dtCurrent;
-            }
-
-            try
-            {
-                var esEc = CultureInfo.GetCultureInfo("es-EC");
-                if (DateTime.TryParse(
-                        value,
-                        esEc,
-                        DateTimeStyles.AllowWhiteSpaces,
-                        out var dtEsEc))
-                {
-                    return dtEsEc;
-                }
-            }
-            catch { }
-
             if (double.TryParse(
-                    value.Replace(",", "."),
-                    NumberStyles.Any,
+                    value.Replace(',', '.'),
+                    NumberStyles.Float,
                     CultureInfo.InvariantCulture,
                     out var oaNumber))
             {
-                if (oaNumber >= 20000)
+                if (oaNumber >= 20000 && oaNumber <= 2958465)
                 {
                     try
                     {
-                        return DateTime.FromOADate(oaNumber);
+                        return DateTime.FromOADate(oaNumber).Date;
                     }
-                    catch { }
+                    catch (ArgumentException) { }
                 }
             }
 

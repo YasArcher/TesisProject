@@ -8,11 +8,13 @@ using tesisproject.backend.Data.UnifiedEntities.Core;
 using tesisproject.backend.Data.UnifiedEntities.Core.Products;
 using tesisproject.backend.Data.UnifiedEntities.Export;
 using tesisproject.backend.Data.UnifiedEntities.Articles;
+using tesisproject.backend.Data.UnifiedEntities.Administration;
 
 namespace tesisproject.backend.Data;
 
 public sealed partial class UnifiedDideDbContext
 {
+    public DbSet<OperationExecutionHistory> OperationExecutionHistories => Set<OperationExecutionHistory>();
     public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<BudgetTransaction> BudgetTransactions => Set<BudgetTransaction>();
     public DbSet<Document> Documents => Set<Document>();

@@ -7,14 +7,62 @@ using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 using static tesisproject.backend.Services.Unified.Implementations.UnifiedCatalogSynchronizationErrors;
+using tesisproject.backend.Services.Unified.Contracts.Administration;
 
 namespace tesisproject.backend.Services.Unified.Implementations;
 
 public sealed class UnifiedAcademicTermSynchronizationService(IUnifiedUnitOfWork uow,
-    IUnifiedAcademicCatalogSnapshotClient client, UnifiedDideDbContext context)
+    IUnifiedAcademicCatalogSnapshotClient client, UnifiedDideDbContext context,
+    IOperationExecutionHistoryService history, IUnifiedArticleUserContext userContext)
     : IUnifiedAcademicTermSynchronizationService
 {
     public async Task<ServiceResult<CatalogSynchronizationResult>> SynchronizeAsync(CancellationToken ct = default)
+    {
+        var execution = await history.StartAsync(new(OperationExecutionTypes.Synchronization,
+            OperationCodes.AcademicTermsSync, ExecutedByAppUserId: await userContext.GetAppUserIdAsync(ct),
+            ExecutedByName: userContext.DisplayName, Source: "ExternalApi"), ct);
+        try
+        {
+            ServiceResult<CatalogSynchronizationResult>? result = null;
+            await uow.ExecuteInTransactionAsync(async transactionCt =>
+            {
+                result = await SynchronizeCoreAsync(transactionCt);
+                if (!result.Success) throw new SynchronizationRejectedException(result);
+                var value = result.Data!;
+                var items = await uow.AcademicTerms.Query()
+                    .Where(x => x.ExternalPeriodId.HasValue)
+                    .Select(x => new CatalogSynchronizationIdentifier(x.ExternalPeriodId!.Value, x.AcademicTermId))
+                    .ToListAsync(transactionCt);
+                await history.CompleteSuccessAsync(execution.ExecutionId,
+                    new CatalogSynchronizationHistoryResult(value.TotalExternal, value.Inserted,
+                        value.Updated, value.Unchanged, value.Skipped, value.Failed, items), transactionCt);
+                return 0;
+            }, ct);
+            return result!;
+        }
+        catch (SynchronizationRejectedException ex)
+        {
+            await history.CompleteFailureAsync(execution.ExecutionId,
+                ex.Result.ErrorCode ?? ErrorCodes.Common.UnexpectedError,
+                ex.Result.Message ?? ErrorMessages.Common.UnexpectedError, null, CancellationToken.None);
+            return ex.Result;
+        }
+        catch (OperationCanceledException)
+        {
+            await history.CompleteFailureAsync(execution.ExecutionId, ErrorCodes.Common.OperationCanceled,
+                ErrorMessages.Common.OperationCanceled, null, CancellationToken.None);
+            throw;
+        }
+        catch (Exception)
+        {
+            await history.CompleteFailureAsync(execution.ExecutionId, ErrorCodes.Common.UnexpectedError,
+                ErrorMessages.Common.UnexpectedError, null, CancellationToken.None);
+            return ServiceResult<CatalogSynchronizationResult>.Fail(ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+        }
+    }
+
+    private async Task<ServiceResult<CatalogSynchronizationResult>> SynchronizeCoreAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         if (context.ChangeTracker.HasChanges())
@@ -84,5 +132,10 @@ public sealed class UnifiedAcademicTermSynchronizationService(IUnifiedUnitOfWork
             return ServiceResult<CatalogSynchronizationResult>.Fail(ErrorMessages.Common.UnexpectedError,
                 ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
         }
+    }
+
+    private sealed class SynchronizationRejectedException(ServiceResult<CatalogSynchronizationResult> result) : Exception
+    {
+        public ServiceResult<CatalogSynchronizationResult> Result { get; } = result;
     }
 }
