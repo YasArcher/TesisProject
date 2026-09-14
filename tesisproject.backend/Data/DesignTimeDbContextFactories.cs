@@ -33,7 +33,7 @@ internal static class DesignTimeDatabaseConfiguration
         return new DbContextOptionsBuilder<TContext>().UseSqlServer(connection, sql =>
         {
             if (typeof(TContext) == typeof(ProjectsDwContext))
-                sql.MigrationsHistoryTable("__EFMigrationsHistory", "DW");
+                sql.MigrationsHistoryTable("__EFMigrationsHistory", "ProjectsDW");
             else if (typeof(TContext) == typeof(ArticlesDwContext))
                 sql.MigrationsHistoryTable("__EFMigrationsHistory", "ArticlesDW");
         }).Options;

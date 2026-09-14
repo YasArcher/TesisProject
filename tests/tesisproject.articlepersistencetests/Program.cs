@@ -16,7 +16,7 @@ var database = "tesis_article_persistence_test_" + Guid.NewGuid().ToString("N");
 var services = new ServiceCollection();
 services.AddUnifiedDide(new ConfigurationBuilder().Build(), o => o.UseSqlServer(
     $@"Server=.\DINNOVA;Database={database};Integrated Security=True;TrustServerCertificate=True",
-    sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
+    sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")));
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
 var db = scope.ServiceProvider.GetRequiredService<UnifiedDideDbContext>();

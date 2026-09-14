@@ -8,13 +8,13 @@ Se mantiene la arquitectura de Develop: frontend Blazor publicado en Nginx, prox
 
 Compose ahora inicia:
 
-1. `migrate-unified`: la misma imagen backend, con `--migrate-unified`, aplica únicamente las migrations de UnifiedDideDbContext y termina.
-2. `api`: arranca solo si el job terminó correctamente. Projects, Articles e Identity usan UnifiedDideConnection; Articles queda habilitado. Luego el arranque habitual asegura los roles Identity.
+1. `migrate-database`: la misma imagen backend, con `--migrate-database`, crea `tesis_unified` si falta y migra los tres contextos, en orden.
+2. `api`: arranca solo si los tres streams terminaron correctamente. Projects, Articles e Identity usan la misma base física. Luego el arranque habitual asegura los roles Identity.
 3. `web`: expone el puerto WEB_HOST_PORT y conserva el proxy al servicio `api`.
 
-El comando de migración se ejecuta antes de componer HTTP/Identity/servicios. Acepta SQL Authentication de despliegue y no modifica el factory local, que conserva su restricción Development/Windows. Rechaza bases de sistema, el POC histórico y nombres de BD coincidentes con las conexiones DW configuradas. Un conflicto SQL produce salida distinta de cero y bloquea el inicio dependiente; no se corrigen datos automáticamente.
+El comando de migración se ejecuta antes de componer HTTP/Identity/servicios. Exige que las tres conexiones usen el mismo servidor, base y usuario. Rechaza bases de sistema y el POC histórico. Un conflicto SQL produce salida distinta de cero y bloquea el inicio dependiente.
 
-`DatabaseBootstrap__ApplyDwMigrations=false` mantiene las migrations de ambos DW fuera del arranque normal. `DefaultConnection`, `AppDbContext` y las conexiones OLTP históricas ya no forman parte del runtime.
+Las migrations permanecen fuera del arranque normal de la API. `DefaultConnection`, `AppDbContext` y las conexiones OLTP históricas ya no forman parte del runtime.
 
 ## Configuración y uso
 
@@ -23,9 +23,8 @@ Crear `.env` a partir de `.env.example` sin sobrescribir un `.env` existente. Co
 Las conexiones de Docker se suministran exclusivamente por Compose desde `.env`; no agregarlas a `appsettings.Development.json`. Para ejecutar el backend o las herramientas EF fuera de Docker, usar `tesisproject.backend/appsettings.Local.json` (ignorado por Git y excluido de las imágenes) o variables de entorno. El arranque Development y el factory local ya cargan ese archivo.
 
 - DB_HOST/DB_PORT: SQL Server accesible por TCP desde contenedores. No usar autenticación integrada de Windows dentro de Linux.
-- DB_USER/DB_PASS: login SQL con permisos para aplicar migrations en UNIFIED_DB_NAME y acceder a los warehouses.
-- UNIFIED_DB_NAME: base canónica separada, por defecto `tesis_unified`.
-- DB_NAME: base física de DW; debe ser diferente de UNIFIED_DB_NAME.
+- DB_USER/DB_PASS: login SQL con permisos para crear y migrar `DB_NAME`.
+- DB_NAME: única base física, por defecto `tesis_unified`. Contiene `dbo`, `ProjectsDW` y `ArticlesDW`.
 - JWT_KEY: secreto aleatorio de al menos 32 caracteres; JWT_ISSUER/JWT_AUDIENCE deben coincidir entre emisores/validadores del despliegue.
 - STORAGE_HOST_PATH: directorio persistente del host; en Linux usar una ruta absoluta Linux con permisos apropiados.
 - EXTERNAL_APIS_BASE_URL: directorio/APIs institucionales accesibles desde el backend.
@@ -36,12 +35,12 @@ Las conexiones de Docker se suministran exclusivamente por Compose desde `.env`;
 ```sh
 docker compose config --quiet
 docker compose up --build -d
-docker compose logs migrate-unified
+docker compose logs migrate-database
 docker compose logs api
 docker compose ps -a
 ```
 
-Revisar que migrate-unified terminó con código 0. Si detecta conflicto, resolverlo explícitamente antes de repetir el despliegue. No ejecutar `down -v` ni limpiar datos para sortearlo. La migración es idempotente; también puede ejecutarse deliberadamente con `docker compose run --rm migrate-unified`.
+Revisar que `migrate-database` terminó con código 0. Si detecta conflicto, resolverlo explícitamente antes de repetir el despliegue. No ejecutar `down -v` ni limpiar datos para sortearlo. La migración es idempotente; también puede ejecutarse deliberadamente con `docker compose run --rm migrate-database`.
 
 La adaptación inicial de Docker no ejecutó migrations contra la BD de aplicación. El bootstrap opcional descrito abajo sí provisiona la cuenta indicada por el operador. No inventa seeds/forms/fields: el baseline Articles ausente continúa siendo una limitación funcional conocida, no solucionada por Docker. Los ajustes funcionales del frontend siguen en frontend-merge-impacts.md.
 
@@ -49,7 +48,7 @@ La adaptación inicial de Docker no ejecutó migrations contra la BD de aplicaci
 
 - `docker compose --env-file .env.example config --quiet`: PASS.
 - Build backend y solución Release: PASS, 0 errores (21 warnings de la solución). Se regeneraron assets NuGet con SDK 9 porque el frontend tenía assets locales de herramientas .NET 10; no se cambió su código.
-- Prueba `tests/tesisproject.articleruntimetests -- deployment-test`: PASS, 12 comprobaciones. Valida destinos, ejecuta el CLI real en Production sobre una BD SQL temporal desde cero y repite la migración; comprueba las cuatro migrations y ArticleReadView. El destino legacy de prueba es inaccesible deliberadamente.
+- Prueba `tests/tesisproject.articleruntimetests -- deployment-test`: crea una BD SQL temporal desde cero, ejecuta dos veces el CLI real de Production, valida los tres schemas e historiales, verifica tablas representativas y ejecuta ambos ETL completos. La prueba elimina solo su BD temporal al terminar.
 - El primer build de imágenes estuvo bloqueado por DNS de Docker Desktop (`lookup mcr.microsoft.com: no such host`). En la verificación posterior del bootstrap se reconstruyó correctamente la imagen API y se comprobó su runtime. No se afirma un smoke funcional completo del frontend.
 
 Logs de verificación local: `artifacts/docker-unified-*.log`. Los Dockerfiles de Develop ya usan .NET 9 y proyectos Shared/backend/frontend correctos; no requieren una reescritura por Unified.
@@ -68,7 +67,7 @@ BOOTSTRAP_SUPERADMIN_USERNAME=<usuario, máximo 10 caracteres>
 BOOTSTRAP_SUPERADMIN_PASSWORD=<contraseña inicial según política Identity>
 ```
 
-No guardar estos valores en archivos versionados. Ejecutar `docker compose up -d --no-deps --build --force-recreate api` cuando la BD Unified ya esté migrada. En un despliegue inicial usar el flujo completo con migrate-unified indicado arriba.
+No guardar estos valores en archivos versionados. Ejecutar `docker compose up -d --no-deps --build --force-recreate api` cuando la base ya esté migrada. En un despliegue inicial usar el flujo completo con `migrate-database` indicado arriba.
 
 Después de asegurar los roles Identity, el arranque llama a UnifiedSuperadminBootstrap. Reutiliza IUnifiedIdentityProvisioningService con el rol público permitido `user`, obtiene el AppUser por su ID y asigna `superadmin` al IdLocal validado mediante UserManager. La asignación privilegiada solo existe en este bootstrap controlado por configuración; `/register` sigue rechazándola.
 

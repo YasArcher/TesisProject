@@ -21,7 +21,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Environme
 builder.Configuration["ExternalApis:BaseUrl"] = "https://directory.invalid/";
 builder.Services.AddUnifiedDide(builder.Configuration, o => o.UseSqlServer(
     $@"Server={server};Database={database};Integrated Security=True;TrustServerCertificate=True",
-    sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
+    sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")));
 await using var provider = builder.Services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 await using var scope = provider.CreateAsyncScope();
 var db = scope.ServiceProvider.GetRequiredService<UnifiedDideDbContext>();

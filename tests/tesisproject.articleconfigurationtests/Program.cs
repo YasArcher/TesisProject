@@ -21,7 +21,7 @@ var server = Environment.GetEnvironmentVariable("ARTICLES_TEST_SQL_SERVER") ?? @
 var services = new ServiceCollection();
 services.AddUnifiedDide(new ConfigurationBuilder().Build(), o => o.UseSqlServer(
     $@"Server={server};Database={name};Integrated Security=True;TrustServerCertificate=True",
-    sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")).AddInterceptors(new FailFormSave()));
+    sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).AddInterceptors(new FailFormSave()));
 await using var provider = services.BuildServiceProvider();
 await using var scope = provider.CreateAsyncScope();
 var db = scope.ServiceProvider.GetRequiredService<UnifiedDideDbContext>();

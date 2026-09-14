@@ -24,8 +24,10 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true)
         .AddEnvironmentVariables().AddCommandLine(args);
 
-// Deployment job: only Unified, without HTTP, Identity or legacy/DW bootstrap.
-if (args.Contains("--migrate-unified", StringComparer.Ordinal))
+// Deployment job: all three contexts, without HTTP or Identity bootstrap.
+// Keep the old switch as a deployment-compatible alias.
+if (args.Contains("--migrate-database", StringComparer.Ordinal) ||
+    args.Contains("--migrate-unified", StringComparer.Ordinal))
 {
     await UnifiedDatabaseDeployment.MigrateAsync(builder.Configuration);
     return;
@@ -44,17 +46,6 @@ ExcelPackage.License.SetNonCommercialOrganization("Universidad T�cnica de Amba
 
 var app = builder.Build();
 
-// Las migrations operacionales Unified se aplican mediante el job/CLI de despliegue.
-// Este flag opcional pertenece únicamente a los dos warehouses.
-if (app.Configuration.GetValue("DatabaseBootstrap:ApplyDwMigrations", false))
-{
-    await ApplyDwMigrationsAsync(app);
-}
-else
-{
-    app.Logger.LogInformation("Automatic DW migrations are disabled.");
-}
-
 // Bootstrap Identity sobre UnifiedDideDbContext.
 var identityRoles = new List<string> { "admin", "financial", "technical", "superadmin", "coordinador", "user" };
 if (app.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
@@ -67,28 +58,6 @@ app.ConfigurePipeline();
 
 app.Run();
 
-
-// ============================================================================
-// ============================   BOOTSTRAP TASKS   ===========================
-// ============================================================================
-
-static async Task ApplyDwMigrationsAsync(WebApplication app)
-{
-    using var scope = app.Services.CreateScope();
-
-    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-        .CreateLogger("Migrations");
-
-    var projectsDw = scope.ServiceProvider.GetRequiredService<ProjectsDwContext>();
-    logger.LogInformation("Applying migrations for ProjectsDwContext...");
-    await projectsDw.Database.MigrateAsync();
-
-    var articlesDw = scope.ServiceProvider.GetRequiredService<ArticlesDwContext>();
-    logger.LogInformation("Applying migrations for ArticlesDwContext...");
-    await articlesDw.Database.MigrateAsync();
-
-    logger.LogInformation("Migrations applied successfully.");
-}
 
 static async Task EnsureIdentityRolesAsync(WebApplication app, params string[] roles)
 {
@@ -146,11 +115,10 @@ static class StartupExtensions
 
     public static void ConfigureDatabase(this WebApplicationBuilder builder)
     {
-        var unifiedConnection = builder.Configuration.GetConnectionString("UnifiedDideConnection")
-            ?? throw new InvalidOperationException("ConnectionStrings:UnifiedDideConnection missing");
+        var unifiedConnection = UnifiedDatabaseDeployment.GetValidatedConnection(builder.Configuration);
         builder.Services.AddUnifiedDide(builder.Configuration, options =>
             options.UseSqlServer(unifiedConnection, sql =>
-                sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
+                sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")));
 
         var projectsDwConnection = builder.Configuration.GetConnectionString("ProjectsDwConnection")
             ?? throw new InvalidOperationException("ConnectionStrings:ProjectsDwConnection missing");
@@ -159,7 +127,7 @@ static class StartupExtensions
 
         builder.Services.AddDbContext<ProjectsDwContext>(options =>
             options.UseSqlServer(projectsDwConnection, sql =>
-                sql.MigrationsHistoryTable("__EFMigrationsHistory", "DW")));
+                sql.MigrationsHistoryTable("__EFMigrationsHistory", "ProjectsDW")));
 
         builder.Services.AddDbContext<ArticlesDwContext>(options =>
             options.UseSqlServer(articlesDwConnection, sql =>

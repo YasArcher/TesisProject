@@ -28,7 +28,7 @@ internal static class DatabaseValidation
         var relational = model.GetRelationalModel();
         var tables = relational.Tables.ToArray();
         var actualTables = await Rows(connection, "SELECT s.name AS [Schema], t.name AS [Table] FROM sys.tables t JOIN sys.schemas s ON t.schema_id=s.schema_id WHERE t.is_ms_shipped=0");
-        Same(tables.Select(t => $"{t.Schema}.{t.Name}").Append("dbo.__EFMigrationsHistoryUnifiedDide"),
+        Same(tables.Select(t => $"{t.Schema}.{t.Name}").Append("dbo.__EFMigrationsHistory"),
             actualTables.Select(r => $"{r["Schema"]}.{r["Table"]}"), "tables");
 
         var columns = await Rows(connection, """
@@ -41,7 +41,7 @@ internal static class DatabaseValidation
                 ELSE '' END AS StoreType
             FROM sys.columns c JOIN sys.tables t ON c.object_id=t.object_id
             JOIN sys.schemas s ON t.schema_id=s.schema_id JOIN sys.types ty ON c.user_type_id=ty.user_type_id
-            WHERE t.name <> '__EFMigrationsHistoryUnifiedDide'
+            WHERE t.name <> '__EFMigrationsHistory'
             """);
         Same(tables.SelectMany(t => t.Columns.Select(c => $"{t.Schema}.{t.Name}.{c.Name}|{c.StoreType}|{c.IsNullable}")),
             columns.Select(r => $"{r["Schema"]}.{r["Table"]}.{r["Column"]}|{r["StoreType"]}|{r["Nullable"]}"), "column types/nullability");
@@ -59,7 +59,7 @@ internal static class DatabaseValidation
             JOIN sys.schemas s ON t.schema_id=s.schema_id
             JOIN sys.index_columns ic ON ic.object_id=t.object_id AND ic.index_id=k.unique_index_id
             JOIN sys.columns c ON c.object_id=t.object_id AND c.column_id=ic.column_id
-            WHERE t.name <> '__EFMigrationsHistoryUnifiedDide'
+            WHERE t.name <> '__EFMigrationsHistory'
             """);
         Same(tables.SelectMany(t => t.UniqueConstraints.Select(k => $"{t.Schema}.{t.Name}.{k.Name}|{string.Join(',', k.Columns.Select(c => c.Name))}")),
             GroupColumns(keys), "PK/unique keys");

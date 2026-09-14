@@ -27,7 +27,7 @@ internal static class DataMigrationRuntimeTests
         };
         var connectionString = builder.ConnectionString;
         var options = new DbContextOptionsBuilder<UnifiedDideDbContext>()
-            .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")).Options;
+            .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).Options;
         var checks = 0;
         void Check(bool value, string message)
         {
@@ -58,7 +58,7 @@ internal static class DataMigrationRuntimeTests
                   execution.OperationType == OperationExecutionTypes.DataMigration,
                 "OperationExecutionHistory records successful data migration");
             Check(await db.Database.SqlQueryRaw<int>(
-                    "SELECT COUNT(*) AS [Value] FROM dbo.__EFMigrationsHistoryUnifiedDide WHERE [MigrationId] LIKE '%PROJECTS_INITIAL_CATALOG_V1%'")
+                    "SELECT COUNT(*) AS [Value] FROM dbo.__EFMigrationsHistory WHERE [MigrationId] LIKE '%PROJECTS_INITIAL_CATALOG_V1%'")
                     .SingleAsync() == 0,
                 "Data migration is absent from EF schema migration history");
             var result = JsonDocument.Parse(execution.ResultJson!);

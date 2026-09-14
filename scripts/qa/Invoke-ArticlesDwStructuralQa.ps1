@@ -20,8 +20,8 @@ Get-Content -LiteralPath $EnvironmentFile | ForEach-Object {
 
 $server = if ($env:DB_HOST -eq 'host.docker.internal') { 'localhost' } else { $env:DB_HOST }
 $port = if ($env:DB_PORT) { $env:DB_PORT } else { '1433' }
-$database = if ($env:UNIFIED_DB_NAME) { $env:UNIFIED_DB_NAME } else { 'tesis_unified' }
-$operationalDatabase = if ($env:DB_NAME) { $env:DB_NAME } else { 'tesis' }
+$database = if ($env:DB_NAME) { $env:DB_NAME } else { 'tesis_unified' }
+$operationalDatabase = $database
 $connectionString = "Server=$server,$port;Database=$database;User Id=$($env:DB_USER);Password=$($env:DB_PASS);Encrypt=False;TrustServerCertificate=True;"
 $scriptName = switch ($Action) {
     'Setup' { 'articles-dw-structural-setup.sql' }

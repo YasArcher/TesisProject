@@ -87,7 +87,7 @@ foreach (var table in tables)
     created.Add(table.Name);
 }
 var script = context.GetService<IMigrator>().GenerateScript(options: MigrationsSqlGenerationOptions.Idempotent);
-Check(script.Contains("[dbo].[__EFMigrationsHistoryUnifiedDide]"), "Migration history isolation missing");
+Check(script.Contains("[dbo].[__EFMigrationsHistory]"), "Migration history isolation missing");
 Check(!script.Contains("[Unified].") && !script.Contains("[DW].") && !script.Replace("DROP TABLE #ArticleAttributes;", "").Contains("DROP TABLE"), "Generated SQL touches existing schemas or drops persistent tables");
 
 // Exercise change tracking across both author sources without persisting anything.
@@ -110,10 +110,10 @@ Check(Entity<ProductAuthor>().FindProperty("InstitutionalPersonIdSnapshot") == n
     Entity<Author>().FindProperty("ExternalAuthorId") != null, "Identity references remain incorrectly attached to participation");
 try
 {
-    UnifiedDideDbContextFactory.ValidateDestination("Server=.\\DINNOVA;Database=tesis;Integrated Security=True", ["Server=.\\DINNOVA;Database=tesis;Integrated Security=True"]);
-    throw new Exception("Original database was accepted");
+    UnifiedDideDbContextFactory.ValidateDestination("Server=.\\DINNOVA;Database=tesis_unified;Integrated Security=True", ["Server=.\\DINNOVA;Database=other;Integrated Security=True"]);
+    throw new Exception("Different application database was accepted");
 }
-catch (InvalidOperationException ex) when (ex.Message.Contains("matches a database")) { checks++; }
+catch (InvalidOperationException ex) when (ex.Message.Contains("same SQL Server database")) { checks++; }
 
 Console.WriteLine($"PASS: {checks} model checks; {entities.Length} entities/tables; {entities.Sum(e => e.GetForeignKeys().Count())} FKs; {entities.Sum(e => e.GetIndexes().Count())} indexes.");
 if (args.Contains("--database")) await DatabaseValidation.RunAsync();

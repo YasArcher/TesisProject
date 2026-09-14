@@ -26,7 +26,7 @@ var cs = $@"Server={server};Database={database};Integrated Security=True;TrustSe
 var failure = new FailAfterAggregateSave();
 var services = new ServiceCollection();
 services.AddUnifiedDide(new ConfigurationBuilder().Build(), options => options.UseSqlServer(cs,
-    sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")).AddInterceptors(failure));
+    sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).AddInterceptors(failure));
 services.AddSingleton<IExternalDirectoryClient, DirectoryFixture>();
 await using var provider = services.BuildServiceProvider();
 await using var fixture = provider.CreateAsyncScope();

@@ -16,7 +16,7 @@ if (args.Contains("--hardening"))
 var database = "tesis_articles_read_test_" + Guid.NewGuid().ToString("N");
 var cs = $@"Server=.\DINNOVA;Database={database};Integrated Security=True;TrustServerCertificate=True";
 await using var db = new UnifiedDideDbContext(new DbContextOptionsBuilder<UnifiedDideDbContext>()
-    .UseSqlServer(cs, o => o.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")).Options);
+    .UseSqlServer(cs, o => o.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).Options);
 int checks = 0;
 void Check(bool ok, string message) { if (!ok) throw new Exception(message); checks++; }
 async Task Sql(string sql) => await db.Database.ExecuteSqlRawAsync(sql);

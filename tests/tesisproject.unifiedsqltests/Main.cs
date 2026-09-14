@@ -39,7 +39,7 @@ var assertions = 0;
 if (!IntegrationDatabase.StartsWith("tesis_unified_integration_", StringComparison.Ordinal))
     throw new InvalidOperationException("Refusing to rebuild a database that is not the dedicated integration fixture.");
 await using (var rebuild = new UnifiedDideDbContext(new DbContextOptionsBuilder<UnifiedDideDbContext>()
-    .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")).Options))
+    .UseSqlServer(connectionString, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).Options))
 {
     await rebuild.Database.EnsureDeletedAsync();
     await rebuild.Database.MigrateAsync();
@@ -87,10 +87,10 @@ Check(await ScalarAsync<int>(upgradeConnectionString, "SELECT COUNT(*) FROM sys.
     "Upgrade database must exist.");
 
 var migrations = await ScalarAsync<int>(connectionString,
-    "SELECT COUNT(*) FROM dbo.__EFMigrationsHistoryUnifiedDide WHERE MigrationId IN ('20260906042715_InitialUnifiedDide','20260908025200_AddFacultyHierarchy')");
+    "SELECT COUNT(*) FROM dbo.__EFMigrationsHistory WHERE MigrationId IN ('20260906042715_InitialUnifiedDide','20260908025200_AddFacultyHierarchy')");
 Check(migrations == 2, "All Unified migrations must be applied in the integration database.");
 Check(await ScalarAsync<int>(upgradeConnectionString,
-    "SELECT COUNT(*) FROM dbo.__EFMigrationsHistoryUnifiedDide WHERE MigrationId = '20260908025200_AddFacultyHierarchy'") == 1,
+    "SELECT COUNT(*) FROM dbo.__EFMigrationsHistory WHERE MigrationId = '20260908025200_AddFacultyHierarchy'") == 1,
     "Faculty hierarchy upgrade migration must be applied.");
 Check(await ScalarAsync<int>(upgradeConnectionString,
     "SELECT COUNT(*) FROM dbo.Faculties WHERE (FacultyId=17 AND ExternalFacultyId=500 AND ParentFacultyId IS NULL AND Name=N'Ingeniería') OR (FacultyId=29 AND ExternalFacultyId=800 AND ParentFacultyId IS NULL AND Name=N'Software')") == 2,
@@ -165,7 +165,7 @@ var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Diction
     ["DocumentRecognition:Endpoint"] = "http://127.0.0.1/"
 }).Build();
 services.AddUnifiedDide(configuration, options => options.UseSqlServer(connectionString,
-    sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
+    sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")));
 services.RemoveAll<IUnifiedAcademicCatalogSnapshotClient>();
 services.AddSingleton<IUnifiedAcademicCatalogSnapshotClient>(snapshot);
 services.RemoveAll<IExternalDirectoryClient>();

@@ -52,7 +52,7 @@ internal static class SuperadminBootstrapTests
         builder.Configuration["Cors:AllowedOrigins:1"] = "http://localhost:8091";
         builder.Services.AddUnifiedDide(builder.Configuration, options => options.UseSqlServer(
             $@"Server=.\DINNOVA;Database={database};Integrated Security=True;TrustServerCertificate=True",
-            sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
+            sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")));
         typeof(UnifiedDideDbContext).Assembly.GetType("StartupExtensions")!.GetMethod("ConfigureCors")!.Invoke(null, [builder]);
         await using var provider = builder.Services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         await using var fixture = provider.CreateAsyncScope();

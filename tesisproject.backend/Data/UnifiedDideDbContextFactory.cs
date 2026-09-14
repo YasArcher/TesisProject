@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace tesisproject.backend.Data;
 
-/// <summary>Development-only tooling for the separate Unified database; never starts the application.</summary>
+/// <summary>Development-only tooling for the unified physical database; never starts the application.</summary>
 public sealed class UnifiedDideDbContextFactory : IDesignTimeDbContextFactory<UnifiedDideDbContext>
 {
     public UnifiedDideDbContext CreateDbContext(string[] args)
@@ -26,7 +26,7 @@ public sealed class UnifiedDideDbContextFactory : IDesignTimeDbContextFactory<Un
             .Select(configuration.GetConnectionString));
 
         return new UnifiedDideDbContext(new DbContextOptionsBuilder<UnifiedDideDbContext>()
-            .UseSqlServer(connection, sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo"))
+            .UseSqlServer(connection, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo"))
             .Options);
     }
 
@@ -44,9 +44,10 @@ public sealed class UnifiedDideDbContextFactory : IDesignTimeDbContextFactory<Un
             throw new InvalidOperationException("Unified must target a separate development database, not a system database or the applied POC.");
         foreach (var current in applicationConnections.Where(value => !string.IsNullOrWhiteSpace(value)))
         {
-            // Conservative comparison also rejects aliases of the application's server.
-            if (string.Equals(target.InitialCatalog, new SqlConnectionStringBuilder(current).InitialCatalog, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("Unified destination matches a database used by an existing application context. Stopping.");
+            var other = new SqlConnectionStringBuilder(current);
+            if (!string.Equals(target.DataSource, other.DataSource, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(target.InitialCatalog, other.InitialCatalog, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("All application contexts must target the same SQL Server database.");
         }
     }
 

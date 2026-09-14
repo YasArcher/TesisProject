@@ -25,7 +25,7 @@ internal static class ArticleReadHardeningTests
         var database = "tesis_articles_hardening_test_" + Guid.NewGuid().ToString("N");
         var connectionString = $@"Server=.\DINNOVA;Database={database};Integrated Security=True;TrustServerCertificate=True";
         await using var db = new UnifiedDideDbContext(new DbContextOptionsBuilder<UnifiedDideDbContext>()
-            .UseSqlServer(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")).Options);
+            .UseSqlServer(connectionString, x => x.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).Options);
         async Task RejectDuplicate(string sql)
         {
             try { await db.Database.ExecuteSqlRawAsync(sql); }

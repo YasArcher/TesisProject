@@ -34,7 +34,7 @@ builder.Configuration["ExternalApis:BaseUrl"] = "https://directory.invalid/";
 builder.Configuration["Storage:RootPath"] = Path.GetTempPath();
 builder.Services.AddUnifiedDide(builder.Configuration, o => o.UseSqlServer(
     $@"Server={server};Database={database};Integrated Security=True;TrustServerCertificate=True",
-    sql => sql.MigrationsHistoryTable("__EFMigrationsHistoryUnifiedDide", "dbo")));
+    sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")));
 builder.Services.Configure<ArticlesModuleOptions>(o => o.Enabled = true);
 builder.Services.AddAuthentication(o => { o.DefaultAuthenticateScheme = "fixture"; o.DefaultChallengeScheme = "fixture"; })
     .AddScheme<AuthenticationSchemeOptions, FixtureAuthentication>("fixture", _ => { });

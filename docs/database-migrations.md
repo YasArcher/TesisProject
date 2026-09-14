@@ -1,16 +1,24 @@
 # Migraciones activas
 
-El backend tiene tres streams de migración independientes:
+El backend usa una sola base física, `tesis_unified`, con tres `DbContext` y tres streams de migración independientes:
 
 | Contexto | Conexión | Esquema | Historial |
 | --- | --- | --- | --- |
-| `UnifiedDideDbContext` | `UnifiedDideConnection` | `dbo` | `dbo.__EFMigrationsHistoryUnifiedDide` |
-| `ProjectsDwContext` | `ProjectsDwConnection` | `DW` | `DW.__EFMigrationsHistory` |
+| `UnifiedDideDbContext` | `UnifiedDideConnection` | `dbo` | `dbo.__EFMigrationsHistory` |
+| `ProjectsDwContext` | `ProjectsDwConnection` | `ProjectsDW` | `ProjectsDW.__EFMigrationsHistory` |
 | `ArticlesDwContext` | `ArticlesDwConnection` | `ArticlesDW` | `ArticlesDW.__EFMigrationsHistory` |
 
-Las migraciones Unified de despliegue se ejecutan con `--migrate-unified`. Las
-migraciones DW solo se aplican automáticamente cuando
-`DatabaseBootstrap:ApplyDwMigrations=true`; el valor predeterminado es `false`.
+Las tres conexiones deben resolver al mismo servidor, base y usuario. En Docker, `DB_NAME=tesis_unified` es la única fuente del nombre físico.
+
+El job `migrate-database` ejecuta `--migrate-database` y aplica, en orden:
+
+1. `UnifiedDideDbContext.Database.MigrateAsync()`
+2. `ProjectsDwContext.Database.MigrateAsync()`
+3. `ArticlesDwContext.Database.MigrateAsync()`
+
+El job falla ante cualquier error. La API solo arranca cuando el job termina con éxito. `MigrateAsync` crea `tesis_unified` si no existe; no se requiere crear bases o schemas manualmente.
+
+El bootstrap normaliza dos nombres históricos antes de migrar una instalación existente: `dbo.__EFMigrationsHistoryUnifiedDide` pasa a `dbo.__EFMigrationsHistory`, y `DW.__EFMigrationsHistory` pasa a `ProjectsDW.__EFMigrationsHistory`. Si existen ambos nombres simultáneamente, el proceso se detiene para evitar mezclar streams.
 
 Desde `tesisproject.backend`, los comandos locales son:
 
