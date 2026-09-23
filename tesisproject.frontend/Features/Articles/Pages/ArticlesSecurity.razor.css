@@ -1,0 +1,184 @@
+.articles-security-page {
+    --articles-ink: #12343b;
+    --articles-teal: #2f5f5b;
+    --articles-mint: #edf7f3;
+    --articles-gold: #d8b84f;
+    --articles-muted: #64726f;
+    --articles-border: rgba(47, 95, 91, 0.16);
+    background: linear-gradient(180deg, #f5faf8 0%, #eef6f2 52%, #f7faf8 100%);
+    color: var(--articles-ink);
+}
+
+.articles-security-hero,
+.articles-security-panel {
+    border-color: var(--articles-border) !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-security-hero-band {
+    border-radius: 8px 8px 0 0;
+    background: linear-gradient(135deg, #0f172a 0%, #12343b 50%, #2f5f5b 100%);
+}
+
+.articles-security-status {
+    min-width: 15rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.9rem 1rem;
+}
+
+.articles-security-status span,
+.articles-security-summary span,
+.articles-security-capability span {
+    display: block;
+    color: var(--articles-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.articles-security-status span {
+    color: rgba(207, 250, 254, 0.88);
+}
+
+.articles-security-status strong,
+.articles-security-summary strong,
+.articles-security-capability strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--articles-ink);
+    font-size: 1rem;
+}
+
+.articles-security-status strong {
+    color: #ffffff;
+}
+
+.articles-security-status small {
+    display: block;
+    margin-top: 0.35rem;
+    color: rgba(226, 232, 240, 0.88);
+    font-size: 0.8rem;
+}
+
+.articles-security-summary {
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.articles-security-summary article,
+.articles-security-capability {
+    border: 1px solid rgba(47, 95, 91, 0.13);
+    border-radius: 8px;
+    background: rgba(237, 247, 243, 0.52);
+    padding: 0.9rem 1rem;
+}
+
+.articles-security-primary,
+.articles-security-secondary,
+.articles-security-disabled {
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 800;
+    padding: 0.62rem 0.95rem;
+    transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.articles-security-primary {
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, #12343b, #2f5f5b);
+    color: #ffffff;
+}
+
+.articles-security-secondary {
+    border: 1px solid rgba(47, 95, 91, 0.2);
+    background: #ffffff;
+    color: var(--articles-teal);
+}
+
+.articles-security-disabled {
+    border: 1px solid rgba(47, 95, 91, 0.14);
+    background: #eef3f1;
+    color: #8a9995;
+    cursor: not-allowed;
+}
+
+.articles-security-primary:hover,
+.articles-security-secondary:hover {
+    transform: translateY(-1px);
+}
+
+.articles-security-capability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+}
+
+.articles-security-capability {
+    background: rgba(255, 255, 255, 0.76);
+}
+
+.articles-security-capability--on {
+    background: linear-gradient(180deg, rgba(237, 247, 243, 0.94), rgba(255, 255, 255, 0.84));
+    border-color: rgba(47, 95, 91, 0.24);
+}
+
+.articles-security-capability--on span {
+    color: var(--articles-teal);
+}
+
+.articles-security-capability p,
+.articles-security-rule p {
+    margin: 0.35rem 0 0;
+    color: var(--articles-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.articles-security-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.articles-security-chip-list span {
+    border-radius: 999px;
+    background: rgba(47, 95, 91, 0.1);
+    color: var(--articles-teal);
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0.42rem 0.7rem;
+}
+
+.articles-security-rule {
+    display: grid;
+    grid-template-columns: 0.75rem 1fr;
+    gap: 0.7rem;
+    align-items: start;
+    border-bottom: 1px solid rgba(47, 95, 91, 0.1);
+    padding-bottom: 0.8rem;
+}
+
+.articles-security-rule:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.articles-security-rule span {
+    height: 0.55rem;
+    width: 0.55rem;
+    margin-top: 0.45rem;
+    border-radius: 999px;
+    background: var(--articles-gold);
+    box-shadow: 0 0 0 0.25rem rgba(216, 184, 79, 0.16);
+}
+
+@media (max-width: 760px) {
+    .articles-security-status {
+        min-width: 0;
+        width: 100%;
+    }
+}

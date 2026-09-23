@@ -1,5 +1,7 @@
 @page "/articles/module/matrix"
 @page "/articles/module/registration-matrix"
+@page "/management/registration-matrix"
+@page "/scientific-production/registration-matrix"
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.MassRegistration
@@ -88,14 +90,34 @@
                         <div class="mb-4 flex flex-col gap-3 border-b border-border pb-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                                 <h2 class="text-lg font-bold text-foreground">@_selected.Summary.Name</h2>
-                                <p class="text-xs text-muted">Estado: @_selected.Summary.Status - @_selected.Summary.RowCount fila(s)</p>
+                                <p class="text-xs text-muted">Estado: @StatusLabel(_selected.Summary.Status) - @_selected.Summary.RowCount fila(s) - @_selected.Columns.Count columna(s)</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
                                 <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="AddRowAsync" disabled="@_busy">Agregar fila</button>
-                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted hover:bg-page-bg" @onclick="SubmitAsync" disabled="@_busy">Enviar a staging</button>
+                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="ReviewMatrixAsync" disabled="@(_busy || _selected.Rows.Count == 0)">Revisar matriz</button>
+                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted opacity-70" disabled="true" title="El envio real a staging se activara cuando el backend de carga masiva y workflow quede integrado.">Staging pendiente</button>
                                 <button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @onclick="DeleteSelectedAsync" disabled="@_busy">Eliminar borrador</button>
                             </div>
                         </div>
+
+                        @if (_selected.Rows.Count > 0)
+                        {
+                            <section class="articles-matrix-review mb-4 rounded-lg border p-4 @(MissingRequiredCellCount > 0 ? "articles-matrix-review--warning" : "articles-matrix-review--ready")">
+                                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase">Revision de captura</p>
+                                        <h3 class="mt-1 text-base font-bold">@(MissingRequiredCellCount > 0 ? "Correcciones pendientes" : "Borrador listo para la siguiente fase")</h3>
+                                        <p class="mt-1 text-sm">@MatrixReviewMessage</p>
+                                        <p class="mt-2 text-xs font-semibold">Revision: @(_matrixReviewed ? "realizada" : "pendiente")</p>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                                        <span class="rounded-lg bg-white/70 px-3 py-2"><strong class="block text-base">@RequiredColumnCount</strong> obligatorios</span>
+                                        <span class="rounded-lg bg-white/70 px-3 py-2"><strong class="block text-base">@FilledCellCount</strong> capturados</span>
+                                        <span class="rounded-lg bg-white/70 px-3 py-2"><strong class="block text-base">@MissingRequiredCellCount</strong> pendientes</span>
+                                    </div>
+                                </div>
+                            </section>
+                        }
 
                         <div class="overflow-x-auto">
                             <table class="min-w-full border-separate border-spacing-0 text-sm">
@@ -104,7 +126,13 @@
                                         <th class="sticky left-0 z-10 border-b border-border bg-background px-3 py-2 text-left text-xs font-bold uppercase text-muted">Fila</th>
                                         @foreach (var column in _selected.Columns)
                                         {
-                                            <th class="border-b border-border px-3 py-2 text-left text-xs font-bold uppercase text-muted">@column.FieldLabel</th>
+                                            <th class="border-b border-border px-3 py-2 text-left text-xs font-bold uppercase text-muted">
+                                                <span>@column.FieldLabel</span>
+                                                @if (column.IsRequired)
+                                                {
+                                                    <span class="ml-2 rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">Obligatorio</span>
+                                                }
+                                            </th>
                                         }
                                     </tr>
                                 </thead>
@@ -120,10 +148,14 @@
                                             @foreach (var column in _selected.Columns)
                                             {
                                                 <td class="min-w-48 border-b border-border px-2 py-2">
-                                                    <input class="w-full rounded-lg border border-border bg-page-bg px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
+                                                    <input class="w-full rounded-lg border @(IsRequiredCellMissing(row, column) ? "border-red-300 bg-red-50" : "border-border bg-page-bg") px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
                                                            value="@GetCellValue(row, column.FieldId)"
-                                                           maxlength="4000"
+                                                           maxlength="@ColumnMaxLength(column)"
                                                            @onchange="args => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, args.Value?.ToString())" />
+                                                    @if (IsRequiredCellMissing(row, column))
+                                                    {
+                                                        <p class="mt-1 text-xs font-semibold text-red-700">Campo requerido</p>
+                                                    }
                                                 </td>
                                             }
                                         </tr>
@@ -146,10 +178,17 @@
     private bool _loading;
     private bool _creating;
     private bool _busy;
+    private bool _matrixReviewed;
     private string? _message;
     private bool _messageIsError;
 
     private string MessageClass => _messageIsError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
+    private int RequiredColumnCount => _selected?.Columns.Count(c => c.IsRequired) ?? 0;
+    private int FilledCellCount => _selected?.Rows.Sum(row => row.Cells.Count(cell => !string.IsNullOrWhiteSpace(cell.RawValue))) ?? 0;
+    private int MissingRequiredCellCount => _selected is null ? 0 : _selected.Rows.Sum(row => _selected.Columns.Count(column => column.IsRequired && string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId))));
+    private string MatrixReviewMessage => MissingRequiredCellCount > 0
+        ? "Completa los campos marcados en rojo antes de continuar con la preparacion del lote."
+        : "La matriz no tiene campos obligatorios pendientes. El envio real a staging se habilitara cuando se integre esa fase en la fusion.";
 
     private List<ResolvedFormFieldDto> ActiveFields => _form?.Sections
         .SelectMany(s => s.Fields)
@@ -218,6 +257,7 @@
         }
         _selected = result.Data;
         _selectedMatrixId = matrixId;
+        _matrixReviewed = false;
     }
 
     private async Task AddRowAsync()
@@ -233,6 +273,7 @@
                 return;
             }
             _selected = result.Data;
+            _matrixReviewed = false;
             Show("Fila agregada.", false);
         }
         finally
@@ -251,6 +292,7 @@
             return;
         }
         _selected = result.Data;
+        _matrixReviewed = false;
     }
 
     private async Task DeleteSelectedAsync()
@@ -276,15 +318,31 @@
         }
     }
 
-    private async Task SubmitAsync()
+    private Task ReviewMatrixAsync()
     {
-        if (_selected is null) return;
-        var result = await MatrixClient.SubmitToStagingAsync(_selected.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest { ValidateAfterCreate = true });
-        Show(result.Message ?? "El envio a staging todavia no esta disponible en esta fusion.", !result.Success);
+        if (_selected is null) return Task.CompletedTask;
+
+        _matrixReviewed = true;
+        Show(MissingRequiredCellCount > 0
+            ? $"La matriz tiene {MissingRequiredCellCount} campo(s) obligatorio(s) pendiente(s)."
+            : "La matriz esta lista como borrador. El envio a staging se activara cuando el backend de workflow/carga masiva quede integrado.",
+            MissingRequiredCellCount > 0);
+        return Task.CompletedTask;
     }
 
     private static string? GetCellValue(RegistrationMatrixRowDto row, int fieldId)
         => row.Cells.FirstOrDefault(c => c.FieldId == fieldId)?.RawValue;
+
+    private static bool IsRequiredCellMissing(RegistrationMatrixRowDto row, RegistrationMatrixColumnDto column)
+        => column.IsRequired && string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId));
+
+    private static int ColumnMaxLength(RegistrationMatrixColumnDto column)
+        => column.FieldKey.Equals("Doi", StringComparison.OrdinalIgnoreCase) ? 20
+            : column.FieldKey.Equals("Email", StringComparison.OrdinalIgnoreCase) ? 30
+            : 4000;
+
+    private static string StatusLabel(string? status)
+        => status?.Equals("Draft", StringComparison.OrdinalIgnoreCase) == true ? "Borrador" : status ?? "Sin estado";
 
     private void Show(string message, bool isError)
     {

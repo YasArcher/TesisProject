@@ -1,8 +1,16 @@
 @page "/articles"
+@page "/articulos/listado"
+@page "/scientific-production/articles"
+@page "/scientific-production/dashboard"
 @using Microsoft.AspNetCore.Components.Web
+@using tesisproject.frontend.Features.Articles.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.DTOs.Configuration
 @inject IArticleClientService ArticlesClient
+@inject IFormConfigurationClient FormConfigurationClient
+
+@* Modulo articulos: pagina principal de consulta integrada sobre el backend unificado. *@
 <div class="articles-module-page articles-home-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
         <header class="articles-home-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
@@ -27,27 +35,15 @@
             </div>
 
             <div class="articles-metric-grid grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4 md:px-6">
-                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
-                    <span class="text-xs font-semibold uppercase text-muted">Registros</span>
-                    <strong class="mt-1 block text-2xl text-foreground">@_page.TotalCount</strong>
-                </div>
-                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
-                    <span class="text-xs font-semibold uppercase text-muted">Pagina</span>
-                    <strong class="mt-1 block text-2xl text-foreground">@_page.Page / @Math.Max(1, _page.TotalPages)</strong>
-                </div>
-                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
-                    <span class="text-xs font-semibold uppercase text-muted">Con DOI</span>
-                    <strong class="mt-1 block text-2xl text-foreground">@CurrentPageWithDoi</strong>
-                </div>
-                <div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
-                    <span class="text-xs font-semibold uppercase text-muted">Con autores</span>
-                    <strong class="mt-1 block text-2xl text-foreground">@CurrentPageWithAuthors</strong>
-                </div>
+                <MetricTile Label="Registros" Value="@_page.TotalCount.ToString("N0")" />
+                <MetricTile Label="Pagina" Value="@($"{_page.Page} / {Math.Max(1, _page.TotalPages)}")" />
+                <MetricTile Label="Con DOI" Value="@CurrentPageWithDoi.ToString("N0")" />
+                <MetricTile Label="Con autores" Value="@CurrentPageWithAuthors.ToString("N0")" />
             </div>
         </header>
 
         <section class="articles-home-filters rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
-            <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(9rem,.45fr)_minmax(11rem,.55fr)_minmax(10rem,.45fr)]">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(8rem,.38fr)_minmax(11rem,.55fr)_minmax(10rem,.45fr)]">
                 <label class="block">
                     <span class="mb-1 block text-xs font-semibold text-muted">Buscar</span>
                     <input class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
@@ -80,6 +76,49 @@
                         <option value="12">12</option>
                         <option value="24">24</option>
                         <option value="48">48</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Facultad</span>
+                    <select class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" @bind="_facultyFilter">
+                        <option value="">Todas</option>
+                        @foreach (var item in _faculties)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Estado</span>
+                    <select class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" @bind="_statusFilter">
+                        <option value="">Todos</option>
+                        @foreach (var item in _statuses)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Linea</span>
+                    <select class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" @bind="_researchLineFilter">
+                        <option value="">Todas</option>
+                        @foreach (var item in _researchLines)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-semibold text-muted">Indexacion</span>
+                    <select class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" @bind="_indexingFilter">
+                        <option value="">Todas</option>
+                        @foreach (var item in _indexingSources)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
                     </select>
                 </label>
             </div>
@@ -150,96 +189,18 @@
                 <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
                     @foreach (var article in _page.Items)
                     {
-                        <article @key="article.Id" class="articles-article-card rounded-lg border border-border bg-background p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md">
-                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="min-w-0">
-                                    <div class="mb-2 flex flex-wrap gap-2">
-                                        <span class="rounded-full bg-primary-subtle px-2.5 py-1 text-xs font-semibold text-primary">@Display(article.Year)</span>
-                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">@Display(article.PublicationStatusName)</span>
-                                        @if (article.IsOpenAccess)
-                                        {
-                                            <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Acceso abierto</span>
-                                        }
-                                    </div>
-                                    <h2 class="line-clamp-2 text-base font-bold text-foreground">@Display(article.Title)</h2>
-                                    <p class="mt-2 text-sm text-muted">DOI: @Display(article.Doi)</p>
-                                </div>
-                                <button type="button"
-                                        class="shrink-0 rounded-md border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
-                                        @onclick="() => OpenDetailAsync(article.Id)">
-                                    Ver detalle
-                                </button>
-                            </div>
-
-                            <dl class="mt-4 grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
-                                <div>
-                                    <dt class="text-xs font-semibold text-muted">Revista</dt>
-                                    <dd class="mt-1 text-sm text-foreground">@Display(article.VenueName)</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs font-semibold text-muted">Indexacion</dt>
-                                    <dd class="mt-1 text-sm text-foreground">@Display(article.IndexingSourceName)</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs font-semibold text-muted">Facultad</dt>
-                                    <dd class="mt-1 text-sm text-foreground">@Display(article.FacultyName)</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-xs font-semibold text-muted">Autores</dt>
-                                    <dd class="mt-1 text-sm text-foreground">@DisplayAuthors(article.AuthorsSummary)</dd>
-                                </div>
-                            </dl>
-                        </article>
+                        <ArticleSummaryCard @key="article.Id" Item="article" OnViewMore="OpenDetailAsync" />
                     }
                 </section>
             }
             else
             {
-                <section class="articles-table-panel overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left" style="min-width: 920px;">
-                            <thead class="border-b border-border bg-primary-subtle">
-                                <tr class="text-xs uppercase text-muted">
-                                    <th class="px-4 py-3">Articulo</th>
-                                    <th class="px-4 py-3">Anio</th>
-                                    <th class="px-4 py-3">Revista</th>
-                                    <th class="px-4 py-3">Estado</th>
-                                    <th class="px-4 py-3">Indexacion</th>
-                                    <th class="px-4 py-3">Autores</th>
-                                    <th class="px-4 py-3 text-right">Accion</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-border">
-                                @foreach (var article in _page.Items)
-                                {
-                                    <tr @key="article.Id" class="hover:bg-primary-subtle">
-                                        <td class="px-4 py-3">
-                                            <div class="max-w-xl font-semibold text-foreground">@Display(article.Title)</div>
-                                            <div class="mt-1 text-xs text-muted">DOI: @Display(article.Doi)</div>
-                                        </td>
-                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.Year)</td>
-                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.VenueName)</td>
-                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.PublicationStatusName)</td>
-                                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.IndexingSourceName)</td>
-                                        <td class="px-4 py-3 text-sm text-foreground">@DisplayAuthors(article.AuthorsSummary)</td>
-                                        <td class="px-4 py-3 text-right">
-                                            <button type="button"
-                                                    class="rounded-md border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
-                                                    @onclick="() => OpenDetailAsync(article.Id)">
-                                                Ver detalle
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                <ArticleSummaryTable Items="_page.Items" OnViewMore="OpenDetailAsync" />
             }
 
             <footer class="articles-pagination flex flex-col gap-3 rounded-lg border border-border bg-background px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                 <p class="text-xs text-muted">
-                    Mostrando @_page.Items.Count registro(s) de @_page.TotalCount · Pagina @_page.Page de @Math.Max(1, _page.TotalPages)
+                    Mostrando @_page.Items.Count registro(s) de @_page.TotalCount - Pagina @_page.Page de @Math.Max(1, _page.TotalPages)
                 </p>
                 <div class="flex flex-wrap gap-2">
                     <button type="button"
@@ -260,113 +221,21 @@
     </div>
 </div>
 
-@if (_detailOpen)
-{
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
-         style="background-color: rgba(15, 23, 42, 0.62);"
-         @onclick="CloseDetail">
-        <section class="articles-detail-modal w-full max-w-4xl overflow-hidden rounded-lg bg-background shadow-2xl"
-                 role="dialog"
-                 aria-modal="true"
-                 aria-labelledby="article-detail-title"
-                 @onclick:stopPropagation="true">
-            <header class="flex items-start justify-between gap-4 border-b border-border bg-slate-950 p-5 text-white">
-                <div>
-                    <p class="text-sm font-semibold text-cyan-200">Detalle del articulo</p>
-                    <h2 id="article-detail-title" class="mt-1 line-clamp-2 text-xl font-bold">
-                        @(_detailLoading ? "Consultando..." : Display(_detail?.Title))
-                    </h2>
-                </div>
-                <button type="button"
-                        class="rounded-md border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10"
-                        @onclick="CloseDetail">
-                    Cerrar
-                </button>
-            </header>
-
-            <div class="max-h-[72vh] overflow-y-auto p-5">
-                @if (_detailLoading)
-                {
-                    <p class="text-sm text-muted">Cargando informacion...</p>
-                }
-                else if (!string.IsNullOrWhiteSpace(_detailError))
-                {
-                    <p class="text-sm text-muted">@_detailError</p>
-                }
-                else if (_detail is not null)
-                {
-                    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">DOI</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Doi)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Fecha de publicacion</dt><dd class="mt-1 text-sm text-foreground">@DisplayDate(_detail.PublishedAt)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Paginas</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.PageCount)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Revista</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.VenueName)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">ISSN</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.IssnCode)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Cuartil</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Quartile)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Facultad</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.FacultyName)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Filiacion</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Filiacion)</dd></div>
-                        <div class="rounded-md border border-border bg-page-bg px-3 py-2"><dt class="text-xs font-semibold text-muted">Acceso abierto</dt><dd class="mt-1 text-sm text-foreground">@(_detail.IsOpenAccess ? "Si" : "No")</dd></div>
-                    </dl>
-
-                    <div class="mt-5 border-t border-border pt-4">
-                        <h3 class="text-sm font-bold text-foreground">Participantes</h3>
-                        @if (_detail.Participants is { Count: > 0 })
-                        {
-                            <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                @foreach (var participant in _detail.Participants.OrderBy(x => x.Index))
-                                {
-                                    <div class="rounded-md border border-border bg-page-bg px-3 py-2">
-                                        <span class="text-xs font-semibold text-muted">Orden @participant.Index</span>
-                                        <p class="text-sm font-semibold text-foreground">@Display(participant.Nombre)</p>
-                                        <p class="text-xs text-muted">@Display(participant.Participacion)</p>
-                                    </div>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="mt-2 text-sm text-muted">Sin participantes informados.</p>
-                        }
-                    </div>
-
-                    @if (_detail.Indexings is { Count: > 0 })
-                    {
-                        <div class="mt-5 border-t border-border pt-4">
-                            <h3 class="text-sm font-bold text-foreground">Indexaciones</h3>
-                            <div class="mt-2 flex flex-wrap gap-2">
-                                @foreach (var indexing in _detail.Indexings)
-                                {
-                                    <span class="rounded-full bg-primary-subtle px-3 py-1 text-xs font-semibold text-primary">@indexing.IndexingSourceName</span>
-                                }
-                            </div>
-                        </div>
-                    }
-
-                    @if (_detail.DynamicFields.Count > 0)
-                    {
-                        <div class="mt-5 border-t border-border pt-4">
-                            <h3 class="text-sm font-bold text-foreground">Informacion adicional</h3>
-                            <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                @foreach (var field in _detail.DynamicFields)
-                                {
-                                    <div class="rounded-md border border-border bg-page-bg px-3 py-2">
-                                        <dt class="text-xs font-semibold text-muted">@field.FieldLabel</dt>
-                                        <dd class="mt-1 text-sm text-foreground">@Display(field.DisplayValue)</dd>
-                                    </div>
-                                }
-                            </dl>
-                        </div>
-                    }
-                }
-            </div>
-        </section>
-    </div>
-}
+<ArticleDetailDialog Open="_detailOpen"
+                     Loading="_detailLoading"
+                     Error="_detailError"
+                     Detail="_detail"
+                     OnClose="CloseDetail" />
 
 @code {
     private ArticlePageDto _page = new();
     private string? _search;
     private int? _year;
     private int _pageSize = 12;
+    private string? _facultyFilter;
+    private string? _statusFilter;
+    private string? _researchLineFilter;
+    private string? _indexingFilter;
     private string _sortBy = "PublishedAt";
     private string _viewMode = "cards";
     private bool _loading = true;
@@ -375,13 +244,26 @@
     private bool _detailLoading;
     private string? _detailError;
     private ArticleDetailDto? _detail;
+    private List<CatalogAdminItemDto> _faculties = [];
+    private List<CatalogAdminItemDto> _statuses = [];
+    private List<CatalogAdminItemDto> _researchLines = [];
+    private List<CatalogAdminItemDto> _indexingSources = [];
+    private int? _openedArticleIdFromQuery;
+
+    [SupplyParameterFromQuery(Name = "articleId")]
+    public int? ArticleId { get; set; }
 
     private int CurrentPageWithDoi => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.Doi));
     private int CurrentPageWithAuthors => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.AuthorsSummary) || item.Participants is { Count: > 0 });
     private string CardsButtonClass => ViewButtonClass("cards");
     private string TableButtonClass => ViewButtonClass("table");
 
-    protected override Task OnInitializedAsync() => LoadPageAsync(1);
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReferenceCatalogsAsync();
+        await LoadPageAsync(1);
+        await OpenInitialDetailFromQueryAsync();
+    }
 
     private async Task LoadPageAsync(int page)
     {
@@ -392,6 +274,10 @@
         {
             Search = _search,
             Year = ToShortYear(_year),
+            FacultyId = ToInt(_facultyFilter),
+            PublicationStatusId = ToByte(_statusFilter),
+            ResearchLineId = ToInt(_researchLineFilter),
+            IndexingSourceId = ToInt(_indexingFilter),
             Page = page,
             PageSize = _pageSize,
             SortBy = _sortBy,
@@ -416,7 +302,25 @@
         _search = null;
         _year = null;
         _sortBy = "PublishedAt";
+        _facultyFilter = null;
+        _statusFilter = null;
+        _researchLineFilter = null;
+        _indexingFilter = null;
         await LoadPageAsync(1);
+    }
+
+    private async Task LoadReferenceCatalogsAsync()
+    {
+        _faculties = await LoadCatalogAsync("faculties");
+        _statuses = await LoadCatalogAsync("publication-statuses");
+        _researchLines = await LoadCatalogAsync("research-lines");
+        _indexingSources = await LoadCatalogAsync("indexing-sources");
+    }
+
+    private async Task<List<CatalogAdminItemDto>> LoadCatalogAsync(string key)
+    {
+        var result = await FormConfigurationClient.GetAdminCatalogAsync(key);
+        return result.Success && result.Data is not null ? result.Data : [];
     }
 
     private void SetCardsView() => _viewMode = "cards";
@@ -445,6 +349,15 @@
         _detailLoading = false;
     }
 
+    private async Task OpenInitialDetailFromQueryAsync()
+    {
+        if (ArticleId is not > 0 || _openedArticleIdFromQuery == ArticleId)
+            return;
+
+        _openedArticleIdFromQuery = ArticleId;
+        await OpenDetailAsync(ArticleId.Value);
+    }
+
     private void CloseDetail()
     {
         _detailOpen = false;
@@ -460,14 +373,11 @@
     private static short? ToShortYear(int? year)
         => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
 
-    private static string Display(object? value)
-        => string.IsNullOrWhiteSpace(value?.ToString()) ? "No informado" : value.ToString()!;
+    private static int? ToInt(string? value)
+        => int.TryParse(value, out var parsed) && parsed > 0 ? parsed : null;
 
-    private static string DisplayAuthors(string? value)
-        => string.IsNullOrWhiteSpace(value) ? "Sin autores informados" : value;
-
-    private static string DisplayDate(DateTime? value)
-        => value?.ToString("dd/MM/yyyy") ?? "No informada";
+    private static byte? ToByte(string? value)
+        => byte.TryParse(value, out var parsed) && parsed > 0 ? parsed : null;
 
     private static string FriendlyError(string? code, string? message)
         => code switch

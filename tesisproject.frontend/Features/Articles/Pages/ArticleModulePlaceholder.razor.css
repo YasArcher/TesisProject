@@ -1,8 +1,24 @@
+﻿.articles-placeholder-page .articles-placeholder-hero,
 .articles-placeholder-page .articles-workspace-panel {
     border-color: rgba(47, 95, 91, 0.16) !important;
     border-radius: 8px !important;
-    background: rgba(255, 255, 255, 0.97) !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 248, 0.96)) !important;
     box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-placeholder-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 10rem;
+    border: 1px solid rgba(47, 95, 91, 0.18);
+    border-radius: 8px;
+    background: #e8f2ed;
+    color: #12343b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0.75rem 1rem;
+    text-transform: uppercase;
 }
 
 .articles-placeholder-page .articles-workspace-panel h2 {
@@ -11,4 +27,88 @@
 
 .articles-placeholder-page .articles-workspace-panel .rounded-lg {
     border-color: rgba(47, 95, 91, 0.14) !important;
+}
+
+.articles-placeholder-checklist {
+    background: rgba(255, 255, 255, 0.74);
+}
+
+.articles-placeholder-check {
+    display: grid;
+    grid-template-columns: 0.7rem 1fr;
+    gap: 0.65rem;
+    align-items: start;
+}
+
+.articles-placeholder-check span {
+    height: 0.55rem;
+    width: 0.55rem;
+    margin-top: 0.45rem;
+    border-radius: 999px;
+    background: #d8b84f;
+    box-shadow: 0 0 0 0.25rem rgba(216, 184, 79, 0.16);
+}
+
+.articles-placeholder-check p {
+    margin: 0;
+    color: #526762;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.articles-placeholder-check button {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    text-align: left;
+}
+
+.articles-placeholder-check strong {
+    display: block;
+    color: #12343b;
+    font-size: 0.88rem;
+}
+
+.articles-placeholder-check small {
+    display: block;
+    margin-top: 0.15rem;
+    color: #526762;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.articles-placeholder-metric {
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.articles-placeholder-action,
+.articles-placeholder-secondary {
+    border: 1px solid rgba(47, 95, 91, 0.22);
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.articles-placeholder-action {
+    background: #12343b;
+    color: #ffffff;
+}
+
+.articles-placeholder-secondary {
+    background: #ffffff;
+    color: #12343b;
+}
+
+.articles-placeholder-action:hover,
+.articles-placeholder-secondary:hover {
+    background: #1d4f4b;
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .articles-placeholder-status {
+        justify-content: flex-start;
+        min-width: 0;
+        width: 100%;
+    }
 }

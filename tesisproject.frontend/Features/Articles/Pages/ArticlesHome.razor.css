@@ -80,3 +80,88 @@
         padding: 0.95rem !important;
     }
 }
+.articles-home-page .articles-module-launcher {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-radius: 8px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 248, 0.96)) !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-launcher-summary {
+    width: fit-content;
+    border: 1px solid rgba(47, 95, 91, 0.16);
+    border-radius: 999px;
+    background: #e8f2ed;
+    color: #12343b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0.55rem 0.85rem;
+}
+
+.articles-launcher-card {
+    display: flex;
+    min-height: 8.5rem;
+    flex-direction: column;
+    gap: 0.55rem;
+    border: 1px solid rgba(47, 95, 91, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.78);
+    color: inherit;
+    padding: 1rem;
+    text-decoration: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.articles-launcher-card:hover {
+    border-color: rgba(47, 95, 91, 0.32);
+    box-shadow: 0 12px 26px rgba(18, 52, 59, 0.1);
+    transform: translateY(-1px);
+}
+
+.articles-launcher-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.articles-launcher-topline span {
+    color: #526762;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.articles-launcher-topline strong {
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 900;
+    padding: 0.3rem 0.55rem;
+    text-transform: uppercase;
+}
+
+.articles-launcher-topline strong.is-connected {
+    background: #e8f2ed;
+    color: #1d4f4b;
+}
+
+.articles-launcher-topline strong.is-prepared {
+    background: rgba(216, 184, 79, 0.16);
+    color: #7a5d08;
+}
+
+.articles-launcher-card h3 {
+    margin: 0;
+    color: #12343b;
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.articles-launcher-card p {
+    margin: 0;
+    color: #526762;
+    font-size: 0.86rem;
+    line-height: 1.45;
+}

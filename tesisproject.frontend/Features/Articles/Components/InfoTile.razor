@@ -1,0 +1,11 @@
+@namespace tesisproject.frontend.Features.Articles.Components
+
+<div class="rounded-md border border-border bg-page-bg px-3 py-2">
+    <dt class="text-xs font-semibold text-muted">@Label</dt>
+    <dd class="mt-1 text-sm text-foreground">@Value</dd>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+}

@@ -1,0 +1,240 @@
+@page "/articles/module/external-ingestion"
+@page "/management/external-ingestion"
+@page "/scientific-production/external-ingestion"
+@using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Articles
+@attribute [Authorize]
+@inject IArticleClientService ArticlesClient
+@inject NavigationManager Nav
+
+<PageTitle>Ingesta externa | Plataforma integrada</PageTitle>
+
+<div class="articles-ingestion-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-ingestion-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-ingestion-hero-band px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Ingesta institucional</p>
+                        <h1 class="mt-2 text-2xl font-bold md:text-3xl">Carga externa por bloques</h1>
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                            Vista preparada para controlar cargas grandes desde Scopus u otras fuentes, priorizando resumen, duplicados y resultado final sin exponer staging tecnico al usuario.
+                        </p>
+                    </div>
+                    <div class="articles-ingestion-status">
+                        <span>Estado de fusion</span>
+                        <strong>Vista operativa</strong>
+                        <small>Procesamiento por bloques pendiente</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-ingestion-summary grid gap-3 px-5 py-4 md:grid-cols-4 md:px-6">
+                @foreach (var kpi in Kpis)
+                {
+                    <article>
+                        <span>@kpi.Label</span>
+                        <strong>@kpi.Value</strong>
+                        <small>@kpi.Detail</small>
+                    </article>
+                }
+            </div>
+        </header>
+
+        @if (_loading)
+        {
+            <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+                <p class="mt-3 text-sm text-muted">Cargando panorama de ingesta...</p>
+            </section>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="articles-ingestion-panel rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
+                <h2 class="text-base font-bold text-rose-900">No fue posible cargar la ingesta</h2>
+                <p class="mt-2 text-sm text-rose-700">@_error</p>
+                <button type="button" class="articles-ingestion-primary mt-4" @onclick="LoadAsync">Intentar nuevamente</button>
+            </section>
+        }
+        else
+        {
+            <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <main class="grid gap-5">
+                    <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase text-muted">Control de carga</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Resumen de procesamiento</h2>
+                                <p class="mt-1 text-sm text-muted">El usuario debe ver resultados, no una lista tecnica de lotes o staging.</p>
+                            </div>
+                            <button type="button" class="articles-ingestion-secondary" @onclick="LoadAsync">Actualizar</button>
+                        </div>
+
+                        <div class="articles-ingestion-result-grid mt-5">
+                            @foreach (var item in ResultCards)
+                            {
+                                <article class="articles-ingestion-result-card">
+                                    <span>@item.Label</span>
+                                    <strong>@item.Value</strong>
+                                    <p>@item.Detail</p>
+                                </article>
+                            }
+                        </div>
+                    </section>
+
+                    <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase text-muted">Progreso de bloques</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Estado esperado del procesamiento</h2>
+                            </div>
+                            <span class="articles-ingestion-pill">Diseno preparado</span>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            @foreach (var block in Blocks)
+                            {
+                                <div class="articles-ingestion-block-row">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <strong>@block.Title</strong>
+                                        <span>@block.Status</span>
+                                    </div>
+                                    <p>@block.Detail</p>
+                                    <div class="articles-ingestion-track" aria-hidden="true">
+                                        <div class="articles-ingestion-fill" style="width: @block.Width"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+                </main>
+
+                <aside class="grid gap-5">
+                    <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Flujo simplificado</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Lo que vera el usuario</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach (var step in FlowSteps)
+                            {
+                                <div class="articles-ingestion-step">
+                                    <span>@step.Number</span>
+                                    <div>
+                                        <strong>@step.Title</strong>
+                                        <p>@step.Detail</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+
+                    <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Acciones disponibles</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Ruta segura</h2>
+                        <div class="mt-4 grid gap-2">
+                            <button type="button" class="articles-ingestion-primary" @onclick="GoToExternalApis">Preparar consulta API</button>
+                            <button type="button" class="articles-ingestion-secondary" @onclick="GoToReporting">Ver reporteria</button>
+                            <button type="button" class="articles-ingestion-secondary" @onclick="GoToArticlesList">Ver articulos registrados</button>
+                            <button type="button" class="articles-ingestion-secondary" @onclick="GoToBulkImport">Ir a carga tabular</button>
+                            <button type="button" class="articles-ingestion-disabled" disabled>Iniciar ingesta automatica</button>
+                        </div>
+                    </section>
+                </aside>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private ArticlePageDto _page = new();
+    private bool _loading = true;
+    private string? _error;
+
+    private IReadOnlyList<KpiItem> Kpis =>
+    [
+        new("Articulos registrados", _page.TotalCount.ToString("N0"), "Base actual"),
+        new("Muestra revisada", _page.Items.Count.ToString("N0"), "Ultimos registros consultados"),
+        new("Con DOI", FormatPercent(DoiRate), "Control de duplicados"),
+        new("Rango de anos", YearRange, "Fecha de publicacion")
+    ];
+
+    private IReadOnlyList<ResultItem> ResultCards =>
+    [
+        new("Listos en muestra", ReadySampleCount.ToString("N0"), "Registros con titulo y DOI disponibles para validacion bibliografica."),
+        new("DOI repetidos", DuplicateDoiCount.ToString("N0"), "Coincidencias internas detectadas dentro de la muestra consultada."),
+        new("Sin DOI", MissingDoiCount.ToString("N0"), "Registros que requieren otra llave de control antes de una ingesta automatica."),
+        new("Revision requerida", ReviewRequiredCount.ToString("N0"), "Registros sin titulo, sin DOI o con identificador repetido en la muestra.")
+    ];
+
+    private IReadOnlyList<BlockStatus> Blocks =>
+    [
+        new("Dataset local consultado", _page.Items.Count > 0 ? "Disponible" : "Sin datos", "La vista resume los articulos actuales para probar el comportamiento de carga masiva.", _page.Items.Count > 0 ? "100%" : "8%"),
+        new("Revision de DOI", DuplicateDoiCount > 0 || MissingDoiCount > 0 ? "Revisar" : "Controlado", "Se calcula una senal preliminar de duplicados e identificadores faltantes.", PercentWidth(DoiRate)),
+        new("Registro por bloques", "Pendiente backend", "La interfaz ya reserva el flujo para procesar miles de articulos sin exponer staging al usuario final.", "25%"),
+        new("Sincronizacion BI", "Desde reporteria", "La actualizacion analitica se ejecuta desde el modulo de reporteria mientras se completa la ingesta automatica.", "55%")
+    ];
+
+    private IReadOnlyList<FlowStep> FlowSteps =>
+    [
+        new("01", "Recuperar dataset", "La consulta externa obtiene articulos sin registrarlos directamente."),
+        new("02", "Validar duplicados", "El sistema separa DOI existentes, nuevos y registros incompletos."),
+        new("03", "Registrar resultados", "Solo los nuevos validos alimentan el modelo de articulos y reportería.")
+    ];
+
+    private double DoiRate => _page.Items.Count == 0 ? 0 : _page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Doi)) / (double)_page.Items.Count;
+    private int WithDoiCount => _page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Doi));
+    private int MissingDoiCount => Math.Max(0, _page.Items.Count - WithDoiCount);
+    private int UniqueDoiCount => _page.Items
+        .Where(x => !string.IsNullOrWhiteSpace(x.Doi))
+        .Select(x => x.Doi!.Trim().ToUpperInvariant())
+        .Distinct()
+        .Count();
+    private int DuplicateDoiCount => Math.Max(0, WithDoiCount - UniqueDoiCount);
+    private int ReadySampleCount => _page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Title) && !string.IsNullOrWhiteSpace(x.Doi));
+    private int ReviewRequiredCount => Math.Max(0, _page.Items.Count - ReadySampleCount + DuplicateDoiCount);
+
+    private string YearRange
+    {
+        get
+        {
+            var years = _page.Items.Where(x => x.Year.HasValue).Select(x => x.Year!.Value).ToList();
+            return years.Count == 0 ? "Sin datos" : $"{years.Min()} - {years.Max()}";
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
+        {
+            Page = 1,
+            PageSize = 100,
+            SortBy = "CreatedAt",
+            SortDesc = true
+        });
+
+        if (result.Success && result.Data is not null)
+            _page = result.Data;
+        else
+            _error = result.Message ?? "No fue posible cargar el panorama de ingesta externa.";
+
+        _loading = false;
+    }
+
+    private void GoToExternalApis() => Nav.NavigateTo("/articles/module/external-apis");
+    private void GoToReporting() => Nav.NavigateTo("/articles/module/reporting");
+    private void GoToArticlesList() => Nav.NavigateTo("/articles");
+    private void GoToBulkImport() => Nav.NavigateTo("/articles/module/bulk-import");
+
+    private static string FormatPercent(double value) => value.ToString("P0");
+    private static string PercentWidth(double value) => $"{Math.Clamp(value, 0, 1) * 100:0.##}%";
+
+    private sealed record KpiItem(string Label, string Value, string Detail);
+    private sealed record ResultItem(string Label, string Value, string Detail);
+    private sealed record BlockStatus(string Title, string Status, string Detail, string Width);
+    private sealed record FlowStep(string Number, string Title, string Detail);
+}

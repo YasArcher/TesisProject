@@ -1,0 +1,196 @@
+@page "/articles/module/security"
+@page "/management/security-administration"
+@using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Auth
+@attribute [Authorize]
+@inject IAuthClientService AuthClient
+
+<PageTitle>Seguridad de articulos | Plataforma integrada</PageTitle>
+
+<div class="articles-security-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-security-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-security-hero-band px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Gobierno de accesos</p>
+                        <h1 class="mt-2 text-2xl font-bold md:text-3xl">Usuarios y roles de articulos</h1>
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                            Vista de verificacion para confirmar que la autenticacion integrada reconoce capacidades del modulo de articulos sin alterar permisos del sistema de proyectos.
+                        </p>
+                    </div>
+                    <div class="articles-security-status">
+                        <span>Sesion actual</span>
+                        <strong>@DisplayName</strong>
+                        <small>@(_session?.Email ?? "Correo no informado")</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-security-summary grid gap-3 px-5 py-4 md:grid-cols-4 md:px-6">
+                <article>
+                    <span>Roles</span>
+                    <strong>@(_session?.Roles.Count ?? 0)</strong>
+                </article>
+                <article>
+                    <span>Permisos</span>
+                    <strong>@(_session?.Permissions.Count ?? 0)</strong>
+                </article>
+                <article>
+                    <span>Modulo articulos</span>
+                    <strong>@AccessLabel</strong>
+                </article>
+                <article>
+                    <span>Gestion seguridad</span>
+                    <strong>@CapabilityLabel(_session?.Articles.CanManageSecurity == true)</strong>
+                </article>
+            </div>
+        </header>
+
+        @if (_loading)
+        {
+            <section class="articles-security-panel rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+                <p class="mt-3 text-sm text-muted">Cargando sesion...</p>
+            </section>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="articles-security-panel rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
+                <h2 class="text-base font-bold text-rose-900">No fue posible cargar seguridad</h2>
+                <p class="mt-2 text-sm text-rose-700">@_error</p>
+                <button type="button" class="articles-security-primary mt-4" @onclick="LoadAsync">Intentar nuevamente</button>
+            </section>
+        }
+        else
+        {
+            <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <main class="grid gap-5">
+                    <section class="articles-security-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase text-muted">Capacidades del modulo</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Accesos efectivos</h2>
+                                <p class="mt-1 text-sm text-muted">Estas capacidades se leen desde la sesion integrada y orientan que opciones debe ver el usuario.</p>
+                            </div>
+                            <button type="button" class="articles-security-secondary" @onclick="LoadAsync">Actualizar</button>
+                        </div>
+
+                        <div class="articles-security-capability-grid mt-5">
+                            @foreach (var capability in Capabilities)
+                            {
+                                <article class="articles-security-capability @(capability.Enabled ? "articles-security-capability--on" : string.Empty)">
+                                    <span>@(capability.Enabled ? "Activo" : "Inactivo")</span>
+                                    <strong>@capability.Label</strong>
+                                    <p>@capability.Detail</p>
+                                </article>
+                            }
+                        </div>
+                    </section>
+
+                    <section class="grid gap-5 lg:grid-cols-2">
+                        <article class="articles-security-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                            <p class="text-xs font-bold uppercase text-muted">Roles asignados</p>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Sesion actual</h2>
+                            <div class="articles-security-chip-list mt-4">
+                                @foreach (var role in _session?.Roles ?? Array.Empty<string>())
+                                {
+                                    <span>@role</span>
+                                }
+                                @if (_session?.Roles.Count == 0)
+                                {
+                                    <p class="text-sm text-muted">No hay roles informados.</p>
+                                }
+                            </div>
+                        </article>
+
+                        <article class="articles-security-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                            <p class="text-xs font-bold uppercase text-muted">Permisos</p>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Permisos efectivos</h2>
+                            <div class="articles-security-chip-list mt-4">
+                                @foreach (var permission in VisiblePermissions)
+                                {
+                                    <span>@permission</span>
+                                }
+                                @if (!VisiblePermissions.Any())
+                                {
+                                    <p class="text-sm text-muted">No hay permisos de articulos informados.</p>
+                                }
+                            </div>
+                        </article>
+                    </section>
+                </main>
+
+                <aside class="articles-security-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <p class="text-xs font-bold uppercase text-muted">Ruta de administracion</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Cambios sensibles</h2>
+                    <div class="mt-4 space-y-3">
+                        @foreach (var rule in Rules)
+                        {
+                            <div class="articles-security-rule">
+                                <span></span>
+                                <p>@rule</p>
+                            </div>
+                        }
+                    </div>
+                    <button type="button" class="articles-security-disabled mt-5 w-full" disabled>Editar roles</button>
+                </aside>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private CurrentSessionResponse? _session;
+    private bool _loading = true;
+    private string? _error;
+
+    private string DisplayName => string.IsNullOrWhiteSpace(_session?.DisplayName) ? "Usuario autenticado" : _session.DisplayName!;
+    private string AccessLabel => _session?.Articles.CanAccess == true ? "Habilitado" : "Limitado";
+    private IEnumerable<string> VisiblePermissions => (_session?.Permissions ?? Array.Empty<string>()).Where(x => x.StartsWith("articles.", StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<Capability> Capabilities =>
+    [
+        new("Registrar", _session?.Articles.CanRegister == true, "Crear registros individuales o preparar informacion cientifica."),
+        new("Listado", _session?.Articles.CanList == true, "Consultar articulos registrados dentro del modulo."),
+        new("Workflow", _session?.Articles.CanUseWorkflow == true, "Dar seguimiento al flujo de revision institucional."),
+        new("Revision UODIDE", _session?.Articles.CanReviewUodide == true, "Tomar y revisar casos desde la bandeja UODIDE."),
+        new("Area tecnica", _session?.Articles.CanReviewTechnical == true, "Revisar y culminar validaciones tecnicas."),
+        new("Procesamiento", _session?.Articles.CanProcess == true, "Registrar informacion aprobada en el modelo definitivo."),
+        new("Carga masiva", _session?.Articles.CanUseBulkImport == true, "Preparar o procesar informacion por lotes."),
+        new("APIs externas", _session?.Articles.CanUseExternalApis == true, "Consultar fuentes academicas externas."),
+        new("Reporteria", _session?.Articles.CanViewReporting == true, "Visualizar indicadores institucionales."),
+        new("Inteligencia", _session?.Articles.CanViewIntelligence == true, "Consultar predicciones y recomendaciones."),
+        new("Configuracion", _session?.Articles.CanManageConfiguration == true, "Administrar formularios, campos y catalogos."),
+        new("Seguridad", _session?.Articles.CanManageSecurity == true, "Gobernar accesos del modulo de articulos.")
+    ];
+
+    private IReadOnlyList<string> Rules =>
+    [
+        "Los cambios de roles deben respetar la autenticacion base del sistema de proyectos.",
+        "La fusion no debe duplicar usuarios entre proyectos y articulos.",
+        "Las acciones de escritura de seguridad deben requerir confirmacion y auditoria.",
+        "Esta vista queda en modo lectura hasta conectar administracion de roles fusionada."
+    ];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await AuthClient.GetCurrentSessionAsync();
+        if (result.Success && result.Data is not null)
+            _session = result.Data;
+        else
+            _error = result.Message ?? "La sesion integrada no esta disponible.";
+
+        _loading = false;
+    }
+
+    private static string CapabilityLabel(bool enabled) => enabled ? "Permitido" : "No permitido";
+
+    private sealed record Capability(string Label, bool Enabled, string Detail);
+}

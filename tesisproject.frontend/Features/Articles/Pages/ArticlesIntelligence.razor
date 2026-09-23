@@ -1,0 +1,359 @@
+@page "/articles/module/intelligence"
+@page "/management/intelligence"
+@page "/scientific-production/intelligence"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Articles
+@attribute [Authorize]
+@inject IArticleClientService ArticlesClient
+@inject NavigationManager Nav
+
+<PageTitle>Inteligencia institucional | Plataforma integrada</PageTitle>
+
+<div class="articles-module-page articles-intelligence-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-intelligence-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-intelligence-hero-band px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Decision institucional</p>
+                        <h1 class="mt-2 text-2xl font-bold md:text-3xl">Inteligencia artificial</h1>
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                            Vista inicial de prediccion y recomendacion construida con la muestra de articulos disponible en la fusion.
+                        </p>
+                    </div>
+                    <div class="articles-intelligence-score">
+                        <span>Preparacion IA</span>
+                        <strong>@ReadinessScore%</strong>
+                        <small>@ReadinessLabel</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-intelligence-filterbar px-5 py-4 md:px-6">
+                <label>
+                    <span>Buscar</span>
+                    <input placeholder="Titulo, DOI, revista o autor" @bind="_search" @onkeydown="HandleSearchKeyDown" />
+                </label>
+                <label>
+                    <span>Anio</span>
+                    <input type="number" min="1900" max="@DateTime.Today.Year" @bind="_year" />
+                </label>
+                <div class="articles-intelligence-actions">
+                    <button type="button" class="articles-intelligence-secondary" @onclick="ClearAsync" disabled="@_loading">Limpiar</button>
+                    <button type="button" class="articles-intelligence-primary" @onclick="LoadAsync" disabled="@_loading">Actualizar</button>
+                </div>
+            </div>
+        </header>
+
+        @if (_loading)
+        {
+            <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+                <p class="mt-3 text-sm text-muted">Analizando datos disponibles...</p>
+            </section>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="articles-intelligence-panel rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
+                <h2 class="text-base font-bold text-rose-900">No fue posible cargar inteligencia</h2>
+                <p class="mt-2 text-sm text-rose-700">@_error</p>
+                <button type="button" class="articles-intelligence-primary mt-4" @onclick="LoadAsync">Intentar nuevamente</button>
+            </section>
+        }
+        else
+        {
+            <section class="articles-intelligence-kpis grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                @foreach (var kpi in Kpis)
+                {
+                    <article class="articles-intelligence-kpi rounded-lg border border-border bg-background p-4 shadow-sm">
+                        <span>@kpi.Label</span>
+                        <strong>@kpi.Value</strong>
+                        <small>@kpi.Detail</small>
+                    </article>
+                }
+            </section>
+
+            <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <main class="grid gap-5">
+                    <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase text-muted">Prediccion</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Produccion estimada</h2>
+                                <p class="mt-1 text-sm text-muted">Proyeccion simple basada en tendencia por anio de publicacion.</p>
+                            </div>
+                            <span class="articles-intelligence-pill">@ForecastConfidence% confianza</span>
+                        </div>
+
+                        <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                            <div class="articles-intelligence-chart">
+                                @if (YearRows.Count == 0)
+                                {
+                                    <p class="rounded-lg border border-dashed border-border p-4 text-sm text-muted">No hay anios suficientes para estimar tendencia.</p>
+                                }
+                                else
+                                {
+                                    @foreach (var row in YearRows)
+                                    {
+                                        <div class="articles-intelligence-bar-row">
+                                            <span>@row.Label</span>
+                                            <div class="articles-intelligence-track" aria-hidden="true">
+                                                <div class="articles-intelligence-fill" style="width: @PercentWidth(row.Ratio)"></div>
+                                            </div>
+                                            <strong>@row.Count</strong>
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <aside class="articles-intelligence-forecast rounded-lg border border-border p-4">
+                                <span>Siguiente periodo</span>
+                                <strong>@ForecastValue.ToString("N0")</strong>
+                                <p>@ForecastText</p>
+                            </aside>
+                        </div>
+                    </section>
+
+                    <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="border-b border-border pb-3">
+                            <p class="text-xs font-bold uppercase text-muted">Recomendacion</p>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Acciones sugeridas</h2>
+                        </div>
+                        <div class="mt-4 grid gap-3 md:grid-cols-2">
+                            @foreach (var item in Recommendations)
+                            {
+                                <article class="articles-intelligence-recommendation">
+                                    <span>@item.Priority</span>
+                                    <strong>@item.Title</strong>
+                                    <p>@item.Detail</p>
+                                </article>
+                            }
+                        </div>
+                    </section>
+                </main>
+
+                <aside class="grid gap-5">
+                    <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Calidad de datos</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Base para IA</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach (var item in QualityRows)
+                            {
+                                <div class="articles-intelligence-quality">
+                                    <div>
+                                        <span>@item.Label</span>
+                                        <strong>@FormatPercent(item.Ratio)</strong>
+                                    </div>
+                                    <div class="articles-intelligence-track" aria-hidden="true">
+                                        <div class="articles-intelligence-fill" style="width: @PercentWidth(item.Ratio)"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </section>
+
+                    <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Senales</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Lectura rapida</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach (var signal in DecisionSignals)
+                            {
+                                <div class="articles-intelligence-signal">
+                                    <span></span>
+                                    <p>@signal</p>
+                                </div>
+                            }
+                        </div>
+                    </section>
+
+                    <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Ruta de analisis</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Validar resultados</h2>
+                        <p class="mt-2 text-sm text-muted">
+                            Contrasta las recomendaciones con los registros y actualiza reportería antes de tomar decisiones institucionales.
+                        </p>
+                        <div class="articles-intelligence-shortcuts mt-4">
+                            <button type="button" class="articles-intelligence-primary" @onclick="GoToReporting">Abrir reporteria</button>
+                            <button type="button" class="articles-intelligence-secondary" @onclick="GoToArticlesList">Ver registros</button>
+                            <button type="button" class="articles-intelligence-secondary" @onclick="GoToIngestion">Revisar ingesta</button>
+                        </div>
+                    </section>
+                </aside>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private ArticlePageDto _page = new();
+    private string? _search;
+    private int? _year;
+    private bool _loading = true;
+    private string? _error;
+
+    private IReadOnlyList<TopRow> YearRows => BuildRows(_page.Items
+        .Where(x => x.Year.HasValue)
+        .GroupBy(x => x.Year!.Value.ToString())
+        .OrderBy(x => x.Key));
+
+    private IReadOnlyList<TopRow> FacultyRows => BuildRows(_page.Items
+        .GroupBy(x => CleanLabel(x.FacultyName, "Sin facultad"))
+        .OrderByDescending(x => x.Count()));
+
+    private IReadOnlyList<TopRow> IndexingRows => BuildRows(_page.Items
+        .GroupBy(x => CleanLabel(x.IndexingSourceName, "Sin indexacion"))
+        .OrderByDescending(x => x.Count()));
+
+    private int Total => _page.Items.Count;
+    private double DoiRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Doi)));
+    private double AuthorRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.AuthorsSummary) || x.Participants is { Count: > 0 }));
+    private double IndexingRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.IndexingSourceName)));
+    private double FacultyRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.FacultyName)));
+    private double OpenAccessRate => Ratio(_page.Items.Count(x => x.IsOpenAccess));
+
+    private int ReadinessScore => (int)Math.Round(
+        VolumeScore * 0.30 + AuthorRate * 100 * 0.22 + IndexingRate * 100 * 0.20 + DoiRate * 100 * 0.14 + FacultyRate * 100 * 0.14);
+
+    private int VolumeScore => Math.Min(100, Total * 2);
+    private int ForecastConfidence => Math.Clamp((ReadinessScore + (YearRows.Count * 8)) / 2, 20, 95);
+    private int ForecastValue => CalculateForecast();
+    private string ReadinessLabel => ReadinessScore >= 75 ? "Base solida" : ReadinessScore >= 50 ? "Base en consolidacion" : "Requiere mas datos";
+    private string ForecastText => YearRows.Count >= 2
+        ? "La estimacion usa variacion reciente de la muestra y debe contrastarse con reportería consolidada."
+        : "La estimacion es orientativa porque faltan mas periodos historicos.";
+
+    private IReadOnlyList<KpiItem> Kpis =>
+    [
+        new("Muestra", Total.ToString("N0"), $"De {_page.TotalCount:N0} registros consultables"),
+        new("Con DOI", FormatPercent(DoiRate), "Identificacion bibliografica"),
+        new("Con autores", FormatPercent(AuthorRate), "Trazabilidad de autoria"),
+        new("Open Access", FormatPercent(OpenAccessRate), "Acceso abierto informado")
+    ];
+
+    private IReadOnlyList<QualityItem> QualityRows =>
+    [
+        new("DOI informado", DoiRate),
+        new("Autores trazables", AuthorRate),
+        new("Indexacion", IndexingRate),
+        new("Facultad", FacultyRate)
+    ];
+
+    private IReadOnlyList<RecommendationItem> Recommendations =>
+    [
+        new("Alta", "Completar identificadores", DoiRate >= 0.85 ? "La cobertura DOI es adecuada; mantener validacion en nuevos registros." : "Prioriza registros sin DOI para mejorar deduplicacion, busqueda y analisis predictivo."),
+        new("Media", "Fortalecer indexacion", IndexingRate >= 0.80 ? "La indexacion tiene buena cobertura en la muestra." : "Revisa articulos sin fuente de indexacion para mejorar tableros y recomendaciones."),
+        new("Media", "Revisar facultades", FacultyRate >= 0.80 ? "La asignacion por facultad permite segmentar decisiones." : "Completa facultades para comparar produccion cientifica por unidad academica."),
+        new("Explorar", "Campo con mayor movimiento", $"El segmento mas visible es {TopLabel(FacultyRows)}; puede servir como punto inicial para analisis de crecimiento.")
+    ];
+
+    private IReadOnlyList<string> DecisionSignals =>
+    [
+        $"Preparacion IA actual: {ReadinessScore}% ({ReadinessLabel}).",
+        $"La facultad dominante en la muestra es {TopLabel(FacultyRows)}.",
+        $"La indexacion mas frecuente es {TopLabel(IndexingRows)}.",
+        $"La produccion estimada para el siguiente periodo es {ForecastValue:N0} articulo(s)."
+    ];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
+        {
+            Search = _search,
+            Year = ToShortYear(_year),
+            Page = 1,
+            PageSize = 100,
+            SortBy = "Year",
+            SortDesc = true
+        });
+
+        if (result.Success && result.Data is not null)
+            _page = result.Data;
+        else
+            _error = FriendlyError(result.ErrorCode, result.Message);
+
+        _loading = false;
+    }
+
+    private async Task ClearAsync()
+    {
+        _search = null;
+        _year = null;
+        await LoadAsync();
+    }
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+            await LoadAsync();
+    }
+
+    private void GoToReporting() => Nav.NavigateTo("/articles/module/reporting");
+    private void GoToArticlesList() => Nav.NavigateTo("/articles");
+    private void GoToIngestion() => Nav.NavigateTo("/articles/module/external-ingestion");
+
+    private int CalculateForecast()
+    {
+        var rows = YearRows.OrderBy(x => x.Label).ToList();
+        if (rows.Count == 0)
+            return 0;
+
+        if (rows.Count == 1)
+            return rows[0].Count;
+
+        var last = rows[^1].Count;
+        var previous = rows[^2].Count;
+        var trend = last - previous;
+        return Math.Max(0, last + trend);
+    }
+
+    private static IReadOnlyList<TopRow> BuildRows(IEnumerable<IGrouping<string, ArticleListItemDto>> groups)
+    {
+        var ordered = groups
+            .Select(group => new { group.Key, Count = group.Count() })
+            .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Key)
+            .Take(8)
+            .ToList();
+
+        var max = Math.Max(1, ordered.Count == 0 ? 1 : ordered.Max(x => x.Count));
+        return ordered.Select(x => new TopRow(x.Key, x.Count, x.Count / (double)max)).ToList();
+    }
+
+    private double Ratio(int count) => Total == 0 ? 0 : count / (double)Total;
+
+    private static short? ToShortYear(int? year)
+        => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
+
+    private static string CleanLabel(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
+    private static string FormatPercent(double value)
+        => value.ToString("P0");
+
+    private static string PercentWidth(double value)
+        => $"{Math.Clamp(value, 0, 1) * 100:0.##}%";
+
+    private static string TopLabel(IReadOnlyList<TopRow> rows)
+        => rows.Count == 0 ? "sin datos suficientes" : $"{rows[0].Label} ({rows[0].Count:N0})";
+
+    private static string FriendlyError(string? code, string? message)
+        => code switch
+        {
+            "ARTICLES_MODULE_DISABLED" => "El modulo de articulos todavia no esta habilitado en este entorno.",
+            _ when !string.IsNullOrWhiteSpace(message) => message,
+            _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
+        };
+
+    private sealed record KpiItem(string Label, string Value, string Detail);
+    private sealed record QualityItem(string Label, double Ratio);
+    private sealed record RecommendationItem(string Priority, string Title, string Detail);
+    private sealed record TopRow(string Label, int Count, double Ratio);
+}

@@ -202,3 +202,19 @@
         position: static;
     }
 }
+.articles-matrix-review {
+    border-radius: 8px !important;
+    box-shadow: 0 10px 24px rgba(18, 52, 59, 0.06);
+}
+
+.articles-matrix-review--ready {
+    border-color: rgba(63, 111, 95, 0.24) !important;
+    background: linear-gradient(135deg, rgba(237, 247, 243, 0.96), rgba(255, 255, 255, 0.94));
+    color: var(--articles-ink);
+}
+
+.articles-matrix-review--warning {
+    border-color: rgba(216, 184, 79, 0.44) !important;
+    background: linear-gradient(135deg, rgba(255, 248, 224, 0.96), rgba(255, 255, 255, 0.94));
+    color: #6f5514;
+}

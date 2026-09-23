@@ -1,0 +1,12 @@
+@namespace tesisproject.frontend.Features.Articles.Components
+
+@* Modulo articulos: metrica compacta reutilizable para cabeceras del frontend fusionado. *@
+<div class="articles-metric-card rounded-md border border-border bg-page-bg px-4 py-3">
+    <span class="text-xs font-semibold uppercase text-muted">@Label</span>
+    <strong class="mt-1 block text-2xl text-foreground">@Value</strong>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+}

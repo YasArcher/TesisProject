@@ -1,0 +1,55 @@
+@using tesisproject.shared.DTOs.Articles
+@namespace tesisproject.frontend.Features.Articles.Components
+
+@* Modulo articulos: tabla de consulta integrada en la fusion frontend. *@
+<section class="articles-table-panel overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left" style="min-width: 920px;">
+            <thead class="border-b border-border bg-primary-subtle">
+                <tr class="text-xs uppercase text-muted">
+                    <th class="px-4 py-3">Articulo</th>
+                    <th class="px-4 py-3">Anio</th>
+                    <th class="px-4 py-3">Revista</th>
+                    <th class="px-4 py-3">Estado</th>
+                    <th class="px-4 py-3">Indexacion</th>
+                    <th class="px-4 py-3">Autores</th>
+                    <th class="px-4 py-3 text-right">Accion</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+                @foreach (var article in Items)
+                {
+                    <tr @key="article.Id" class="hover:bg-primary-subtle">
+                        <td class="px-4 py-3">
+                            <div class="max-w-xl font-semibold text-foreground">@Display(article.Title)</div>
+                            <div class="mt-1 text-xs text-muted">DOI: @Display(article.Doi)</div>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.Year)</td>
+                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.VenueName)</td>
+                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.PublicationStatusName)</td>
+                        <td class="px-4 py-3 text-sm text-foreground">@Display(article.IndexingSourceName)</td>
+                        <td class="px-4 py-3 text-sm text-foreground">@DisplayAuthors(article.AuthorsSummary)</td>
+                        <td class="px-4 py-3 text-right">
+                            <button type="button"
+                                    class="rounded-md border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
+                                    @onclick="() => OnViewMore.InvokeAsync(article.Id)">
+                                Ver detalle
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<ArticleListItemDto> Items { get; set; } = Array.Empty<ArticleListItemDto>();
+    [Parameter] public EventCallback<int> OnViewMore { get; set; }
+
+    private static string Display(object? value)
+        => string.IsNullOrWhiteSpace(value?.ToString()) ? "No informado" : value.ToString()!;
+
+    private static string DisplayAuthors(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "Sin autores informados" : value;
+}

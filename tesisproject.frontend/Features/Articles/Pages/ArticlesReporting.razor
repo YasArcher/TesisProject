@@ -1,0 +1,336 @@
+@page "/articles/module/reporting"
+@page "/management/statisticalreports"
+@page "/scientific-production/reporting"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Articles
+@attribute [Authorize]
+@inject IArticleClientService ArticlesClient
+@inject IArticlesDwEtlClientService ArticlesEtlClient
+@inject NavigationManager Nav
+
+<PageTitle>Reporteria de articulos | Plataforma integrada</PageTitle>
+
+<div class="articles-module-page articles-reporting-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-reporting-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-reporting-hero-band px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Analisis institucional</p>
+                        <h1 class="mt-2 text-2xl font-bold md:text-3xl">Reporteria de articulos</h1>
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                            Vista operativa inicial para revisar produccion cientifica desde los articulos registrados. Los indicadores usan la muestra filtrada disponible en esta fase de fusion.
+                        </p>
+                    </div>
+                    <div class="articles-reporting-status">
+                        <span>Fuente</span>
+                        <strong>Muestra consultada</strong>
+                        <small>Analizando: @_page.Items.Count de @_page.TotalCount</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-reporting-filterbar px-5 py-4 md:px-6">
+                <label>
+                    <span>Buscar</span>
+                    <input placeholder="Titulo, DOI, revista o autor" @bind="_search" @onkeydown="HandleSearchKeyDown" />
+                </label>
+                <label>
+                    <span>Anio</span>
+                    <input type="number" min="1900" max="@DateTime.Today.Year" @bind="_year" />
+                </label>
+                <label>
+                    <span>Orden</span>
+                    <select @bind="_sortBy">
+                        <option value="PublishedAt">Fecha de publicacion</option>
+                        <option value="Year">Anio</option>
+                        <option value="Title">Titulo</option>
+                        <option value="CreatedAt">Fecha de registro</option>
+                    </select>
+                </label>
+                <div class="articles-reporting-actions">
+                    <button type="button" class="articles-reporting-secondary" @onclick="ClearAsync" disabled="@(_loading || _syncing)">Limpiar</button>
+                    <button type="button" class="articles-reporting-secondary" @onclick="SyncDwAsync" disabled="@(_loading || _syncing)">@(_syncing ? "Sincronizando..." : "Actualizar reporteria")</button>
+                    <button type="button" class="articles-reporting-primary" @onclick="LoadAsync" disabled="@(_loading || _syncing)">Actualizar</button>
+                </div>
+            </div>
+        </header>
+        @if (!string.IsNullOrWhiteSpace(_syncMessage) || !string.IsNullOrWhiteSpace(_syncError))
+        {
+            <section class="articles-reporting-panel rounded-lg border @(string.IsNullOrWhiteSpace(_syncError) ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50") p-4 shadow-sm">
+                <h2 class="text-sm font-bold @(string.IsNullOrWhiteSpace(_syncError) ? "text-emerald-900" : "text-amber-900")">
+                    @(string.IsNullOrWhiteSpace(_syncError) ? "Reporteria sincronizada" : "Sincronizacion pendiente")
+                </h2>
+                <p class="mt-1 text-sm @(string.IsNullOrWhiteSpace(_syncError) ? "text-emerald-700" : "text-amber-800")">
+                    @(_syncError ?? _syncMessage)
+                </p>
+            </section>
+        }
+
+        @if (_loading)
+        {
+            <section class="articles-reporting-panel rounded-lg border border-border bg-background p-8 text-center shadow-sm">
+                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+                <p class="mt-3 text-sm text-muted">Cargando indicadores...</p>
+            </section>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="articles-reporting-panel rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-sm">
+                <h2 class="text-base font-bold text-rose-900">No fue posible cargar la reporteria</h2>
+                <p class="mt-2 text-sm text-rose-700">@_error</p>
+                <button type="button" class="articles-reporting-primary mt-4" @onclick="LoadAsync">Intentar nuevamente</button>
+            </section>
+        }
+        else
+        {
+            <section class="articles-reporting-kpis grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                @foreach (var kpi in Kpis)
+                {
+                    <article class="articles-reporting-kpi rounded-lg border border-border bg-background p-4 shadow-sm">
+                        <span>@kpi.Label</span>
+                        <strong>@kpi.Value</strong>
+                        <small>@kpi.Detail</small>
+                    </article>
+                }
+            </section>
+
+            <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <main class="grid gap-5 lg:grid-cols-2">
+                    @foreach (var block in ReportBlocks)
+                    {
+                        <section class="article-report-block rounded-lg border border-border bg-background p-5 shadow-sm">
+                            <div class="flex items-start justify-between gap-3 border-b border-border pb-3">
+                                <div>
+                                    <p class="text-xs font-bold uppercase text-muted">Distribucion</p>
+                                    <h2 class="mt-1 text-lg font-bold text-foreground">@block.Title</h2>
+                                </div>
+                                <span class="rounded-full bg-primary-subtle px-3 py-1 text-xs font-bold text-primary">@block.Items.Count</span>
+                            </div>
+
+                            <div class="mt-3">
+                                @if (block.Items.Count == 0)
+                                {
+                                    <p class="rounded-lg border border-dashed border-border p-4 text-sm text-muted">@block.EmptyText</p>
+                                }
+                                else
+                                {
+                                    @foreach (var item in block.Items)
+                                    {
+                                        <div class="article-report-row">
+                                            <div class="article-report-row-head">
+                                                <span>@item.Label</span>
+                                                <strong>@item.Count.ToString("N0")</strong>
+                                            </div>
+                                            <div class="article-report-track" aria-hidden="true">
+                                                <div class="article-report-fill" style="width: @PercentWidth(item.Ratio)"></div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </section>
+                    }
+                </main>
+
+                <aside class="articles-reporting-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <p class="text-xs font-bold uppercase text-muted">Lectura institucional</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Senales de decision</h2>
+                    <div class="mt-4 space-y-3">
+                        @foreach (var signal in DecisionSignals)
+                        {
+                            <div class="articles-reporting-signal">
+                                <span></span>
+                                <p>@signal</p>
+                            </div>
+                        }
+                    </div>
+                    <div class="articles-reporting-note mt-5 rounded-lg border border-border p-4">
+                        <strong>Alcance de fusion</strong>
+                        <p>
+                            Esta vista usa los articulos disponibles por el contrato actual. Cuando se integre el tablero analitico completo, estos graficos podran leer directamente el Data Warehouse.
+                        </p>
+                    </div>
+                    <div class="articles-reporting-shortcuts mt-4">
+                        <button type="button" class="articles-reporting-primary" @onclick="GoToIntelligence">Ver inteligencia</button>
+                        <button type="button" class="articles-reporting-secondary" @onclick="GoToArticlesList">Abrir listado</button>
+                        <button type="button" class="articles-reporting-secondary" @onclick="GoToIngestion">Revisar ingesta</button>
+                    </div>
+                </aside>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private ArticlePageDto _page = new();
+    private string? _search;
+    private int? _year;
+    private string _sortBy = "PublishedAt";
+    private bool _loading = true;
+    private bool _syncing;
+    private string? _error;
+    private string? _syncMessage;
+    private string? _syncError;
+
+    private IReadOnlyList<TopRow> YearRows => BuildRows(_page.Items
+        .Where(x => x.Year.HasValue)
+        .GroupBy(x => x.Year!.Value.ToString())
+        .OrderByDescending(x => x.Key));
+
+    private IReadOnlyList<TopRow> FacultyRows => BuildRows(_page.Items
+        .GroupBy(x => CleanLabel(x.FacultyName, "Sin facultad"))
+        .OrderByDescending(x => x.Count()));
+
+    private IReadOnlyList<TopRow> IndexingRows => BuildRows(_page.Items
+        .GroupBy(x => CleanLabel(x.IndexingSourceName, "Sin indexacion"))
+        .OrderByDescending(x => x.Count()));
+
+    private IReadOnlyList<TopRow> StatusRows => BuildRows(_page.Items
+        .GroupBy(x => CleanLabel(x.PublicationStatusName, "Sin estado"))
+        .OrderByDescending(x => x.Count()));
+
+    private IReadOnlyList<ReportBlock> ReportBlocks =>
+    [
+        new("Produccion por anio", "Sin anos informados", YearRows),
+        new("Estados de publicacion", "Sin estados informados", StatusRows),
+        new("Facultades", "Sin facultades informadas", FacultyRows),
+        new("Indexacion", "Sin indexaciones informadas", IndexingRows)
+    ];
+
+    private IReadOnlyList<KpiItem> Kpis =>
+    [
+        new("Registros", _page.TotalCount.ToString("N0"), "Total disponible con filtros"),
+        new("Muestra", _page.Items.Count.ToString("N0"), "Registros analizados ahora"),
+        new("Open Access", FormatPercent(OpenAccessRate), "Segun muestra cargada"),
+        new("Con DOI", FormatPercent(DoiRate), "Calidad de identificacion")
+    ];
+
+    private IReadOnlyList<string> DecisionSignals =>
+    [
+        $"La produccion visible se concentra en {TopLabel(YearRows)}.",
+        $"La facultad con mayor presencia en la muestra es {TopLabel(FacultyRows)}.",
+        $"La fuente de indexacion dominante es {TopLabel(IndexingRows)}.",
+        $"La cobertura DOI actual es {FormatPercent(DoiRate)}."
+    ];
+
+    private double OpenAccessRate => Ratio(_page.Items.Count(x => x.IsOpenAccess));
+    private double DoiRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Doi)));
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
+        {
+            Search = _search,
+            Year = ToShortYear(_year),
+            Page = 1,
+            PageSize = 100,
+            SortBy = _sortBy,
+            SortDesc = true
+        });
+
+        if (result.Success && result.Data is not null)
+            _page = result.Data;
+        else
+            _error = FriendlyError(result.ErrorCode, result.Message);
+
+        _loading = false;
+    }
+
+    private async Task SyncDwAsync()
+    {
+        _syncing = true;
+        _syncMessage = null;
+        _syncError = null;
+
+        var result = await ArticlesEtlClient.RunFullLoadAsync();
+        if (result.Success)
+        {
+            _syncMessage = result.Message ?? "La informacion analitica de articulos fue actualizada correctamente.";
+            await LoadAsync();
+        }
+        else
+        {
+            _syncError = FriendlySyncError(result.Error, result.ErrorCode, result.Message);
+        }
+
+        _syncing = false;
+    }
+    private async Task ClearAsync()
+    {
+        _search = null;
+        _year = null;
+        _sortBy = "PublishedAt";
+        await LoadAsync();
+    }
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+            await LoadAsync();
+    }
+
+    private void GoToIntelligence() => Nav.NavigateTo("/articles/module/intelligence");
+    private void GoToArticlesList() => Nav.NavigateTo("/articles");
+    private void GoToIngestion() => Nav.NavigateTo("/articles/module/external-ingestion");
+
+    private static IReadOnlyList<TopRow> BuildRows(IEnumerable<IGrouping<string, ArticleListItemDto>> groups)
+    {
+        var ordered = groups
+            .Select(group => new { group.Key, Count = group.Count() })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Key)
+            .Take(8)
+            .ToList();
+
+        var total = ordered.Sum(x => x.Count);
+        return ordered
+            .Select(x => new TopRow(x.Key, x.Count, total <= 0 ? 0 : x.Count / (double)total))
+            .ToList();
+    }
+
+    private double Ratio(int count) => _page.Items.Count == 0 ? 0 : count / (double)_page.Items.Count;
+
+    private static short? ToShortYear(int? year)
+        => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
+
+    private static string CleanLabel(string? value, string fallback)
+        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
+    private static string FormatPercent(double value)
+        => value.ToString("P0");
+
+    private static string PercentWidth(double value)
+        => $"{Math.Clamp(value, 0, 1) * 100:0.##}%";
+
+    private static string TopLabel(IReadOnlyList<TopRow> rows)
+        => rows.Count == 0 ? "sin datos suficientes" : $"{rows[0].Label} ({rows[0].Count:N0})";
+
+    private static string FriendlySyncError(tesisproject.shared.Responses.ErrorType error, string? code, string? message)
+        => error switch
+        {
+            tesisproject.shared.Responses.ErrorType.Forbidden => "Tu usuario no tiene permisos para ejecutar la sincronizacion analitica. Puedes seguir consultando la informacion disponible.",
+            tesisproject.shared.Responses.ErrorType.Unauthorized => "Tu sesion no esta autorizada para sincronizar la reporteria. Vuelve a ingresar e intenta nuevamente.",
+            _ when !string.IsNullOrWhiteSpace(message) => message,
+            _ => "No fue posible sincronizar la reporteria en este momento. Intenta actualizar la vista o solicita soporte."
+        };
+
+    private static string FriendlyError(string? code, string? message)
+        => code switch
+        {
+            "ARTICLES_MODULE_DISABLED" => "El modulo de articulos todavia no esta habilitado en este entorno.",
+            _ when !string.IsNullOrWhiteSpace(message) => message,
+            _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
+        };
+
+    private sealed record KpiItem(string Label, string Value, string Detail);
+    private sealed record ReportBlock(string Title, string EmptyText, IReadOnlyList<TopRow> Items);
+    private sealed record TopRow(string Label, int Count, double Ratio);
+}

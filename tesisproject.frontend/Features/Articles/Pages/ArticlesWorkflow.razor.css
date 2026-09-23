@@ -81,3 +81,85 @@
         padding: 1rem;
     }
 }
+
+.articles-workflow-role-panel {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+}
+
+.articles-workflow-session {
+    width: fit-content;
+    border-radius: 999px;
+    background: rgba(47, 95, 91, 0.1);
+    color: #2f5f5b;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 0.45rem 0.75rem;
+}
+
+.articles-workflow-role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+}
+
+.articles-workflow-role-card {
+    border: 1px solid rgba(47, 95, 91, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.76);
+    padding: 1rem;
+}
+
+.articles-workflow-role-card--enabled {
+    background: linear-gradient(180deg, rgba(237, 247, 243, 0.94), rgba(255, 255, 255, 0.84));
+    border-color: rgba(47, 95, 91, 0.24);
+}
+
+.articles-workflow-role-card span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.articles-workflow-role-card--enabled span {
+    color: #2f5f5b;
+}
+
+.articles-workflow-role-card strong {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--foreground);
+    font-size: 1rem;
+}
+
+.articles-workflow-role-card em {
+    border-radius: 999px;
+    background: rgba(216, 184, 79, 0.18);
+    color: #6f5c11;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 800;
+    padding: 0.25rem 0.6rem;
+}
+
+.articles-workflow-role-card p {
+    margin: 0.85rem 0 0;
+    color: var(--muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.articles-workflow-role-card button {
+    margin-top: 0.9rem;
+    width: 100%;
+    border: 1px solid rgba(47, 95, 91, 0.14);
+    border-radius: 8px;
+    background: #eef3f1;
+    color: #8a9995;
+    cursor: not-allowed;
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 0.58rem 0.85rem;
+}

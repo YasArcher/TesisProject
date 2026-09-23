@@ -1,0 +1,265 @@
+@page "/articles/module/external-apis"
+@page "/management/externalapis"
+@page "/scientific-production/external-apis"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject NavigationManager Nav
+
+<PageTitle>APIs externas | Plataforma integrada</PageTitle>
+
+<div class="articles-module-page articles-external-api-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-external-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-external-hero-band px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Captura externa</p>
+                        <h1 class="mt-2 text-2xl font-bold md:text-3xl">APIs externas</h1>
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                            Centro de consulta academica para preparar recuperacion de articulos desde proveedores externos.
+                        </p>
+                    </div>
+                    <div class="articles-external-status">
+                        <span>Estado de fusion</span>
+                        <strong>Flujo preparado</strong>
+                        <small>Consulta real pendiente de backend</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-external-summary grid gap-3 px-5 py-4 md:grid-cols-3 md:px-6">
+                <article>
+                    <span>Proveedor principal</span>
+                    <strong>Scopus</strong>
+                </article>
+                <article>
+                    <span>Uso esperado</span>
+                    <strong>Consulta y preseleccion</strong>
+                </article>
+                <article>
+                    <span>Siguiente paso</span>
+                    <strong>Enviar a ingesta</strong>
+                </article>
+            </div>
+        </header>
+
+        <section class="grid gap-5 xl:grid-cols-[minmax(20rem,.72fr)_minmax(0,1fr)]">
+            <aside class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                <p class="text-xs font-bold uppercase text-muted">Consulta preparada</p>
+                <h2 class="mt-1 text-lg font-bold text-foreground">Parametros de busqueda</h2>
+
+                <div class="mt-4 grid gap-3">
+                    <label>
+                        <span>Proveedor</span>
+                        <select @bind="_providerKey">
+                            @foreach (var provider in Providers)
+                            {
+                                <option value="@provider.Key">@provider.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Modo</span>
+                        <select @bind="_queryMode">
+                            <option value="general">Texto libre</option>
+                            <option value="doi">DOI</option>
+                            <option value="institutional">Filiacion institucional</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Texto de busqueda</span>
+                        <input @bind="_queryText" placeholder="Titulo, DOI, autor o filiacion" />
+                    </label>
+                    <label>
+                        <span>Resultados maximos</span>
+                        <input type="number" min="1" max="100" @bind="_maxResults" />
+                    </label>
+                </div>
+
+                <button type="button" class="articles-external-primary mt-4 w-full" @onclick="PrepareSearch">
+                    Preparar consulta
+                </button>
+                <button type="button" class="articles-external-secondary mt-2 w-full" @onclick="GoToIngestion">
+                    Ver ingesta externa
+                </button>
+
+                @if (!string.IsNullOrWhiteSpace(_message))
+                {
+                    <div class="articles-external-message mt-4 rounded-lg border border-border p-4 @(string.IsNullOrWhiteSpace(_queryWarning) ? string.Empty : "articles-external-message--warning")">
+                        <strong>@(string.IsNullOrWhiteSpace(_queryWarning) ? "Consulta preparada" : "Datos incompletos")</strong>
+                        <p>@_message</p>
+                    </div>
+                }
+            </aside>
+
+            <main class="grid gap-5">
+                <section class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase text-muted">Proveedores</p>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Estado de integracion</h2>
+                        </div>
+                        <span class="articles-external-pill">@ConfiguredProviders de @Providers.Count listos</span>
+                    </div>
+
+                    <div class="mt-4 grid gap-3 md:grid-cols-2">
+                        @foreach (var provider in Providers)
+                        {
+                            <article class="articles-external-provider @(provider.IsConfigured ? "articles-external-provider--ready" : string.Empty)">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <span>@provider.Kind</span>
+                                        <strong>@provider.Name</strong>
+                                    </div>
+                                    <em>@(provider.IsConfigured ? "Configurado" : "Pendiente")</em>
+                                </div>
+                                <p>@provider.Description</p>
+                            </article>
+                        }
+                    </div>
+                </section>
+
+                @if (_preparedQuery is not null)
+                {
+                    <section class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase text-muted">Previsualizacion</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Consulta lista para conectar</h2>
+                                <p class="mt-1 text-sm text-muted">Esta previsualizacion conserva los parametros que luego consumira el endpoint backend de consulta externa.</p>
+                            </div>
+                            <span class="articles-external-pill">@_preparedQuery.Provider</span>
+                        </div>
+
+                        <div class="articles-external-query-grid mt-4">
+                            <article>
+                                <span>Modo</span>
+                                <strong>@_preparedQuery.Mode</strong>
+                            </article>
+                            <article>
+                                <span>Busqueda</span>
+                                <strong>@_preparedQuery.Query</strong>
+                            </article>
+                            <article>
+                                <span>Limite</span>
+                                <strong>@_preparedQuery.MaxResults</strong>
+                            </article>
+                        </div>
+
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button type="button" class="articles-external-primary" @onclick="GoToIngestion">Continuar a ingesta</button>
+                            <button type="button" class="articles-external-secondary" @onclick="ClearPreparedQuery">Limpiar consulta</button>
+                        </div>
+                    </section>
+                }
+
+                <section class="grid gap-5 lg:grid-cols-2">
+                    <article class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Flujo recomendado</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Como debe operar</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach (var step in FlowSteps)
+                            {
+                                <div class="articles-external-step">
+                                    <span>@step.Number</span>
+                                    <div>
+                                        <strong>@step.Title</strong>
+                                        <p>@step.Detail</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </article>
+
+                    <article class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <p class="text-xs font-bold uppercase text-muted">Controles de seguridad</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Antes de consultar</h2>
+                        <div class="mt-4 space-y-3">
+                            @foreach (var check in SafetyChecks)
+                            {
+                                <div class="articles-external-check">
+                                    <span></span>
+                                    <p>@check</p>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </section>
+    </div>
+</div>
+
+@code {
+    private string _providerKey = "scopus";
+    private string _queryMode = "general";
+    private string? _queryText;
+    private int _maxResults = 25;
+    private string? _message;
+    private string? _queryWarning;
+    private PreparedQuery? _preparedQuery;
+
+    private IReadOnlyList<ProviderInfo> Providers =>
+    [
+        new("scopus", "Scopus", "Principal", false, "Proveedor prioritario para recuperar articulos con filiacion institucional y DOI."),
+        new("crossref", "Crossref", "Bibliografico", false, "Util para completar DOI, revista, editorial y metadatos abiertos."),
+        new("openalex", "OpenAlex", "Abierto", false, "Fuente abierta para explorar autores, instituciones y produccion cientifica."),
+        new("semantic-scholar", "Semantic Scholar", "Complementario", false, "Apoyo para citas, resumen academico y senales bibliometricas.")
+    ];
+
+    private int ConfiguredProviders => Providers.Count(x => x.IsConfigured);
+
+    private IReadOnlyList<FlowStep> FlowSteps =>
+    [
+        new("01", "Consultar proveedor", "El usuario prepara una busqueda por texto, DOI o filiacion institucional."),
+        new("02", "Revisar resultados", "La plataforma debe mostrar articulos encontrados sin registrarlos automaticamente."),
+        new("03", "Enviar a ingesta", "Solo los articulos seleccionados pasan al flujo de ingesta o staging institucional.")
+    ];
+
+    private IReadOnlyList<string> SafetyChecks =>
+    [
+        "Las llaves de proveedores deben vivir en backend o variables de entorno, nunca visibles en el navegador.",
+        "Los errores tecnicos del proveedor deben traducirse a mensajes simples para el usuario final.",
+        "La consulta externa no debe modificar articulos registrados hasta que el usuario confirme la ingesta.",
+        "Los duplicados por DOI deben filtrarse en la fase de ingesta antes de registrar informacion."
+    ];
+
+    private void PrepareSearch()
+    {
+        var provider = Providers.FirstOrDefault(x => x.Key == _providerKey) ?? Providers[0];
+        var query = string.IsNullOrWhiteSpace(_queryText) ? string.Empty : _queryText.Trim();
+        var maxResults = Math.Clamp(_maxResults, 1, 100);
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _queryWarning = "query-required";
+            _preparedQuery = null;
+            _message = "Ingresa un titulo, DOI, autor o filiacion para preparar la consulta.";
+            return;
+        }
+
+        _queryWarning = null;
+        _preparedQuery = new PreparedQuery(provider.Name, ModeLabel(_queryMode), query, maxResults);
+        _message = $"Consulta preparada para {provider.Name}. Cuando se conecte el endpoint unificado, estos parametros enviaran hasta {maxResults} resultado(s) a revision previa.";
+    }
+
+    private void ClearPreparedQuery()
+    {
+        _preparedQuery = null;
+        _message = null;
+        _queryWarning = null;
+    }
+
+    private void GoToIngestion() => Nav.NavigateTo("/articles/module/external-ingestion");
+
+    private static string ModeLabel(string mode) => mode switch
+    {
+        "doi" => "DOI",
+        "institutional" => "Filiacion institucional",
+        _ => "Texto libre"
+    };
+
+    private sealed record ProviderInfo(string Key, string Name, string Kind, bool IsConfigured, string Description);
+    private sealed record FlowStep(string Number, string Title, string Detail);
+    private sealed record PreparedQuery(string Provider, string Mode, string Query, int MaxResults);
+}

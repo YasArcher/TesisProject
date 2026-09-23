@@ -1,0 +1,416 @@
+@page "/articles/module/bulk-import"
+@page "/management/exportinformation"
+@page "/scientific-production/bulk-import"
+@using Microsoft.AspNetCore.Authorization
+@using tesisproject.shared.DTOs.MassRegistration
+@using tesisproject.frontend.Services.Interfaces
+@attribute [Authorize]
+@inject IRegistrationMatrixClient MatrixClient
+@inject NavigationManager Nav
+
+<PageTitle>Carga masiva | Plataforma integrada</PageTitle>
+
+<div class="articles-bulk-page h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
+        <header class="articles-bulk-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-bulk-hero-band px-5 py-5 text-white md:px-6">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Captura tabular</p>
+                        <h1 class="mt-2 text-2xl font-bold md:text-3xl">Carga masiva de articulos</h1>
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                            Preparacion controlada de registros por matriz para revisar filas, campos obligatorios y estado del lote antes de activar el staging institucional.
+                        </p>
+                    </div>
+                    <div class="articles-bulk-status-card">
+                        <span>Estado de fusion</span>
+                        <strong>Lectura operativa</strong>
+                        <small>Procesamiento final pendiente de backend</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="articles-bulk-summary grid gap-3 px-5 py-4 md:grid-cols-4 md:px-6">
+                <article>
+                    <span>Matrices</span>
+                    <strong>@_matrices.Count</strong>
+                </article>
+                <article>
+                    <span>Filas preparadas</span>
+                    <strong>@TotalRows</strong>
+                </article>
+                <article>
+                    <span>Columnas</span>
+                    <strong>@TotalColumns</strong>
+                </article>
+                <article>
+                    <span>Con staging</span>
+                    <strong>@MatricesWithBatch</strong>
+                </article>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="articles-bulk-alert rounded-lg border p-4">
+                <strong>Informacion del modulo</strong>
+                <p>@_message</p>
+            </div>
+        }
+
+        <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(21rem,.55fr)]">
+            <main class="grid gap-5">
+                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase text-muted">Borradores tabulares</p>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Matrices disponibles</h2>
+                            <p class="mt-1 text-sm text-muted">Estas matrices son la entrada segura para preparar datos antes de enviarlos al flujo institucional.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" class="articles-bulk-secondary" disabled="@_loading" @onclick="LoadMatricesAsync">Actualizar</button>
+                            <button type="button" class="articles-bulk-primary" @onclick="GoToMatrix">Abrir matriz</button>
+                        </div>
+                    </div>
+
+                    @if (_loading)
+                    {
+                        <div class="articles-bulk-empty mt-5">
+                            <strong>Cargando matrices</strong>
+                            <p>Estamos consultando los borradores disponibles para carga masiva.</p>
+                        </div>
+                    }
+                    else if (_matrices.Count == 0)
+                    {
+                        <div class="articles-bulk-empty mt-5">
+                            <strong>No hay matrices creadas</strong>
+                            <p>Crea una matriz desde captura tabular para preparar registros por fila antes de continuar con la carga masiva.</p>
+                            <button type="button" class="articles-bulk-primary mt-4" @onclick="GoToMatrix">Crear desde matriz</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="articles-bulk-matrix-grid mt-5">
+                            @foreach (var matrix in _matrices)
+                            {
+                                <article class="articles-bulk-matrix-card @(IsSelected(matrix) ? "articles-bulk-matrix-card--selected" : string.Empty)" @key="matrix.RegistrationMatrixId">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <span>@StatusLabel(matrix.Status)</span>
+                                            <strong>@matrix.Name</strong>
+                                        </div>
+                                        <em>@(matrix.LastImportBatchId.HasValue ? "Con lote" : "Borrador")</em>
+                                    </div>
+                                    <div class="articles-bulk-card-stats mt-4">
+                                        <div>
+                                            <span>Filas</span>
+                                            <strong>@matrix.RowCount</strong>
+                                        </div>
+                                        <div>
+                                            <span>Columnas</span>
+                                            <strong>@matrix.ColumnCount</strong>
+                                        </div>
+                                        <div>
+                                            <span>Actualizacion</span>
+                                            <strong>@FormatDate(matrix.UpdatedAt ?? matrix.CreatedAt)</strong>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex flex-wrap gap-2">
+                                        <button type="button" class="articles-bulk-secondary" @onclick="() => SelectMatrixAsync(matrix.RegistrationMatrixId)">Revisar</button>
+                                        <button type="button" class="articles-bulk-secondary" @onclick="GoToMatrix">Editar matriz</button>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase text-muted">Control del flujo</p>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Procesamiento institucional</h2>
+                            <p class="mt-1 max-w-3xl text-sm text-muted">
+                                La fusion ya permite preparar matrices. El envio definitivo a staging se habilitara cuando el servicio unificado de BulkImport quede conectado al backend.
+                            </p>
+                        </div>
+                        <button type="button" class="articles-bulk-disabled" disabled>Procesar staging</button>
+                    </div>
+                    <div class="articles-bulk-process-note mt-4">
+                        <strong>Estado actual</strong>
+                        <p>La fusion conserva el flujo seguro: primero se preparan borradores, luego se revisan datos obligatorios y finalmente se habilitara el procesamiento real cuando BulkImport quede conectado.</p>
+                    </div>
+                </section>
+            </main>
+
+            <aside class="grid gap-5">
+                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <p class="text-xs font-bold uppercase text-muted">Revision de matriz</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">@SelectedMatrixTitle</h2>
+
+                    @if (_loadingDetail)
+                    {
+                        <div class="articles-bulk-empty mt-4">
+                            <strong>Cargando detalle</strong>
+                            <p>Consultando columnas, filas y campos requeridos de la matriz seleccionada.</p>
+                        </div>
+                    }
+                    else if (_selectedMatrix is null)
+                    {
+                        <div class="articles-bulk-empty mt-4">
+                            <strong>Sin matriz seleccionada</strong>
+                            <p>Selecciona una matriz para revisar si tiene filas, columnas y datos mínimos antes de continuar.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="articles-bulk-quality-grid mt-4">
+                            <article>
+                                <span>Campos requeridos</span>
+                                <strong>@RequiredColumnCount</strong>
+                            </article>
+                            <article>
+                                <span>Celdas completas</span>
+                                <strong>@CompletedRequiredCells</strong>
+                            </article>
+                            <article class="@(MissingRequiredCells > 0 ? "articles-bulk-quality-warning" : "articles-bulk-quality-ready")">
+                                <span>Pendientes</span>
+                                <strong>@MissingRequiredCells</strong>
+                            </article>
+                        </div>
+
+                        <div class="articles-bulk-detail-list mt-4">
+                            @foreach (var column in _selectedMatrix.Columns.OrderBy(x => x.DisplayOrder).Take(8))
+                            {
+                                <div>
+                                    <strong>@column.FieldLabel</strong>
+                                    <span>@(column.IsRequired ? "Obligatorio" : "Opcional") · @column.DataType</span>
+                                </div>
+                            }
+                        </div>
+
+                        @if (MissingRequiredCells > 0)
+                        {
+                            <div class="articles-bulk-alert mt-4 rounded-lg border p-4">
+                                <strong>Correcciones necesarias</strong>
+                                <p>Completa los campos obligatorios pendientes desde la matriz antes de habilitar una carga institucional.</p>
+                            </div>
+                        }
+
+                        <div class="mt-4 grid gap-2">
+                            <button type="button" class="articles-bulk-primary" @onclick="GoToMatrix">Abrir matriz seleccionada</button>
+                            @if (_pendingDeleteMatrixId == _selectedMatrix.Summary.RegistrationMatrixId)
+                            {
+                                <button type="button" class="articles-bulk-danger" disabled="@_deletingMatrix" @onclick="DeleteSelectedMatrixAsync">Confirmar eliminacion</button>
+                                <button type="button" class="articles-bulk-secondary" @onclick="CancelDeleteMatrix">Cancelar</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="articles-bulk-secondary" disabled="@(!CanDeleteSelectedMatrix)" @onclick="RequestDeleteSelectedMatrix">Eliminar borrador</button>
+                            }
+                        </div>
+                    }
+                </section>
+
+                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <p class="text-xs font-bold uppercase text-muted">Ruta recomendada</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Operacion segura</h2>
+                    <div class="mt-4 space-y-3">
+                        @foreach (var step in FlowSteps)
+                        {
+                            <div class="articles-bulk-step">
+                                <span>@step.Number</span>
+                                <div>
+                                    <strong>@step.Title</strong>
+                                    <p>@step.Detail</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </section>
+
+                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <p class="text-xs font-bold uppercase text-muted">Reglas visibles</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Antes de procesar</h2>
+                    <div class="mt-4 space-y-3">
+                        @foreach (var rule in Rules)
+                        {
+                            <div class="articles-bulk-rule">
+                                <span></span>
+                                <p>@rule</p>
+                            </div>
+                        }
+                    </div>
+                </section>
+            </aside>
+        </section>
+    </div>
+</div>
+
+@code {
+    private bool _loading = true;
+    private bool _loadingDetail;
+    private bool _deletingMatrix;
+    private string? _message;
+    private List<RegistrationMatrixSummaryDto> _matrices = [];
+    private RegistrationMatrixDetailDto? _selectedMatrix;
+    private int? _pendingDeleteMatrixId;
+
+    private int TotalRows => _matrices.Sum(x => x.RowCount);
+    private int TotalColumns => _matrices.Sum(x => x.ColumnCount);
+    private int MatricesWithBatch => _matrices.Count(x => x.LastImportBatchId.HasValue);
+    private string SelectedMatrixTitle => _selectedMatrix?.Summary.Name ?? "Seleccion pendiente";
+    private int RequiredColumnCount => _selectedMatrix?.Columns.Count(x => x.IsRequired) ?? 0;
+    private int RequiredCellCount => RequiredColumnCount * (_selectedMatrix?.Rows.Count ?? 0);
+    private int CompletedRequiredCells => _selectedMatrix is null ? 0 : RequiredColumns.Sum(column =>
+        _selectedMatrix.Rows.Count(row => row.Cells.Any(cell => cell.FieldId == column.FieldId && !string.IsNullOrWhiteSpace(cell.RawValue))));
+    private int MissingRequiredCells => Math.Max(0, RequiredCellCount - CompletedRequiredCells);
+    private bool CanDeleteSelectedMatrix => _selectedMatrix is not null
+        && !_selectedMatrix.Summary.LastImportBatchId.HasValue
+        && string.Equals(_selectedMatrix.Summary.Status, "Draft", StringComparison.OrdinalIgnoreCase);
+    private IEnumerable<RegistrationMatrixColumnDto> RequiredColumns => _selectedMatrix?.Columns.Where(x => x.IsRequired) ?? [];
+
+    private IReadOnlyList<FlowStep> FlowSteps =>
+    [
+        new("01", "Preparar matriz", "El usuario organiza columnas y filas segun el formulario activo o una matriz personalizada."),
+        new("02", "Revisar calidad", "Se valida que los datos minimos esten completos antes de abrir procesos de staging."),
+        new("03", "Procesar por lote", "El backend de BulkImport procesara duplicados, errores y registros listos sin saturar al usuario.")
+    ];
+
+    private IReadOnlyList<string> Rules =>
+    [
+        "No se debe procesar informacion sin una matriz con filas y columnas configuradas.",
+        "Los duplicados por DOI deben bloquearse antes de registrar articulos definitivos.",
+        "Los errores tecnicos deben convertirse en mensajes simples para el usuario final.",
+        "Las operaciones largas deben mostrar progreso y resultado resumido."
+    ];
+
+    protected override async Task OnInitializedAsync() => await LoadMatricesAsync();
+
+    private async Task LoadMatricesAsync()
+    {
+        _loading = true;
+        _message = null;
+
+        try
+        {
+            var response = await MatrixClient.GetMatricesAsync(25);
+            if (response.Success && response.Data is not null)
+            {
+                _matrices = response.Data;
+                _message = _matrices.Count == 0
+                    ? "Todavia no existen matrices para carga masiva. Empieza creando una matriz tabular."
+                    : "Matrices cargadas correctamente. El procesamiento final permanece bloqueado hasta conectar BulkImport unificado.";
+                if (_selectedMatrix is not null && !_matrices.Any(x => x.RegistrationMatrixId == _selectedMatrix.Summary.RegistrationMatrixId))
+                    _selectedMatrix = null;
+                return;
+            }
+
+            _message = response.Message ?? "No fue posible cargar las matrices de registro.";
+        }
+        catch (Exception ex)
+        {
+            _message = $"No fue posible consultar la carga masiva: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SelectMatrixAsync(int matrixId)
+    {
+        _loadingDetail = true;
+        _message = null;
+        _pendingDeleteMatrixId = null;
+
+        try
+        {
+            var response = await MatrixClient.GetMatrixAsync(matrixId);
+            if (response.Success && response.Data is not null)
+            {
+                _selectedMatrix = response.Data;
+                _message = MissingRequiredCells == 0
+                    ? "Matriz revisada: no se detectan campos obligatorios pendientes en las filas actuales."
+                    : $"Matriz revisada: existen {MissingRequiredCells} celda(s) obligatoria(s) pendiente(s).";
+            }
+            else
+            {
+                _message = response.Message ?? "No fue posible cargar el detalle de la matriz.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"No fue posible revisar la matriz: {ex.Message}";
+        }
+        finally
+        {
+            _loadingDetail = false;
+        }
+    }
+
+    private void RequestDeleteSelectedMatrix()
+    {
+        if (!CanDeleteSelectedMatrix || _selectedMatrix is null)
+            return;
+
+        _pendingDeleteMatrixId = _selectedMatrix.Summary.RegistrationMatrixId;
+        _message = "Confirma la eliminacion solo si la matriz es un borrador que ya no se usara.";
+    }
+
+    private void CancelDeleteMatrix()
+    {
+        _pendingDeleteMatrixId = null;
+        _message = null;
+    }
+
+    private async Task DeleteSelectedMatrixAsync()
+    {
+        if (!CanDeleteSelectedMatrix || _selectedMatrix is null)
+            return;
+
+        _deletingMatrix = true;
+        var matrixId = _selectedMatrix.Summary.RegistrationMatrixId;
+
+        try
+        {
+            var response = await MatrixClient.DeleteMatrixAsync(matrixId);
+            if (response.Success && response.Data is not null && response.Data.Deleted)
+            {
+                _selectedMatrix = null;
+                _pendingDeleteMatrixId = null;
+                _message = response.Data.Message;
+                await LoadMatricesAsync();
+            }
+            else
+            {
+                _message = response.Message ?? response.Data?.Message ?? "No fue posible eliminar la matriz.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"No fue posible eliminar la matriz: {ex.Message}";
+        }
+        finally
+        {
+            _deletingMatrix = false;
+        }
+    }
+
+    private void GoToMatrix() => Nav.NavigateTo("/articles/module/matrix");
+    private bool IsSelected(RegistrationMatrixSummaryDto matrix) => _selectedMatrix?.Summary.RegistrationMatrixId == matrix.RegistrationMatrixId;
+
+    private static string StatusLabel(string? status) => status?.Trim() switch
+    {
+        "Draft" => "Borrador",
+        "Submitted" => "Enviado",
+        "Processed" => "Procesado",
+        "Error" => "Con errores",
+        { Length: > 0 } value => value,
+        _ => "Sin estado"
+    };
+
+    private static string FormatDate(DateTime date) => date.ToLocalTime().ToString("dd/MM/yyyy");
+
+    private sealed record FlowStep(string Number, string Title, string Detail);
+}

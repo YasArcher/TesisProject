@@ -1,7 +1,13 @@
 @page "/articles/module/workflow"
+@page "/management/workflow-review"
+@page "/scientific-production/workflow-review"
+@page "/management/author-workspace"
+@page "/scientific-production/author-workspace"
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.DTOs.Auth
 @inject IArticleClientService ArticlesClient
+@inject IAuthClientService AuthClient
 @inject NavigationManager Nav
 <div class="articles-module-page articles-workflow-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
@@ -57,7 +63,7 @@
                     <span class="articles-workflow-pill">Integracion controlada</span>
                     <h2 class="mt-3 text-lg font-bold text-foreground">Bandeja operativa activa</h2>
                     <p class="mt-2 max-w-3xl text-sm text-muted">
-                        Esta pantalla ya trabaja con los articulos reales del módulo integrado. Las acciones avanzadas de UODIDE, autor y Area Tecnica permanecen preservadas para acoplarlas en la siguiente fase sin afectar Proyectos.
+                        Esta pantalla trabaja con articulos reales y con la sesion integrada. Las acciones de UODIDE, autor y Area Tecnica se muestran segun permisos, pero quedan bloqueadas hasta conectar el backend de workflow.
                     </p>
                 </div>
                 <button type="button"
@@ -67,6 +73,35 @@
                 </button>
             </div>
         </section>
+        @if (_session is not null)
+        {
+            <section class="articles-workflow-role-panel rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
+                <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <p class="text-xs font-bold uppercase text-muted">Bandejas por rol</p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Acciones disponibles para la sesion</h2>
+                    </div>
+                    <span class="articles-workflow-session">@Display(_session.DisplayName ?? _session.Email)</span>
+                </div>
+
+                <div class="articles-workflow-role-grid mt-4">
+                    @foreach (var box in WorkflowBoxes)
+                    {
+                        <article class="articles-workflow-role-card @(box.Enabled ? "articles-workflow-role-card--enabled" : string.Empty)">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <span>@(box.Enabled ? "Disponible" : "Sin permiso")</span>
+                                    <strong>@box.Title</strong>
+                                </div>
+                                <em>@box.Count</em>
+                            </div>
+                            <p>@box.Detail</p>
+                            <button type="button" disabled>@box.Action</button>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
 
         @if (_loading)
         {
@@ -169,10 +204,18 @@
     private ArticlePageDto _page = new();
     private bool _loading = true;
     private string? _error;
+    private CurrentSessionResponse? _session;
     private const int PageSize = 10;
 
     private int CurrentPageWithDoi => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.Doi));
     private int CurrentPageWithAuthors => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.AuthorsSummary) || item.Participants is { Count: > 0 });
+
+    private IReadOnlyList<WorkflowBox> WorkflowBoxes =>
+    [
+        new("Autor", _session?.Articles.CanUseWorkflow == true, _page.Items.Count.ToString("N0"), "Seguimiento de articulos enviados, correcciones y observaciones devueltas.", "Ver envios"),
+        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Pendiente", "Toma de caso, revision inicial y devolucion al autor cuando corresponda.", "Revisar casos"),
+        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Pendiente", "Validacion final, correccion tecnica y procesamiento definitivo.", "Validar final")
+    ];
 
     protected override Task OnInitializedAsync() => LoadPageAsync(1);
 
@@ -180,6 +223,10 @@
     {
         _loading = true;
         _error = null;
+
+        var sessionResult = await AuthClient.GetCurrentSessionAsync();
+        if (sessionResult.Success)
+            _session = sessionResult.Data;
 
         var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
         {
@@ -218,4 +265,6 @@
             _ when !string.IsNullOrWhiteSpace(message) => message,
             _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
         };
+
+    private sealed record WorkflowBox(string Title, bool Enabled, string Count, string Detail, string Action);
 }

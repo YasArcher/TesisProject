@@ -49,6 +49,12 @@ public partial class SideBar : IDisposable
     private bool _articleCanList;
     private bool _articleCanRegister;
     private bool _articleCanManageConfiguration;
+    private bool _articleCanUseWorkflow;
+    private bool _articleCanUseBulkImport;
+    private bool _articleCanUseExternalApis;
+    private bool _articleCanViewReporting;
+    private bool _articleCanViewIntelligence;
+    private bool _articleCanManageSecurity;
     private bool _projectsAccess;
     private bool _sessionLoaded;
     private string SidebarShellClass => $"fusion-sidebar-shell {(IsCollapsed ? "is-collapsed" : string.Empty)}";
@@ -126,7 +132,7 @@ public partial class SideBar : IDisposable
             ],
             AllowedRoles: ["superadmin"])
     ];
-    // Los modulos aun preservados apuntan a placeholders controlados hasta su activacion funcional.
+    // Modulo articulos: menu acoplado al frontend fusionado, filtrado por capacidades de sesion.
     private readonly MenuItem[] _articleItems =
     [
         new MenuItem("Portal de articulos", "/articles", true, "Inicio", IconDashboard, ArticleCapability: "access"),
@@ -167,7 +173,7 @@ public partial class SideBar : IDisposable
             Children:
             [
                 new MenuItem("Formularios y campos", "/articles/module/configuration", ArticleCapability: "configuration"),
-                new MenuItem("Usuarios y roles", "/articles/module/security", ArticleCapability: "configuration")
+                new MenuItem("Usuarios y roles", "/articles/module/security", ArticleCapability: "security")
             ]),
         new MenuItem(
             Text: "Cuenta",
@@ -208,11 +214,20 @@ public partial class SideBar : IDisposable
             return;
 
         _roles = session.Data.Roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        _articlesAccess = session.Data.Articles.Enabled &&
-            (session.Data.Articles.CanAccess || session.Data.Articles.CanList || session.Data.Articles.CanRegister || session.Data.Articles.CanManageConfiguration);
-        _articleCanList = session.Data.Articles.CanList || session.Data.Articles.CanAccess;
-        _articleCanRegister = session.Data.Articles.CanRegister;
-        _articleCanManageConfiguration = session.Data.Articles.CanManageConfiguration;
+                var articleAccess = session.Data.Articles;
+        _articlesAccess = articleAccess.Enabled &&
+            (articleAccess.CanAccess || articleAccess.CanList || articleAccess.CanRegister || articleAccess.CanUseWorkflow ||
+             articleAccess.CanUseBulkImport || articleAccess.CanUseExternalApis || articleAccess.CanViewReporting ||
+             articleAccess.CanViewIntelligence || articleAccess.CanManageConfiguration || articleAccess.CanManageSecurity);
+        _articleCanList = articleAccess.CanList || articleAccess.CanAccess;
+        _articleCanRegister = articleAccess.CanRegister;
+        _articleCanManageConfiguration = articleAccess.CanManageConfiguration;
+        _articleCanUseWorkflow = articleAccess.CanUseWorkflow;
+        _articleCanUseBulkImport = articleAccess.CanUseBulkImport;
+        _articleCanUseExternalApis = articleAccess.CanUseExternalApis;
+        _articleCanViewReporting = articleAccess.CanViewReporting;
+        _articleCanViewIntelligence = articleAccess.CanViewIntelligence;
+        _articleCanManageSecurity = articleAccess.CanManageSecurity;
         _projectsAccess = _roles.Overlaps(["coordinador", "technical", "admin", "superadmin"]);
         _sessionLoaded = true;
     }
@@ -255,11 +270,12 @@ public partial class SideBar : IDisposable
             "list" => _articleCanList,
             "register" => _articleCanRegister,
             "configuration" => _articleCanManageConfiguration,
-            "workflow" => _articleCanList || _articleCanRegister || _articleCanManageConfiguration,
-            "bulk" => _articleCanManageConfiguration,
-            "external" => _articleCanManageConfiguration,
-            "reporting" => _articleCanList || _articleCanManageConfiguration,
-            "intelligence" => _articleCanList || _articleCanManageConfiguration,
+            "workflow" => _articleCanUseWorkflow || _articleCanRegister || _articleCanManageConfiguration,
+            "bulk" => _articleCanUseBulkImport || _articleCanManageConfiguration,
+            "external" => _articleCanUseExternalApis || _articleCanManageConfiguration,
+            "reporting" => _articleCanViewReporting || _articleCanManageConfiguration,
+            "intelligence" => _articleCanViewIntelligence || _articleCanManageConfiguration,
+            "security" => _articleCanManageSecurity,
             _ => true
         };
     }
@@ -268,6 +284,8 @@ public partial class SideBar : IDisposable
         if (_etlBusy) return;
 
         _etlBusy = true;
+        _etlStatus = "Actualizando informacion para Power BI...";
+        _etlError = null;
         StateHasChanged();
 
         Toast.ShowInfo("Actualizando la información para Power BI...");
@@ -278,15 +296,21 @@ public partial class SideBar : IDisposable
 
             if (!string.IsNullOrWhiteSpace(result.ErrorCode))
             {
-                Toast.ShowError(result.Message?? "No se pudo completar la actualización.");
+                _etlStatus = null;
+                _etlError = result.Message ?? "No se pudo completar la actualizacion.";
+                Toast.ShowError(_etlError);
                 return;
             }
 
+            _etlStatus = "Power BI ya tiene los datos mas recientes.";
+            _etlError = null;
             Toast.ShowSuccess("Actualización completada. Power BI ya tiene los datos más recientes.");
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Ocurrió un problema al actualizar: {ex.Message}");
+            _etlStatus = null;
+            _etlError = $"Ocurrio un problema al actualizar: {ex.Message}";
+            Toast.ShowError(_etlError);
         }
         finally
         {
