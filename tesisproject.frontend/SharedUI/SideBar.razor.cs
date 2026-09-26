@@ -81,11 +81,9 @@ public partial class SideBar : IDisposable
 
     private bool IsChildActive(MenuItem parent)
     {
-        var path = CurrentPath;
-
         return parent.Children?.Any(c =>
             !string.IsNullOrWhiteSpace(c.Href) &&
-            path.StartsWith(c.Href!, StringComparison.OrdinalIgnoreCase)) == true;
+            IsRouteActive(c.Href!, c.Exact)) == true;
     }
 
     private string CurrentPath
@@ -93,8 +91,26 @@ public partial class SideBar : IDisposable
         get
         {
             var rel = Nav.ToBaseRelativePath(Nav.Uri);
-            return string.IsNullOrWhiteSpace(rel) ? "/" : "/" + rel;
+            if (string.IsNullOrWhiteSpace(rel))
+                return "/";
+
+            var cleanPath = rel.Split('?', '#')[0].TrimEnd('/');
+            return string.IsNullOrWhiteSpace(cleanPath) ? "/" : "/" + cleanPath;
         }
+    }
+
+    private bool IsRouteActive(string href, bool exact = false)
+    {
+        var target = string.IsNullOrWhiteSpace(href) ? "/" : href.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(target))
+            target = "/";
+
+        var path = CurrentPath;
+        if (exact || target == "/")
+            return string.Equals(path, target, StringComparison.OrdinalIgnoreCase);
+
+        return string.Equals(path, target, StringComparison.OrdinalIgnoreCase) ||
+               path.StartsWith(target + "/", StringComparison.OrdinalIgnoreCase);
     }
 
     private readonly MenuItem[] _projectItems =
@@ -132,7 +148,7 @@ public partial class SideBar : IDisposable
             ],
             AllowedRoles: ["superadmin"])
     ];
-    // Modulo articulos: menu acoplado al frontend fusionado, filtrado por capacidades de sesion.
+    // Modulo articulos: menu acoplado al frontend institucional, filtrado por capacidades de sesion.
     private readonly MenuItem[] _articleItems =
     [
         new MenuItem("Portal de articulos", "/articles", true, "Inicio", IconDashboard, ArticleCapability: "access"),
@@ -148,7 +164,7 @@ public partial class SideBar : IDisposable
                 new MenuItem("Revision de envios", "/articles/module/workflow", ArticleCapability: "workflow")
             ]),
         new MenuItem(
-            Text: "Captura e integracion",
+            Text: "Captura e importacion",
             Section: "Operacion",
             Icon: IconImport,
             Children:
@@ -214,7 +230,7 @@ public partial class SideBar : IDisposable
             return;
 
         _roles = session.Data.Roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var articleAccess = session.Data.Articles;
+        var articleAccess = session.Data.Articles;
         _articlesAccess = articleAccess.Enabled &&
             (articleAccess.CanAccess || articleAccess.CanList || articleAccess.CanRegister || articleAccess.CanUseWorkflow ||
              articleAccess.CanUseBulkImport || articleAccess.CanUseExternalApis || articleAccess.CanViewReporting ||

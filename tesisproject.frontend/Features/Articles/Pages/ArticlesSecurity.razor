@@ -5,6 +5,7 @@
 @using tesisproject.shared.DTOs.Auth
 @attribute [Authorize]
 @inject IAuthClientService AuthClient
+@inject NavigationManager Nav
 
 <PageTitle>Seguridad de articulos | Plataforma integrada</PageTitle>
 
@@ -17,7 +18,7 @@
                         <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Gobierno de accesos</p>
                         <h1 class="mt-2 text-2xl font-bold md:text-3xl">Usuarios y roles de articulos</h1>
                         <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                            Vista de verificacion para confirmar que la autenticacion integrada reconoce capacidades del modulo de articulos sin alterar permisos del sistema de proyectos.
+                            Consulta las capacidades disponibles para el usuario actual y confirma que las opciones del modulo respondan al rol institucional asignado.
                         </p>
                     </div>
                     <div class="articles-security-status">
@@ -72,7 +73,7 @@
                             <div>
                                 <p class="text-xs font-bold uppercase text-muted">Capacidades del modulo</p>
                                 <h2 class="mt-1 text-lg font-bold text-foreground">Accesos efectivos</h2>
-                                <p class="mt-1 text-sm text-muted">Estas capacidades se leen desde la sesion integrada y orientan que opciones debe ver el usuario.</p>
+                                <p class="mt-1 text-sm text-muted">Estas capacidades se leen desde la sesion activa y orientan que opciones debe ver el usuario.</p>
                             </div>
                             <button type="button" class="articles-security-secondary" @onclick="LoadAsync">Actualizar</button>
                         </div>
@@ -134,7 +135,20 @@
                             </div>
                         }
                     </div>
-                    <button type="button" class="articles-security-disabled mt-5 w-full" disabled>Editar roles</button>
+                    <button type="button"
+                            class="mt-5 w-full @SecurityActionClass"
+                            disabled="@(!CanManageSecurity)"
+                            @onclick="GoToSettings">
+                        Administrar accesos
+                    </button>
+                    <div class="articles-security-shortcuts mt-3">
+                        <button type="button" class="articles-security-secondary" @onclick="GoToArticles">
+                            Volver a articulos
+                        </button>
+                        <button type="button" class="articles-security-secondary" @onclick="GoToSupport">
+                            Ver soporte
+                        </button>
+                    </div>
                 </aside>
             </section>
         }
@@ -148,6 +162,8 @@
 
     private string DisplayName => string.IsNullOrWhiteSpace(_session?.DisplayName) ? "Usuario autenticado" : _session.DisplayName!;
     private string AccessLabel => _session?.Articles.CanAccess == true ? "Habilitado" : "Limitado";
+    private bool CanManageSecurity => _session?.Articles.CanManageSecurity == true;
+    private string SecurityActionClass => CanManageSecurity ? "articles-security-primary" : "articles-security-disabled";
     private IEnumerable<string> VisiblePermissions => (_session?.Permissions ?? Array.Empty<string>()).Where(x => x.StartsWith("articles.", StringComparison.OrdinalIgnoreCase));
 
     private IReadOnlyList<Capability> Capabilities =>
@@ -168,10 +184,10 @@
 
     private IReadOnlyList<string> Rules =>
     [
-        "Los cambios de roles deben respetar la autenticacion base del sistema de proyectos.",
-        "La fusion no debe duplicar usuarios entre proyectos y articulos.",
+        "Los cambios de roles deben respetar la autenticacion institucional vigente.",
+        "La administracion de accesos debe mantener una unica identidad por usuario.",
         "Las acciones de escritura de seguridad deben requerir confirmacion y auditoria.",
-        "Esta vista queda en modo lectura hasta conectar administracion de roles fusionada."
+        "Solo usuarios autorizados deben acceder a la administracion global de configuracion."
     ];
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
@@ -191,6 +207,16 @@
     }
 
     private static string CapabilityLabel(bool enabled) => enabled ? "Permitido" : "No permitido";
+    private void GoToArticles() => Nav.NavigateTo("/articles");
+    private void GoToSupport() => Nav.NavigateTo("/articles/module/support");
+
+    private void GoToSettings()
+    {
+        if (!CanManageSecurity)
+            return;
+
+        Nav.NavigateTo("/settings");
+    }
 
     private sealed record Capability(string Label, bool Enabled, string Detail);
 }

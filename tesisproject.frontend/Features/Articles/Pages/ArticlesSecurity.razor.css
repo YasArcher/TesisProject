@@ -176,6 +176,15 @@
     box-shadow: 0 0 0 0.25rem rgba(216, 184, 79, 0.16);
 }
 
+.articles-security-shortcuts {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.articles-security-shortcuts .articles-security-secondary {
+    width: 100%;
+}
+
 @media (max-width: 760px) {
     .articles-security-status {
         min-width: 0;

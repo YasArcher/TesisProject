@@ -1,3 +1,8 @@
+.articles-manual-page {
+    background: linear-gradient(180deg, #f5faf8 0%, #eef6f2 52%, #f8fbfa 100%);
+    color: #12343b;
+}
+
 .articles-manual-page .articles-manual-hero,
 .articles-manual-page .articles-manual-panel,
 .articles-manual-page .articles-manual-step,
@@ -7,12 +12,35 @@
 }
 
 .articles-manual-page .articles-manual-hero {
-    background: linear-gradient(180deg, rgba(255,255,255,0.99), rgba(246,251,248,0.98)) !important;
+    border-color: rgba(47, 95, 91, 0.2) !important;
+    background:
+        linear-gradient(135deg, rgba(18, 52, 59, 0.98), rgba(22, 83, 87, 0.95)),
+        #12343b !important;
+    box-shadow: 0 18px 36px rgba(18, 52, 59, 0.14);
+}
+
+.articles-manual-page .articles-manual-hero p:first-child {
+    color: #8ddbd2 !important;
+}
+
+.articles-manual-page .articles-manual-hero h1 {
+    color: #ffffff !important;
+}
+
+.articles-manual-page .articles-manual-hero p {
+    color: rgba(255, 255, 255, 0.74) !important;
+}
+
+.articles-manual-page .articles-manual-panel,
+.articles-manual-page .articles-manual-step {
+    background: rgba(255, 255, 255, 0.97) !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
 }
 
 .articles-manual-step {
     position: relative;
     overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .articles-manual-step::before {
@@ -21,6 +49,11 @@
     inset: 0 auto 0 0;
     width: 0.2rem;
     background: linear-gradient(180deg, #2f5f5b, #d8b84f);
+}
+
+.articles-manual-step:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 38px rgba(18, 52, 59, 0.11);
 }
 
 .articles-manual-step-number {
@@ -50,6 +83,11 @@
     padding: 0.55rem 0.85rem;
 }
 
+.articles-manual-action {
+    background: linear-gradient(135deg, #12343b, #2f5f5b);
+    color: #ffffff;
+}
+
 .articles-manual-action:hover,
 .articles-manual-route button:hover {
     background: #12343b;
@@ -75,7 +113,7 @@
     justify-content: space-between;
     gap: 1rem;
     border: 1px solid rgba(47, 95, 91, 0.14);
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(237,247,243,0.42));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(237, 247, 243, 0.62));
     padding: 1rem;
 }
 

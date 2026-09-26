@@ -1,9 +1,36 @@
-﻿.articles-placeholder-page .articles-placeholder-hero,
+.articles-placeholder-page {
+    background: linear-gradient(180deg, #f5faf8 0%, #eef6f2 52%, #f8fbfa 100%);
+    color: #12343b;
+}
+
+.articles-placeholder-page .articles-placeholder-hero,
 .articles-placeholder-page .articles-workspace-panel {
     border-color: rgba(47, 95, 91, 0.16) !important;
     border-radius: 8px !important;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 248, 0.96)) !important;
     box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-placeholder-page .articles-placeholder-hero {
+    border-color: rgba(47, 95, 91, 0.2) !important;
+    background:
+        linear-gradient(135deg, rgba(18, 52, 59, 0.98), rgba(22, 83, 87, 0.95)),
+        #12343b !important;
+}
+
+.articles-placeholder-page .articles-placeholder-hero p:first-child {
+    color: #8ddbd2 !important;
+}
+
+.articles-placeholder-page .articles-placeholder-hero h1 {
+    color: #ffffff !important;
+}
+
+.articles-placeholder-page .articles-placeholder-hero p {
+    color: rgba(255, 255, 255, 0.74) !important;
+}
+
+.articles-placeholder-page .articles-workspace-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 251, 248, 0.96)) !important;
 }
 
 .articles-placeholder-status {
@@ -11,10 +38,10 @@
     align-items: center;
     justify-content: center;
     min-width: 10rem;
-    border: 1px solid rgba(47, 95, 91, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: 8px;
-    background: #e8f2ed;
-    color: #12343b;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
     font-size: 0.78rem;
     font-weight: 800;
     padding: 0.75rem 1rem;
@@ -89,7 +116,7 @@
 }
 
 .articles-placeholder-action {
-    background: #12343b;
+    background: linear-gradient(135deg, #12343b, #2f5f5b);
     color: #ffffff;
 }
 

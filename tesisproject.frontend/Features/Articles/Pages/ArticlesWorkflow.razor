@@ -60,10 +60,10 @@
         <section class="articles-workflow-status rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <span class="articles-workflow-pill">Integracion controlada</span>
+                    <span class="articles-workflow-pill">Bandeja institucional</span>
                     <h2 class="mt-3 text-lg font-bold text-foreground">Bandeja operativa activa</h2>
                     <p class="mt-2 max-w-3xl text-sm text-muted">
-                        Esta pantalla trabaja con articulos reales y con la sesion integrada. Las acciones de UODIDE, autor y Area Tecnica se muestran segun permisos, pero quedan bloqueadas hasta conectar el backend de workflow.
+                        Esta pantalla trabaja con articulos reales y con la sesion integrada. Las acciones de UODIDE, autor y Area Tecnica se muestran segun permisos y se habilitan cuando el caso permite continuar.
                     </p>
                 </div>
                 <button type="button"
@@ -96,7 +96,11 @@
                                 <em>@box.Count</em>
                             </div>
                             <p>@box.Detail</p>
-                            <button type="button" disabled>@box.Action</button>
+                            <button type="button"
+                                    disabled="@(!box.Enabled)"
+                                    @onclick="() => OpenWorkflowBox(box)">
+                                @box.Action
+                            </button>
                         </article>
                     }
                 </div>
@@ -126,7 +130,7 @@
         {
             <section class="rounded-lg border border-border bg-background p-8 text-center shadow-sm">
                 <h2 class="text-lg font-bold text-foreground">Sin envios para seguimiento</h2>
-                <p class="mt-2 text-sm text-muted">Cuando existan articulos registrados, apareceran aqui para continuar el acoplamiento del workflow.</p>
+                <p class="mt-2 text-sm text-muted">Cuando existan articulos registrados, apareceran aqui para continuar su seguimiento institucional.</p>
                 <button type="button"
                         class="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                         @onclick="GoToRegister">
@@ -212,9 +216,9 @@
 
     private IReadOnlyList<WorkflowBox> WorkflowBoxes =>
     [
-        new("Autor", _session?.Articles.CanUseWorkflow == true, _page.Items.Count.ToString("N0"), "Seguimiento de articulos enviados, correcciones y observaciones devueltas.", "Ver envios"),
-        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Pendiente", "Toma de caso, revision inicial y devolucion al autor cuando corresponda.", "Revisar casos"),
-        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Pendiente", "Validacion final, correccion tecnica y procesamiento definitivo.", "Validar final")
+        new("Autor", _session?.Articles.CanUseWorkflow == true, _page.Items.Count.ToString("N0"), "Seguimiento de articulos enviados, correcciones y observaciones devueltas.", "Ver envios", "/scientific-production/author-workspace"),
+        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Pendiente", "Toma de caso, revision inicial y devolucion al autor cuando corresponda.", "Revisar casos", "/scientific-production/uodide-review-staging"),
+        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Pendiente", "Validacion final, correccion tecnica y procesamiento definitivo.", "Validar final", "/scientific-production/area-tecnica-review-staging")
     ];
 
     protected override Task OnInitializedAsync() => LoadPageAsync(1);
@@ -251,6 +255,13 @@
     private void GoToArticles() => Nav.NavigateTo("/articles");
     private void GoToRegister() => Nav.NavigateTo("/articles/module/register");
     private void OpenArticle(int articleId) => Nav.NavigateTo($"/articles?articleId={articleId}");
+    private void OpenWorkflowBox(WorkflowBox box)
+    {
+        if (!box.Enabled)
+            return;
+
+        Nav.NavigateTo(box.Target);
+    }
 
     private static string Display(object? value)
         => string.IsNullOrWhiteSpace(value?.ToString()) ? "No informado" : value.ToString()!;
@@ -266,5 +277,5 @@
             _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
         };
 
-    private sealed record WorkflowBox(string Title, bool Enabled, string Count, string Detail, string Action);
+    private sealed record WorkflowBox(string Title, bool Enabled, string Count, string Detail, string Action, string Target);
 }

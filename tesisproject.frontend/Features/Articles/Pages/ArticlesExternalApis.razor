@@ -20,9 +20,9 @@
                         </p>
                     </div>
                     <div class="articles-external-status">
-                        <span>Estado de fusion</span>
-                        <strong>Flujo preparado</strong>
-                        <small>Consulta real pendiente de backend</small>
+                        <span>Estado operativo</span>
+                        <strong>Preparacion segura</strong>
+                        <small>Sin exponer llaves en navegador</small>
                     </div>
                 </div>
             </div>
@@ -34,11 +34,11 @@
                 </article>
                 <article>
                     <span>Uso esperado</span>
-                    <strong>Consulta y preseleccion</strong>
+                    <strong>Busqueda previa</strong>
                 </article>
                 <article>
                     <span>Siguiente paso</span>
-                    <strong>Enviar a ingesta</strong>
+                    <strong>Revisar ingesta</strong>
                 </article>
             </div>
         </header>
@@ -76,6 +76,11 @@
                     </label>
                 </div>
 
+                <div class="articles-external-safe-note mt-4">
+                    <strong>Consulta protegida</strong>
+                    <p>Las credenciales de proveedores se validan en el servidor. Esta pantalla prepara los parametros y mantiene la ruta de ingesta visible para el usuario.</p>
+                </div>
+
                 <button type="button" class="articles-external-primary mt-4 w-full" @onclick="PrepareSearch">
                     Preparar consulta
                 </button>
@@ -97,7 +102,8 @@
                     <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Proveedores</p>
-                            <h2 class="mt-1 text-lg font-bold text-foreground">Estado de integracion</h2>
+                            <h2 class="mt-1 text-lg font-bold text-foreground">Estado de proveedores</h2>
+                            <p class="mt-1 text-sm text-muted">La disponibilidad real depende de la configuracion segura del servidor, no del navegador.</p>
                         </div>
                         <span class="articles-external-pill">@ConfiguredProviders de @Providers.Count listos</span>
                     </div>
@@ -111,7 +117,7 @@
                                         <span>@provider.Kind</span>
                                         <strong>@provider.Name</strong>
                                     </div>
-                                    <em>@(provider.IsConfigured ? "Configurado" : "Pendiente")</em>
+                                    <em>@(provider.IsConfigured ? "Listo" : "Por validar")</em>
                                 </div>
                                 <p>@provider.Description</p>
                             </article>
@@ -125,8 +131,8 @@
                         <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
                             <div>
                                 <p class="text-xs font-bold uppercase text-muted">Previsualizacion</p>
-                                <h2 class="mt-1 text-lg font-bold text-foreground">Consulta lista para conectar</h2>
-                                <p class="mt-1 text-sm text-muted">Esta previsualizacion conserva los parametros que luego consumira el endpoint backend de consulta externa.</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Consulta preparada</h2>
+                                <p class="mt-1 text-sm text-muted">Estos parametros quedan organizados para ejecutar la busqueda de forma segura y continuar con ingesta.</p>
                             </div>
                             <span class="articles-external-pill">@_preparedQuery.Provider</span>
                         </div>
@@ -213,13 +219,13 @@
     [
         new("01", "Consultar proveedor", "El usuario prepara una busqueda por texto, DOI o filiacion institucional."),
         new("02", "Revisar resultados", "La plataforma debe mostrar articulos encontrados sin registrarlos automaticamente."),
-        new("03", "Enviar a ingesta", "Solo los articulos seleccionados pasan al flujo de ingesta o staging institucional.")
+        new("03", "Enviar a ingesta", "Solo los articulos seleccionados pasan al flujo de ingesta institucional.")
     ];
 
     private IReadOnlyList<string> SafetyChecks =>
     [
-        "Las llaves de proveedores deben vivir en backend o variables de entorno, nunca visibles en el navegador.",
-        "Los errores tecnicos del proveedor deben traducirse a mensajes simples para el usuario final.",
+        "Las llaves de proveedores deben vivir en configuracion segura del servidor, nunca visibles en el navegador.",
+        "Las respuestas del proveedor deben mostrarse con mensajes simples y accionables para el usuario final.",
         "La consulta externa no debe modificar articulos registrados hasta que el usuario confirme la ingesta.",
         "Los duplicados por DOI deben filtrarse en la fase de ingesta antes de registrar informacion."
     ];
@@ -240,7 +246,7 @@
 
         _queryWarning = null;
         _preparedQuery = new PreparedQuery(provider.Name, ModeLabel(_queryMode), query, maxResults);
-        _message = $"Consulta preparada para {provider.Name}. Cuando se conecte el endpoint unificado, estos parametros enviaran hasta {maxResults} resultado(s) a revision previa.";
+        _message = $"Consulta preparada para {provider.Name}. La busqueda queda lista para ejecutarse de forma segura y revisar hasta {maxResults} resultado(s) antes de una ingesta.";
     }
 
     private void ClearPreparedQuery()

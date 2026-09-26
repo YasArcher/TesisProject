@@ -18,33 +18,33 @@
 @attribute [Authorize]
 @inject NavigationManager Nav
 
-@* Modulo articulos: rutas antiguas de staging cubiertas mientras se integra workflow/bulk import real. *@
-<PageTitle>Staging de articulos | Plataforma integrada</PageTitle>
+@* Modulo articulos: rutas antiguas de revision cubiertas mientras se habilita el flujo real. *@
+<PageTitle>Revision de articulos | Plataforma integrada</PageTitle>
 
-<div class="articles-module-page h-full min-h-0 overflow-y-auto bg-page-bg">
+<div class="articles-module-page articles-protected-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 md:p-6">
-        <header class="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-            <div class="border-b border-border bg-slate-950 px-5 py-5 text-white md:px-6">
+        <header class="articles-protected-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-protected-hero-band border-b border-border px-5 py-5 text-white md:px-6">
                 <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Produccion cientifica</p>
-                <h1 class="mt-2 text-2xl font-bold md:text-3xl">Staging protegido</h1>
+                <h1 class="mt-2 text-2xl font-bold md:text-3xl">Revision protegida</h1>
                 <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                    Esta ruta pertenece al flujo operativo de revision de articulos. En la fusion se mantiene cubierta para evitar acciones incompletas mientras se conecta el staging real del backend unificado.
+                    Esta ruta pertenece al flujo operativo de revision de articulos. Se mantiene protegida para evitar acciones incompletas mientras se habilita la revision correspondiente.
                 </p>
             </div>
         </header>
 
-        <section class="rounded-lg border border-border bg-background p-5 shadow-sm md:p-6">
+        <section class="articles-protected-panel rounded-lg border border-border bg-background p-5 shadow-sm md:p-6">
             <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
                 <div>
                     <p class="text-xs font-bold uppercase text-muted">Ruta controlada</p>
                     <h2 class="mt-1 text-lg font-bold text-foreground">Procesamiento bloqueado de forma segura</h2>
                     <p class="mt-2 text-sm leading-6 text-muted">
-                        Para proteger el flujo, esta pantalla no permite validar, corregir ni procesar hasta que los servicios de staging del modulo de articulos esten integrados con el backend final.
+                        Para proteger el flujo, esta pantalla no permite validar, corregir ni procesar hasta que el caso tenga una accion disponible para el rol actual.
                     </p>
                     <div class="mt-5 grid gap-3 md:grid-cols-3">
                         @foreach (var item in ProtectedSteps)
                         {
-                            <article class="rounded-lg border border-border bg-page-bg p-4">
+                            <article class="articles-protected-rule rounded-lg border border-border bg-page-bg p-4">
                                 <span class="text-xs font-bold uppercase text-muted">@item.Scope</span>
                                 <strong class="mt-2 block text-sm text-foreground">@item.Title</strong>
                                 <p class="mt-2 text-xs leading-5 text-muted">@item.Detail</p>
@@ -52,21 +52,21 @@
                         }
                     </div>
                     <div class="mt-5 flex flex-wrap gap-2">
-                        <button type="button" class="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="GoWorkflow">
+                        <button type="button" class="articles-protected-primary rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="GoWorkflow">
                             Ir a workflow
                         </button>
-                        <button type="button" class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoArticles">
+                        <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoArticles">
                             Ver articulos
                         </button>
-                        <button type="button" class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoBulkImport">
+                        <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoBulkImport">
                             Carga masiva
                         </button>
                     </div>
                 </div>
-                <aside class="rounded-lg border border-border bg-page-bg p-4">
+                <aside class="articles-protected-aside rounded-lg border border-border bg-page-bg p-4">
                     <p class="text-xs font-bold uppercase text-muted">Estado</p>
                     <strong class="mt-2 block text-lg text-foreground">Bloqueado seguro</strong>
-                    <p class="mt-2 text-sm text-muted">Evita acciones falsas mientras la fusion funcional del workflow queda lista.</p>
+                    <p class="mt-2 text-sm text-muted">Evita acciones incompletas mientras el flujo habilita la revision correspondiente.</p>
                 </aside>
             </div>
         </section>
@@ -80,7 +80,7 @@
 
     private IReadOnlyList<ProtectedStep> ProtectedSteps =>
     [
-        new("Autor", "Correcciones", "El retorno a staging debe abrir solo cuando exista un envio devuelto y editable."),
+        new("Autor", "Correcciones", "El retorno a correccion debe abrir solo cuando exista un envio devuelto y editable."),
         new("UODIDE", "Revision inicial", "La validacion debe depender de tomar el caso y abrir el registro antes de aprobar."),
         new("Area tecnica", "Validacion final", "El procesamiento definitivo debe ejecutarse solo con registros revisados y sin errores activos.")
     ];

@@ -7,30 +7,30 @@
 @* Modulo articulos: compatibilidad para rutas heredadas de edicion directa. *@
 <PageTitle>Edicion de articulo | Plataforma integrada</PageTitle>
 
-<div class="articles-module-page h-full min-h-0 overflow-y-auto bg-page-bg">
+<div class="articles-module-page articles-protected-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 md:p-6">
-        <header class="overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-            <div class="border-b border-border bg-slate-950 px-5 py-5 text-white md:px-6">
+        <header class="articles-protected-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+            <div class="articles-protected-hero-band border-b border-border px-5 py-5 text-white md:px-6">
                 <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Produccion cientifica</p>
                 <h1 class="mt-2 text-2xl font-bold md:text-3xl">Edicion protegida</h1>
                 <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                    El articulo solicitado pertenece a una ruta heredada. En la fusion actual la consulta se mantiene disponible, pero la modificacion directa queda bloqueada hasta conectar el contrato definitivo de edicion.
+                    El articulo solicitado pertenece a una ruta protegida. La consulta se mantiene disponible, pero la modificacion directa requiere un flujo seguro de edicion.
                 </p>
             </div>
         </header>
 
-        <section class="rounded-lg border border-border bg-background p-5 shadow-sm md:p-6">
+        <section class="articles-protected-panel rounded-lg border border-border bg-background p-5 shadow-sm md:p-6">
             <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
                 <div>
                     <p class="text-xs font-bold uppercase text-muted">Articulo @ArticleId</p>
                     <h2 class="mt-1 text-lg font-bold text-foreground">Consulta habilitada, edicion bloqueada</h2>
                     <p class="mt-2 text-sm leading-6 text-muted">
-                        Puedes revisar el registro desde el listado de articulos. La modificacion directa se habilitara cuando el contrato de edicion quede integrado con el backend unificado.
+                        Puedes revisar el registro desde el listado de articulos. La modificacion directa se habilita solo mediante un proceso con guardado, validacion y auditoria.
                     </p>
                     <div class="mt-5 grid gap-3 md:grid-cols-3">
                         @foreach (var item in EditRules)
                         {
-                            <article class="rounded-lg border border-border bg-page-bg p-4">
+                            <article class="articles-protected-rule rounded-lg border border-border bg-page-bg p-4">
                                 <span class="text-xs font-bold uppercase text-muted">@item.Scope</span>
                                 <strong class="mt-2 block text-sm text-foreground">@item.Title</strong>
                                 <p class="mt-2 text-xs leading-5 text-muted">@item.Detail</p>
@@ -38,21 +38,21 @@
                         }
                     </div>
                     <div class="mt-5 flex flex-wrap gap-2">
-                        <button type="button" class="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="GoArticles">
-                            Ver listado
+                        <button type="button" class="articles-protected-primary rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="GoArticles">
+                            Ver detalle
                         </button>
-                        <button type="button" class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoRegister">
+                        <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoRegister">
                             Registrar nuevo
                         </button>
-                        <button type="button" class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoConfiguration">
+                        <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoConfiguration">
                             Ver configuracion
                         </button>
                     </div>
                 </div>
-                <aside class="rounded-lg border border-border bg-page-bg p-4">
+                <aside class="articles-protected-aside rounded-lg border border-border bg-page-bg p-4">
                     <p class="text-xs font-bold uppercase text-muted">Estado</p>
-                    <strong class="mt-2 block text-lg text-foreground">No disponible</strong>
-                    <p class="mt-2 text-sm text-muted">Evita cambios parciales o inconsistentes durante la fusion.</p>
+                    <strong class="mt-2 block text-lg text-foreground">Protegido</strong>
+                    <p class="mt-2 text-sm text-muted">Evita cambios parciales o inconsistentes mientras la edicion se habilita de forma controlada.</p>
                 </aside>
             </div>
         </section>
@@ -62,14 +62,14 @@
 @code {
     [Parameter] public int ArticleId { get; set; }
 
-    private void GoArticles() => Nav.NavigateTo("/articles");
+    private void GoArticles() => Nav.NavigateTo(ArticleId > 0 ? $"/articles?articleId={ArticleId}" : "/articles");
     private void GoRegister() => Nav.NavigateTo("/articles/module/register");
     private void GoConfiguration() => Nav.NavigateTo("/articles/module/configuration");
 
     private IReadOnlyList<EditRule> EditRules =>
     [
         new("Consulta", "Detalle activo", "El detalle debe abrirse desde el listado con el identificador del articulo."),
-        new("Edicion", "Pendiente segura", "La modificacion directa se habilitara cuando exista contrato de guardado validado."),
+        new("Edicion", "Validacion requerida", "La modificacion directa se habilitara cuando exista un proceso seguro de guardado."),
         new("Auditoria", "Cambio controlado", "Toda edicion final debe conservar trazabilidad de usuario, fecha y campo afectado.")
     ];
 

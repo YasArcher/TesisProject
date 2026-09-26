@@ -125,10 +125,14 @@
 }
 
 .articles-bulk-disabled {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid rgba(47, 95, 91, 0.14);
     background: #eef3f1;
     color: #8a9995;
-    cursor: not-allowed;
+    cursor: default;
+    white-space: nowrap;
 }
 
 .articles-bulk-danger {

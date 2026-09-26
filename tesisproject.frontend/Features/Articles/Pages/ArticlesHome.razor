@@ -10,7 +10,7 @@
 @inject IArticleClientService ArticlesClient
 @inject IFormConfigurationClient FormConfigurationClient
 
-@* Modulo articulos: pagina principal de consulta integrada sobre el backend unificado. *@
+@* Modulo articulos: pagina principal de consulta integrada. *@
 <div class="articles-module-page articles-home-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
         <header class="articles-home-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
@@ -20,7 +20,7 @@
                         <p class="text-xs font-semibold uppercase tracking-wide text-cyan-200">Produccion cientifica</p>
                         <h1 class="mt-1 text-2xl font-bold">Articulos registrados</h1>
                         <p class="mt-2 max-w-2xl text-sm text-slate-300">
-                            Consulta operativa de articulos consolidados en la base transaccional.
+                            Consulta operativa de articulos consolidados para revision, filtros y detalle institucional.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
@@ -41,6 +41,33 @@
                 <MetricTile Label="Con autores" Value="@CurrentPageWithAuthors.ToString("N0")" />
             </div>
         </header>
+
+        <section class="articles-module-launcher rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
+            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase text-muted">Accesos rapidos</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Gestion de articulos cientificos</h2>
+                    <p class="mt-1 max-w-3xl text-sm text-muted">
+                        Navega a registro, configuracion, workflow, ingesta, reporteria o inteligencia sin salir del area de produccion cientifica.
+                    </p>
+                </div>
+                <span class="articles-launcher-summary">@ArticleModuleLinks.Count secciones</span>
+            </div>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                @foreach (var link in ArticleModuleLinks)
+                {
+                    <a class="articles-launcher-card" href="@link.Route">
+                        <span class="articles-launcher-topline">
+                            <span>@link.Group · @link.ShortLabel</span>
+                            <strong class="@link.BadgeClass">@link.Status</strong>
+                        </span>
+                        <h3>@link.Title</h3>
+                        <p>@link.Detail</p>
+                    </a>
+                }
+            </div>
+        </section>
 
         <section class="articles-home-filters rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
             <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(8rem,.38fr)_minmax(11rem,.55fr)_minmax(10rem,.45fr)]">
@@ -257,6 +284,17 @@
     private int CurrentPageWithAuthors => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.AuthorsSummary) || item.Participants is { Count: > 0 });
     private string CardsButtonClass => ViewButtonClass("cards");
     private string TableButtonClass => ViewButtonClass("table");
+    private IReadOnlyList<ArticleModuleLink> ArticleModuleLinks =>
+    [
+        new("Registro", "Formulario", "Registro individual", "Crear articulos con el formulario activo.", "/articles/module/register", "Disponible", "is-connected"),
+        new("Registro", "Matriz", "Matriz tabular", "Preparar varios articulos por filas y campos visibles.", "/articles/module/matrix", "Disponible", "is-connected"),
+        new("Flujo", "Workflow", "Seguimiento", "Revisar estado, devoluciones y validacion por rol.", "/articles/module/workflow", "Disponible", "is-connected"),
+        new("Datos", "Externo", "APIs e ingesta", "Preparar consultas e incorporacion externa controlada.", "/articles/module/external-apis", "Preparado", "is-prepared"),
+        new("Base", "Configuracion", "Configuracion", "Administrar formularios, campos y catalogos.", "/articles/module/configuration", "Disponible", "is-connected"),
+        new("Datos", "Lotes", "Carga masiva", "Revisar matrices y preparacion por lote.", "/articles/module/bulk-import", "Preparado", "is-prepared"),
+        new("Analitica", "BI", "Reporteria", "Consultar indicadores y sincronizacion analitica.", "/articles/module/reporting", "Disponible", "is-connected"),
+        new("Analitica", "IA", "Inteligencia", "Prediccion y recomendaciones de apoyo.", "/articles/module/intelligence", "Disponible", "is-connected")
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -386,4 +424,6 @@
             _ when !string.IsNullOrWhiteSpace(message) => message,
             _ => "Ocurrio un problema al consultar la informacion. Intentalo nuevamente."
         };
+
+    private sealed record ArticleModuleLink(string Group, string ShortLabel, string Title, string Detail, string Route, string Status, string BadgeClass);
 }

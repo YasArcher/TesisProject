@@ -19,13 +19,13 @@
                         <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Captura tabular</p>
                         <h1 class="mt-2 text-2xl font-bold md:text-3xl">Carga masiva de articulos</h1>
                         <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                            Preparacion controlada de registros por matriz para revisar filas, campos obligatorios y estado del lote antes de activar el staging institucional.
+                            Preparacion controlada de registros por matriz para revisar filas, campos obligatorios y estado del lote antes de activar el procesamiento institucional.
                         </p>
                     </div>
                     <div class="articles-bulk-status-card">
-                        <span>Estado de fusion</span>
+                        <span>Estado operativo</span>
                         <strong>Lectura operativa</strong>
-                        <small>Procesamiento final pendiente de backend</small>
+                        <small>Procesamiento final protegido</small>
                     </div>
                 </div>
             </div>
@@ -44,7 +44,7 @@
                     <strong>@TotalColumns</strong>
                 </article>
                 <article>
-                    <span>Con staging</span>
+                    <span>Con lote</span>
                     <strong>@MatricesWithBatch</strong>
                 </article>
             </div>
@@ -131,14 +131,14 @@
                             <p class="text-xs font-bold uppercase text-muted">Control del flujo</p>
                             <h2 class="mt-1 text-lg font-bold text-foreground">Procesamiento institucional</h2>
                             <p class="mt-1 max-w-3xl text-sm text-muted">
-                                La fusion ya permite preparar matrices. El envio definitivo a staging se habilitara cuando el servicio unificado de BulkImport quede conectado al backend.
+                                La plataforma permite preparar matrices y revisar datos. El envio definitivo se habilita solo cuando la informacion cumple las reglas requeridas.
                             </p>
                         </div>
-                        <button type="button" class="articles-bulk-disabled" disabled>Procesar staging</button>
+                        <span class="articles-bulk-disabled" role="status">Procesamiento protegido</span>
                     </div>
                     <div class="articles-bulk-process-note mt-4">
                         <strong>Estado actual</strong>
-                        <p>La fusion conserva el flujo seguro: primero se preparan borradores, luego se revisan datos obligatorios y finalmente se habilitara el procesamiento real cuando BulkImport quede conectado.</p>
+                        <p>El flujo seguro se mantiene: primero se preparan borradores, luego se revisan datos obligatorios y finalmente se habilita el procesamiento real cuando la carga institucional este lista.</p>
                     </div>
                 </section>
             </main>
@@ -273,15 +273,15 @@
     private IReadOnlyList<FlowStep> FlowSteps =>
     [
         new("01", "Preparar matriz", "El usuario organiza columnas y filas segun el formulario activo o una matriz personalizada."),
-        new("02", "Revisar calidad", "Se valida que los datos minimos esten completos antes de abrir procesos de staging."),
-        new("03", "Procesar por lote", "El backend de BulkImport procesara duplicados, errores y registros listos sin saturar al usuario.")
+        new("02", "Revisar calidad", "Se valida que los datos minimos esten completos antes de abrir el procesamiento por lote."),
+        new("03", "Procesar por lote", "El sistema procesara duplicados, errores y registros listos sin saturar al usuario.")
     ];
 
     private IReadOnlyList<string> Rules =>
     [
         "No se debe procesar informacion sin una matriz con filas y columnas configuradas.",
         "Los duplicados por DOI deben bloquearse antes de registrar articulos definitivos.",
-        "Los errores tecnicos deben convertirse en mensajes simples para el usuario final.",
+        "Los mensajes de error deben indicar una accion clara para el usuario final.",
         "Las operaciones largas deben mostrar progreso y resultado resumido."
     ];
 
@@ -300,7 +300,7 @@
                 _matrices = response.Data;
                 _message = _matrices.Count == 0
                     ? "Todavia no existen matrices para carga masiva. Empieza creando una matriz tabular."
-                    : "Matrices cargadas correctamente. El procesamiento final permanece bloqueado hasta conectar BulkImport unificado.";
+                    : "Matrices cargadas correctamente. Revisa una matriz para continuar con el flujo de carga masiva.";
                 if (_selectedMatrix is not null && !_matrices.Any(x => x.RegistrationMatrixId == _selectedMatrix.Summary.RegistrationMatrixId))
                     _selectedMatrix = null;
                 return;

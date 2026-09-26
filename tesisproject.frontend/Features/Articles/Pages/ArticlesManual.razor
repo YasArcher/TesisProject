@@ -32,7 +32,7 @@
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div class="max-w-3xl">
                     <p class="text-xs font-bold uppercase text-muted">Ruta recomendada</p>
-                    <h2 class="mt-1 text-lg font-bold text-foreground">Secuencia de prueba del modulo</h2>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Secuencia recomendada del modulo</h2>
                     <p class="mt-2 text-sm leading-6 text-muted">
                         Revisa primero configuracion, luego registro individual o matriz, despues consulta el listado y finalmente valida las pantallas de workflow, reporteria e IA.
                     </p>
@@ -59,7 +59,7 @@
 
         <section class="articles-manual-panel mt-5 rounded-lg border border-border bg-background p-5 shadow-sm">
             <p class="text-xs font-bold uppercase text-muted">Criterios de revision</p>
-            <h2 class="mt-1 text-lg font-bold text-foreground">Que verificar durante la fusion</h2>
+            <h2 class="mt-1 text-lg font-bold text-foreground">Puntos de control del modulo</h2>
             <div class="articles-manual-check-grid mt-4">
                 @foreach (var check in VerificationChecks)
                 {
@@ -93,16 +93,17 @@
         new("Seguimiento", "Workflow", "Bandeja integrada por roles y seguimiento del registro.", "/articles/module/workflow"),
         new("Datos", "Carga masiva", "Resumen de matrices, revision de calidad y preparacion de lotes.", "/articles/module/bulk-import"),
         new("Datos", "APIs externas", "Consulta preparada para proveedores academicos externos.", "/articles/module/external-apis"),
+        new("Datos", "Ingesta externa", "Seguimiento de incorporacion, duplicados y calidad de datos.", "/articles/module/external-ingestion"),
         new("Analitica", "Reporteria", "Indicadores iniciales y sincronizacion DW de articulos.", "/articles/module/reporting"),
         new("Analitica", "Inteligencia", "Prediccion y recomendacion sobre datos disponibles.", "/articles/module/intelligence")
     ];
 
     private IReadOnlyList<string> VerificationChecks =>
     [
-        "La navegacion debe mantener el layout integrado de proyectos sin romper sus pantallas.",
-        "Las acciones sin backend final deben verse bloqueadas y explicar el motivo al usuario.",
-        "Las pantallas de articulos deben reutilizar servicios reales cuando existan contratos unificados.",
-        "Los mensajes deben ser claros para usuario final y evitar errores tecnicos sin contexto."
+        "La navegacion debe mantener el layout integrado sin romper las pantallas de proyectos.",
+        "Las acciones no disponibles deben verse bloqueadas y explicar el motivo al usuario.",
+        "Las pantallas de articulos deben usar servicios disponibles y mostrar mensajes claros cuando una accion no pueda completarse.",
+        "Los mensajes deben ser claros para usuario final y explicar la accion recomendada."
     ];
 
     private sealed record RoleGuide(string Number, string Title, string Detail, string Route);

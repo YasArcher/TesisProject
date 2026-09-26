@@ -163,3 +163,16 @@
     font-weight: 800;
     padding: 0.58rem 0.85rem;
 }
+
+.articles-workflow-role-card--enabled button {
+    border-color: rgba(47, 95, 91, 0.24);
+    background: linear-gradient(135deg, #12343b, #2f5f5b);
+    color: #ffffff;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.articles-workflow-role-card--enabled button:hover {
+    box-shadow: 0 12px 26px rgba(18, 52, 59, 0.16);
+    transform: translateY(-1px);
+}

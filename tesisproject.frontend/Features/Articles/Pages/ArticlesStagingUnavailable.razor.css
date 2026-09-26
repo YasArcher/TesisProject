@@ -1,0 +1,45 @@
+.articles-protected-page {
+    background: linear-gradient(180deg, #f5faf8 0%, #eef6f2 52%, #f8fbfa 100%);
+    color: #12343b;
+}
+
+.articles-protected-hero,
+.articles-protected-panel {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+}
+
+.articles-protected-hero-band {
+    border-color: rgba(47, 95, 91, 0.2) !important;
+    background:
+        linear-gradient(135deg, rgba(18, 52, 59, 0.98), rgba(22, 83, 87, 0.95)),
+        #12343b !important;
+}
+
+.articles-protected-rule,
+.articles-protected-aside {
+    border-color: rgba(47, 95, 91, 0.14) !important;
+    border-radius: 8px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(237, 247, 243, 0.62)) !important;
+}
+
+.articles-protected-primary,
+.articles-protected-secondary {
+    border-radius: 8px !important;
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.articles-protected-primary {
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, #12343b, #2f5f5b) !important;
+}
+
+.articles-protected-primary:hover,
+.articles-protected-secondary:hover {
+    transform: translateY(-1px);
+}
+
+.articles-protected-secondary {
+    background: #ffffff;
+}

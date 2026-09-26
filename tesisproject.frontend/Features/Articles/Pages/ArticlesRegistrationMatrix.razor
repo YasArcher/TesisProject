@@ -13,7 +13,7 @@
             <div>
                 <p class="text-sm font-semibold text-primary">Registro tabular</p>
                 <h1 class="mt-1 text-2xl font-bold text-foreground">Matriz de articulos</h1>
-                <p class="mt-1 max-w-3xl text-sm text-muted">Crea borradores tabulares usando los campos visibles del formulario activo. El envio a staging se habilitara al integrar carga masiva y workflow.</p>
+                <p class="mt-1 max-w-3xl text-sm text-muted">Crea borradores tabulares usando los campos visibles del formulario activo. El envio a revision se habilitara cuando la matriz este completa y revisada.</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="LoadAsync" disabled="@_loading">Actualizar</button>
@@ -95,7 +95,7 @@
                             <div class="flex flex-wrap gap-2">
                                 <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="AddRowAsync" disabled="@_busy">Agregar fila</button>
                                 <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="ReviewMatrixAsync" disabled="@(_busy || _selected.Rows.Count == 0)">Revisar matriz</button>
-                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-muted opacity-70" disabled="true" title="El envio real a staging se activara cuando el backend de carga masiva y workflow quede integrado.">Staging pendiente</button>
+                                <span class="articles-matrix-flow-status" title="Primero revisa que la matriz tenga filas y campos obligatorios completos.">Envio pendiente</span>
                                 <button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @onclick="DeleteSelectedAsync" disabled="@_busy">Eliminar borrador</button>
                             </div>
                         </div>
@@ -188,7 +188,7 @@
     private int MissingRequiredCellCount => _selected is null ? 0 : _selected.Rows.Sum(row => _selected.Columns.Count(column => column.IsRequired && string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId))));
     private string MatrixReviewMessage => MissingRequiredCellCount > 0
         ? "Completa los campos marcados en rojo antes de continuar con la preparacion del lote."
-        : "La matriz no tiene campos obligatorios pendientes. El envio real a staging se habilitara cuando se integre esa fase en la fusion.";
+        : "La matriz no tiene campos obligatorios pendientes. Ya puede continuar con la siguiente fase operativa.";
 
     private List<ResolvedFormFieldDto> ActiveFields => _form?.Sections
         .SelectMany(s => s.Fields)
@@ -229,7 +229,7 @@
                 Name = $"Matriz {_form.FormName} {DateTime.Now:yyyyMMdd HHmm}",
                 EntityName = "Article",
                 FieldIds = ActiveFields.Select(f => f.FieldId).ToList(),
-                Notes = "Matriz creada desde el formulario activo durante la integración."
+                Notes = "Matriz creada desde el formulario activo."
             });
             if (!result.Success || result.Data is null)
             {
@@ -325,7 +325,7 @@
         _matrixReviewed = true;
         Show(MissingRequiredCellCount > 0
             ? $"La matriz tiene {MissingRequiredCellCount} campo(s) obligatorio(s) pendiente(s)."
-            : "La matriz esta lista como borrador. El envio a staging se activara cuando el backend de workflow/carga masiva quede integrado.",
+            : "La matriz esta lista como borrador revisado. Continua con el flujo institucional cuando corresponda.",
             MissingRequiredCellCount > 0);
         return Task.CompletedTask;
     }

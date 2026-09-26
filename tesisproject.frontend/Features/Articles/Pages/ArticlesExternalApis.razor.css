@@ -132,6 +132,26 @@
     background: rgba(237, 247, 243, 0.72);
 }
 
+.articles-external-safe-note {
+    border: 1px solid rgba(47, 95, 91, 0.14);
+    border-radius: 8px;
+    background: rgba(237, 247, 243, 0.58);
+    padding: 0.9rem;
+}
+
+.articles-external-safe-note strong {
+    display: block;
+    color: var(--articles-ink);
+    font-size: 0.9rem;
+}
+
+.articles-external-safe-note p {
+    margin: 0.35rem 0 0;
+    color: var(--articles-muted);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
 .articles-external-message--warning {
     border-color: rgba(216, 184, 79, 0.34) !important;
     background: rgba(255, 249, 228, 0.88);

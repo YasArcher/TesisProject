@@ -83,8 +83,7 @@
 }
 
 .articles-ingestion-primary,
-.articles-ingestion-secondary,
-.articles-ingestion-disabled {
+.articles-ingestion-secondary {
     border-radius: 8px;
     font-size: 0.88rem;
     font-weight: 800;
@@ -102,13 +101,6 @@
     border: 1px solid rgba(47, 95, 91, 0.2);
     background: #ffffff;
     color: var(--articles-teal);
-}
-
-.articles-ingestion-disabled {
-    border: 1px solid rgba(47, 95, 91, 0.14);
-    background: #eef3f1;
-    color: #8a9995;
-    cursor: not-allowed;
 }
 
 .articles-ingestion-primary:hover,
