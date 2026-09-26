@@ -128,12 +128,6 @@
     background: rgba(20, 184, 166, 0.1);
 }
 
-.articles-profile-page .articles-profile-support-message {
-    border-color: rgba(20, 184, 166, 0.28) !important;
-    background: rgba(236, 248, 246, 0.9);
-    color: #12343b;
-}
-
 .articles-profile-page .articles-profile-chip {
     background: rgba(236, 248, 246, 0.72) !important;
 }
@@ -194,6 +188,92 @@
     opacity: 0.55;
 }
 
+.articles-profile-modal-backdrop {
+    position: fixed;
+    z-index: 80;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(15, 23, 42, 0.46);
+    padding: 1rem;
+}
+
+.articles-profile-modal {
+    width: min(100%, 30rem);
+    border: 1px solid rgba(20, 184, 166, 0.22);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 24px 56px rgba(15, 23, 42, 0.22);
+    color: #12343b;
+    padding: 1.25rem;
+}
+
+.articles-profile-modal-eyebrow {
+    margin: 0;
+    color: #0f766e;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.articles-profile-modal h2 {
+    margin: 0.35rem 0 0;
+    color: #12343b;
+    font-size: 1.2rem;
+    font-weight: 850;
+}
+
+.articles-profile-modal p {
+    margin: 0.65rem 0 0;
+    color: #526762;
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.articles-profile-modal-contact {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.8rem;
+    border: 1px solid rgba(47, 95, 91, 0.14);
+    border-radius: 8px;
+    background: rgba(236, 248, 246, 0.7);
+    padding: 0.75rem;
+}
+
+.articles-profile-modal-contact span {
+    color: #526762;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.articles-profile-modal-contact strong {
+    color: #12343b;
+    font-size: 0.86rem;
+    text-align: right;
+}
+
+.articles-profile-modal small {
+    display: block;
+    margin-top: 0.75rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.articles-profile-modal-close {
+    width: 100%;
+    margin-top: 1rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #12343b, #2f5f5b);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 850;
+    padding: 0.7rem 1rem;
+}
+
 @media (max-width: 900px) {
     .articles-profile-page .articles-profile-hero {
         align-items: stretch;
@@ -212,5 +292,15 @@
 @media (max-width: 560px) {
     .articles-profile-page .articles-profile-shortcuts {
         grid-template-columns: 1fr;
+    }
+
+    .articles-profile-modal-contact {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .articles-profile-modal-contact strong {
+        text-align: left;
     }
 }

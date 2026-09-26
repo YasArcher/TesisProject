@@ -97,7 +97,7 @@
                             <div class="articles-security-chip-list mt-4">
                                 @foreach (var role in _session?.Roles ?? Array.Empty<string>())
                                 {
-                                    <span>@role</span>
+                                    <span>@GetFriendlyRole(role)</span>
                                 }
                                 @if (_session?.Roles.Count == 0)
                                 {
@@ -112,7 +112,7 @@
                             <div class="articles-security-chip-list mt-4">
                                 @foreach (var permission in VisiblePermissions)
                                 {
-                                    <span>@permission</span>
+                                    <span>@GetFriendlyPermission(permission)</span>
                                 }
                                 @if (!VisiblePermissions.Any())
                                 {
@@ -217,6 +217,55 @@
 
         Nav.NavigateTo("/settings");
     }
+
+    private static string GetFriendlyRole(string role)
+        => role switch
+        {
+            "Admin" => "Administrador",
+            "Author" => "Autor",
+            "Autor" => "Autor",
+            "Analyst" => "Analista",
+            "WorkflowReviewerUodide" => "Revisor UODIDE",
+            "WorkflowReviewerAreaTecnica" => "Área Técnica",
+            "WorkflowProcessorAreaTecnica" => "Procesamiento técnico",
+            "ArticleRegistrationUser" => "Registro de artículos",
+            "RegistrationMatrixUser" => "Matriz de registro",
+            "DirectArticleSaveUser" => "Guardado directo",
+            "BulkImportUser" => "Carga masiva",
+            "ExternalApiUser" => "APIs externas",
+            "ReportingViewer" => "Reportería",
+            "ReportingExporter" => "Exportación de reportes",
+            "ReportingAdvancedUser" => "Reportería avanzada",
+            "IntelligenceViewer" => "Inteligencia",
+            "IntelligenceTrainer" => "Entrenamiento IA",
+            "ConfigurationManager" => "Configuración",
+            "CatalogManager" => "Catálogos",
+            "WorkflowTrackingUser" => "Seguimiento workflow",
+            "SecurityAdministrator" => "Seguridad",
+            "RoleManager" => "Gestión de roles",
+            _ => role
+        };
+
+    private static string GetFriendlyPermission(string permission)
+        => permission switch
+        {
+            "articles.access" => "Acceso al módulo",
+            "articles.list" => "Consultar artículos",
+            "articles.register" => "Registrar artículos",
+            "articles.workflow" => "Usar workflow",
+            "articles.review.uodide" => "Revisión UODIDE",
+            "articles.review.technical" => "Revisión técnica",
+            "articles.process" => "Procesar registros",
+            "articles.bulk-import" => "Carga masiva",
+            "articles.external-apis" => "APIs externas",
+            "articles.reporting.view" => "Ver reportería",
+            "articles.reporting.export" => "Exportar reportes",
+            "articles.intelligence.view" => "Ver inteligencia",
+            "articles.intelligence.train" => "Entrenar inteligencia",
+            "articles.configuration.manage" => "Gestionar configuración",
+            "articles.security.manage" => "Gestionar seguridad",
+            _ => permission.Replace("articles.", string.Empty, StringComparison.OrdinalIgnoreCase)
+        };
 
     private sealed record Capability(string Label, bool Enabled, string Detail);
 }

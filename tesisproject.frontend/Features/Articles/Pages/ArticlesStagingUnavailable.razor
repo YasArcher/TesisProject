@@ -18,17 +18,17 @@
 @attribute [Authorize]
 @inject NavigationManager Nav
 
-@* Modulo articulos: rutas antiguas de revision cubiertas mientras se habilita el flujo real. *@
-<PageTitle>Revision de articulos | Plataforma integrada</PageTitle>
+@* Modulo articulos: rutas de staging protegidas dentro de la plataforma integrada. *@
+<PageTitle>@CurrentContext.Title | Plataforma integrada</PageTitle>
 
 <div class="articles-module-page articles-protected-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-5 p-4 md:p-6">
         <header class="articles-protected-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
             <div class="articles-protected-hero-band border-b border-border px-5 py-5 text-white md:px-6">
                 <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Produccion cientifica</p>
-                <h1 class="mt-2 text-2xl font-bold md:text-3xl">Revision protegida</h1>
+                <h1 class="mt-2 text-2xl font-bold md:text-3xl">@CurrentContext.Title</h1>
                 <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                    Esta ruta pertenece al flujo operativo de revision de articulos. Se mantiene protegida para evitar acciones incompletas mientras se habilita la revision correspondiente.
+                    @CurrentContext.Description
                 </p>
             </div>
         </header>
@@ -37,12 +37,19 @@
             <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
                 <div>
                     <p class="text-xs font-bold uppercase text-muted">Ruta controlada</p>
-                    <h2 class="mt-1 text-lg font-bold text-foreground">Procesamiento bloqueado de forma segura</h2>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">@CurrentContext.PanelTitle</h2>
                     <p class="mt-2 text-sm leading-6 text-muted">
-                        Para proteger el flujo, esta pantalla no permite validar, corregir ni procesar hasta que el caso tenga una accion disponible para el rol actual.
+                        @CurrentContext.PanelDetail
                     </p>
+                    @if (BatchId.HasValue)
+                    {
+                        <div class="articles-protected-batch mt-4">
+                            <span>Lote seleccionado</span>
+                            <strong>@BatchId</strong>
+                        </div>
+                    }
                     <div class="mt-5 grid gap-3 md:grid-cols-3">
-                        @foreach (var item in ProtectedSteps)
+                        @foreach (var item in CurrentContext.Steps)
                         {
                             <article class="articles-protected-rule rounded-lg border border-border bg-page-bg p-4">
                                 <span class="text-xs font-bold uppercase text-muted">@item.Scope</span>
@@ -55,6 +62,12 @@
                         <button type="button" class="articles-protected-primary rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="GoWorkflow">
                             Ir a workflow
                         </button>
+                        @if (CurrentContext.ShowRegisterAction)
+                        {
+                            <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoRegister">
+                                Abrir registro
+                            </button>
+                        }
                         <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="GoArticles">
                             Ver articulos
                         </button>
@@ -65,8 +78,8 @@
                 </div>
                 <aside class="articles-protected-aside rounded-lg border border-border bg-page-bg p-4">
                     <p class="text-xs font-bold uppercase text-muted">Estado</p>
-                    <strong class="mt-2 block text-lg text-foreground">Bloqueado seguro</strong>
-                    <p class="mt-2 text-sm text-muted">Evita acciones incompletas mientras el flujo habilita la revision correspondiente.</p>
+                    <strong class="mt-2 block text-lg text-foreground">@CurrentContext.Status</strong>
+                    <p class="mt-2 text-sm text-muted">@CurrentContext.StatusDetail</p>
                 </aside>
             </div>
         </section>
@@ -74,16 +87,95 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? BatchId { get; set; }
+
     private void GoWorkflow() => Nav.NavigateTo("/articles/module/workflow");
     private void GoArticles() => Nav.NavigateTo("/articles");
+    private void GoRegister() => Nav.NavigateTo("/articles/module/register");
     private void GoBulkImport() => Nav.NavigateTo("/articles/module/bulk-import");
 
-    private IReadOnlyList<ProtectedStep> ProtectedSteps =>
-    [
-        new("Autor", "Correcciones", "El retorno a correccion debe abrir solo cuando exista un envio devuelto y editable."),
-        new("UODIDE", "Revision inicial", "La validacion debe depender de tomar el caso y abrir el registro antes de aprobar."),
-        new("Area tecnica", "Validacion final", "El procesamiento definitivo debe ejecutarse solo con registros revisados y sin errores activos.")
-    ];
+    private ProtectedContext CurrentContext
+    {
+        get
+        {
+            var uri = Nav.ToBaseRelativePath(Nav.Uri).ToLowerInvariant();
+            if (uri.Contains("author-correction"))
+            {
+                return new(
+                    "Correccion de envio",
+                    "Esta ruta acompana los lotes devueltos al autor. Cuando el caso tenga correcciones disponibles, el flujo debe regresar al panel de revision del autor para continuar sin perder trazabilidad.",
+                    "Correccion pendiente de flujo",
+                    "El autor debe revisar observaciones, corregir los registros necesarios y volver al panel de envios para reenviar el caso.",
+                    "Esperando correccion",
+                    "Usa workflow para ubicar el envio devuelto y continuar desde la accion habilitada.",
+                    true,
+                    [
+                        new("Observacion", "Revisar motivo", "La correccion parte de la observacion enviada por UODIDE o Area Tecnica."),
+                        new("Datos", "Ajustar registro", "Solo deben modificarse los campos solicitados o incompletos del lote."),
+                        new("Reenvio", "Volver al flujo", "Al terminar, el envio debe regresar al panel de revision para ser reenviado.")
+                    ]);
+            }
+
+            if (uri.Contains("area-tecnica"))
+            {
+                return new(
+                    "Revision tecnica final",
+                    "Esta ruta pertenece al cierre tecnico del registro. La aprobacion final debe estar disponible solo cuando el caso haya sido revisado y no existan errores activos.",
+                    "Procesamiento final protegido",
+                    "Area Tecnica valida consistencia, puede devolver observaciones o finalizar el registro cuando la informacion esta lista.",
+                    "Validacion final",
+                    "Ingresa desde workflow para conservar el caso, el rol y las acciones habilitadas.",
+                    false,
+                    [
+                        new("Caso", "Abrir revision", "Antes de aprobar debe revisarse el registro o staging asociado al envio."),
+                        new("Calidad", "Confirmar datos", "La validacion final verifica revista, DOI, autores y campos academicos."),
+                        new("Cierre", "Procesar registro", "El procesamiento definitivo se ejecuta unicamente desde el flujo autorizado.")
+                    ]);
+            }
+
+            if (uri.Contains("uodide"))
+            {
+                return new(
+                    "Revision UODIDE",
+                    "Esta ruta pertenece a la revision inicial institucional. La accion debe abrirse desde workflow despues de tomar el caso correspondiente.",
+                    "Revision inicial protegida",
+                    "UODIDE toma el caso, revisa el registro del autor y decide si deriva a Area Tecnica o devuelve observaciones.",
+                    "Revision inicial",
+                    "Vuelve al workflow para tomar el caso y habilitar la accion correcta.",
+                    false,
+                    [
+                        new("Asignacion", "Tomar caso", "La revision inicia cuando UODIDE confirma que asumira el lote."),
+                        new("Revision", "Ver registro", "Debe abrirse el registro del autor antes de validar el envio."),
+                        new("Decision", "Derivar o devolver", "La salida depende de las observaciones encontradas durante la revision.")
+                    ]);
+            }
+
+            return new(
+                "Revision protegida",
+                "Esta ruta pertenece al flujo operativo de revision de articulos. Se mantiene protegida para evitar acciones incompletas fuera del workflow.",
+                "Procesamiento bloqueado de forma segura",
+                "Para proteger el flujo, esta pantalla no permite validar, corregir ni procesar hasta que el caso tenga una accion disponible para el rol actual.",
+                "Bloqueado seguro",
+                "Evita acciones incompletas mientras el flujo habilita la revision correspondiente.",
+                false,
+                [
+                    new("Autor", "Correcciones", "El retorno a correccion debe abrir solo cuando exista un envio devuelto y editable."),
+                    new("UODIDE", "Revision inicial", "La validacion debe depender de tomar el caso y abrir el registro antes de aprobar."),
+                    new("Area tecnica", "Validacion final", "El procesamiento definitivo debe ejecutarse solo con registros revisados y sin errores activos.")
+                ]);
+        }
+    }
 
     private sealed record ProtectedStep(string Scope, string Title, string Detail);
+
+    private sealed record ProtectedContext(
+        string Title,
+        string Description,
+        string PanelTitle,
+        string PanelDetail,
+        string Status,
+        string StatusDetail,
+        bool ShowRegisterAction,
+        IReadOnlyList<ProtectedStep> Steps);
 }
