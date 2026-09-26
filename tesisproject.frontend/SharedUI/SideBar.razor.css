@@ -331,11 +331,11 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 0.66rem;
-    padding: 0.66rem;
-    border: 1px solid rgba(110, 152, 194, 0.22);
-    border-radius: 0.74rem;
-    background: rgba(255, 255, 255, 0.065);
+    gap: 0.58rem;
+    padding: 0.58rem 0.62rem;
+    border: 1px solid rgba(139, 198, 168, 0.22);
+    border-radius: 0.66rem;
+    background: linear-gradient(135deg, rgba(47, 125, 124, 0.16), rgba(255, 255, 255, 0.055));
 }
 
 .fusion-footer-dot {
