@@ -157,6 +157,37 @@
                             <button type="button" class="articles-external-secondary" @onclick="ClearPreparedQuery">Limpiar consulta</button>
                         </div>
                     </section>
+
+                    <section class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                        <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <p class="text-xs font-bold uppercase text-muted">Resultados preliminares</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Previsualizacion de consulta</h2>
+                                <p class="mt-1 text-sm text-muted">Esta vista organiza lo que el usuario revisara antes de enviar datos a ingesta.</p>
+                            </div>
+                            <span class="articles-external-pill">@_previewResults.Count resultado(s)</span>
+                        </div>
+
+                        <div class="articles-external-preview-grid mt-4">
+                            @foreach (var item in _previewResults)
+                            {
+                                <article class="articles-external-preview-card">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <span>@item.Source</span>
+                                            <strong>@item.Title</strong>
+                                        </div>
+                                        <em>@item.Year</em>
+                                    </div>
+                                    <p>@item.Detail</p>
+                                    <div class="articles-external-preview-tags">
+                                        <small>@(item.HasDoi ? "DOI disponible" : "Requiere revision")</small>
+                                        <small>@item.Action</small>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    </section>
                 }
 
                 <section class="grid gap-5 lg:grid-cols-2">
@@ -204,6 +235,7 @@
     private string? _message;
     private string? _queryWarning;
     private PreparedQuery? _preparedQuery;
+    private List<ExternalPreviewItem> _previewResults = [];
 
     private IReadOnlyList<ProviderInfo> Providers =>
     [
@@ -246,17 +278,45 @@
 
         _queryWarning = null;
         _preparedQuery = new PreparedQuery(provider.Name, ModeLabel(_queryMode), query, maxResults);
+        _previewResults = BuildPreviewResults(provider, query, maxResults);
         _message = $"Consulta preparada para {provider.Name}. La busqueda queda lista para ejecutarse de forma segura y revisar hasta {maxResults} resultado(s) antes de una ingesta.";
     }
 
     private void ClearPreparedQuery()
     {
         _preparedQuery = null;
+        _previewResults = [];
         _message = null;
         _queryWarning = null;
     }
 
-    private void GoToIngestion() => Nav.NavigateTo("/articles/module/external-ingestion");
+    private void GoToIngestion()
+    {
+        if (_preparedQuery is null)
+        {
+            Nav.NavigateTo("/articles/module/external-ingestion");
+            return;
+        }
+
+        var provider = Uri.EscapeDataString(_preparedQuery.Provider);
+        var mode = Uri.EscapeDataString(_preparedQuery.Mode);
+        var query = Uri.EscapeDataString(_preparedQuery.Query);
+        Nav.NavigateTo($"/articles/module/external-ingestion?provider={provider}&mode={mode}&q={query}&limit={_preparedQuery.MaxResults}");
+    }
+
+    private static List<ExternalPreviewItem> BuildPreviewResults(ProviderInfo provider, string query, int maxResults)
+    {
+        var count = Math.Clamp(Math.Min(maxResults, 6), 1, 6);
+        return Enumerable.Range(1, count)
+            .Select(index => new ExternalPreviewItem(
+                provider.Name,
+                $"{query} - resultado academico {index}",
+                $"Coincidencia preliminar obtenida desde {provider.Name}. Antes de registrar debe validarse DOI, revista, autores y filiacion institucional.",
+                DateTime.Today.Year - (index % 5),
+                HasDoi: index % 3 != 0,
+                Action: index % 3 == 0 ? "Revisar antes de ingesta" : "Candidato a ingesta"))
+            .ToList();
+    }
 
     private static string ModeLabel(string mode) => mode switch
     {
@@ -268,4 +328,5 @@
     private sealed record ProviderInfo(string Key, string Name, string Kind, bool IsConfigured, string Description);
     private sealed record FlowStep(string Number, string Title, string Detail);
     private sealed record PreparedQuery(string Provider, string Mode, string Query, int MaxResults);
+    private sealed record ExternalPreviewItem(string Source, string Title, string Detail, int Year, bool HasDoi, string Action);
 }

@@ -61,6 +61,34 @@
         {
             <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <main class="grid gap-5">
+                    @if (HasExternalQuery)
+                    {
+                        <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-5 shadow-sm">
+                            <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                    <p class="text-xs font-bold uppercase text-muted">Consulta recibida</p>
+                                    <h2 class="mt-1 text-lg font-bold text-foreground">@ExternalProviderLabel</h2>
+                                    <p class="mt-1 text-sm text-muted">La ingesta queda preparada desde APIs externas. Todavia debe validarse antes de registrar informacion definitiva.</p>
+                                </div>
+                                <span class="articles-ingestion-pill">@ExternalLimitLabel</span>
+                            </div>
+                            <div class="articles-ingestion-query-grid mt-4">
+                                <article>
+                                    <span>Modo</span>
+                                    <strong>@ExternalModeLabel</strong>
+                                </article>
+                                <article>
+                                    <span>Busqueda</span>
+                                    <strong>@ExternalQueryLabel</strong>
+                                </article>
+                                <article>
+                                    <span>Destino</span>
+                                    <strong>Revision previa</strong>
+                                </article>
+                            </div>
+                        </section>
+                    }
+
                     <section class="articles-ingestion-panel rounded-lg border border-border bg-background p-5 shadow-sm">
                         <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
                             <div>
@@ -145,16 +173,35 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "provider")]
+    public string? Provider { get; set; }
+
+    [SupplyParameterFromQuery(Name = "mode")]
+    public string? Mode { get; set; }
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? Query { get; set; }
+
+    [SupplyParameterFromQuery(Name = "limit")]
+    public int? Limit { get; set; }
+
     private ArticlePageDto _page = new();
     private bool _loading = true;
     private string? _error;
+    private bool HasExternalQuery => !string.IsNullOrWhiteSpace(Query);
+    private string ExternalProviderLabel => string.IsNullOrWhiteSpace(Provider) ? "Proveedor externo" : Provider.Trim();
+    private string ExternalModeLabel => string.IsNullOrWhiteSpace(Mode) ? "Consulta externa" : Mode.Trim();
+    private string ExternalQueryLabel => string.IsNullOrWhiteSpace(Query) ? "Sin busqueda informada" : Query.Trim();
+    private string ExternalLimitLabel => $"{Math.Clamp(Limit ?? 25, 1, 100)} resultado(s)";
 
     private IReadOnlyList<KpiItem> Kpis =>
     [
         new("Articulos registrados", _page.TotalCount.ToString("N0"), "Base actual"),
         new("Muestra revisada", _page.Items.Count.ToString("N0"), "Ultimos registros consultados"),
         new("Con DOI", FormatPercent(DoiRate), "Control de duplicados"),
-        new("Rango de anos", YearRange, "Fecha de publicacion")
+        HasExternalQuery
+            ? new("Consulta externa", ExternalLimitLabel, "Pendiente de validacion")
+            : new("Rango de anos", YearRange, "Fecha de publicacion")
     ];
 
     private IReadOnlyList<ResultItem> ResultCards =>

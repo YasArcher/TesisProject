@@ -131,14 +131,21 @@
                             <p class="text-xs font-bold uppercase text-muted">Control del flujo</p>
                             <h2 class="mt-1 text-lg font-bold text-foreground">Procesamiento institucional</h2>
                             <p class="mt-1 max-w-3xl text-sm text-muted">
-                                La plataforma permite preparar matrices y revisar datos. El envio definitivo se habilita solo cuando la informacion cumple las reglas requeridas.
+                                La plataforma permite preparar matrices, revisar datos y enviar una carga lista al workflow institucional.
                             </p>
                         </div>
-                        <span class="articles-bulk-disabled" role="status">Procesamiento protegido</span>
+                        <span class="articles-bulk-disabled" role="status">@FlowStatusText</span>
                     </div>
-                    <div class="articles-bulk-process-note mt-4">
+                    <div class="articles-bulk-process-note mt-4 @(CanSubmitSelectedMatrix ? "articles-bulk-process-note--ready" : string.Empty)">
                         <strong>Estado actual</strong>
-                        <p>El flujo seguro se mantiene: primero se preparan borradores, luego se revisan datos obligatorios y finalmente se habilita el procesamiento real cuando la carga institucional este lista.</p>
+                        <p>@FlowMessage</p>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button type="button" class="articles-bulk-primary" disabled="@(!CanSubmitSelectedMatrix)" @onclick="SubmitSelectedMatrixAsync">
+                                @(_submittingToWorkflow ? "Enviando..." : "Enviar matriz al workflow")
+                            </button>
+                            <button type="button" class="articles-bulk-secondary" disabled="@(!HasActiveBatch)" @onclick="OpenCurrentBatch">Abrir detalle del lote</button>
+                            <button type="button" class="articles-bulk-secondary" @onclick="GoToWorkflow">Ir a workflow</button>
+                        </div>
                     </div>
                 </section>
             </main>
@@ -199,6 +206,10 @@
 
                         <div class="mt-4 grid gap-2">
                             <button type="button" class="articles-bulk-primary" @onclick="GoToMatrix">Abrir matriz seleccionada</button>
+                            <button type="button" class="articles-bulk-secondary" disabled="@(!CanSubmitSelectedMatrix)" @onclick="SubmitSelectedMatrixAsync">
+                                @(_submittingToWorkflow ? "Enviando a revision..." : "Enviar a revision")
+                            </button>
+                            <button type="button" class="articles-bulk-secondary" disabled="@(!HasActiveBatch)" @onclick="OpenCurrentBatch">Ver lote enviado</button>
                             @if (_pendingDeleteMatrixId == _selectedMatrix.Summary.RegistrationMatrixId)
                             {
                                 <button type="button" class="articles-bulk-danger" disabled="@_deletingMatrix" @onclick="DeleteSelectedMatrixAsync">Confirmar eliminacion</button>
@@ -251,10 +262,12 @@
     private bool _loading = true;
     private bool _loadingDetail;
     private bool _deletingMatrix;
+    private bool _submittingToWorkflow;
     private string? _message;
     private List<RegistrationMatrixSummaryDto> _matrices = [];
     private RegistrationMatrixDetailDto? _selectedMatrix;
     private int? _pendingDeleteMatrixId;
+    private int? _lastSubmittedBatchId;
 
     private int TotalRows => _matrices.Sum(x => x.RowCount);
     private int TotalColumns => _matrices.Sum(x => x.ColumnCount);
@@ -265,10 +278,32 @@
     private int CompletedRequiredCells => _selectedMatrix is null ? 0 : RequiredColumns.Sum(column =>
         _selectedMatrix.Rows.Count(row => row.Cells.Any(cell => cell.FieldId == column.FieldId && !string.IsNullOrWhiteSpace(cell.RawValue))));
     private int MissingRequiredCells => Math.Max(0, RequiredCellCount - CompletedRequiredCells);
+    private int? ActiveBatchId => _selectedMatrix?.Summary.LastImportBatchId ?? _lastSubmittedBatchId;
+    private bool HasActiveBatch => ActiveBatchId.HasValue;
+    private bool CanSubmitSelectedMatrix => _selectedMatrix is not null
+        && _selectedMatrix.Rows.Count > 0
+        && MissingRequiredCells == 0
+        && !HasActiveBatch
+        && !_submittingToWorkflow;
     private bool CanDeleteSelectedMatrix => _selectedMatrix is not null
         && !_selectedMatrix.Summary.LastImportBatchId.HasValue
         && string.Equals(_selectedMatrix.Summary.Status, "Draft", StringComparison.OrdinalIgnoreCase);
     private IEnumerable<RegistrationMatrixColumnDto> RequiredColumns => _selectedMatrix?.Columns.Where(x => x.IsRequired) ?? [];
+    private string FlowStatusText => _submittingToWorkflow
+        ? "Enviando al workflow"
+        : HasActiveBatch
+            ? "Lote generado"
+            : CanSubmitSelectedMatrix
+                ? "Listo para enviar"
+                : "Revision requerida";
+    private string FlowMessage => _selectedMatrix switch
+    {
+        null => "Selecciona una matriz para revisar filas, columnas y campos obligatorios antes de continuar.",
+        { Rows.Count: 0 } => "La matriz seleccionada no tiene filas. Agrega registros desde la matriz antes de enviarla al workflow.",
+        _ when MissingRequiredCells > 0 => $"La matriz mantiene {MissingRequiredCells} celda(s) obligatoria(s) pendiente(s). Corrige los datos antes de enviarla.",
+        _ when HasActiveBatch => $"La matriz ya fue enviada y tiene un lote asociado. Puedes abrir el detalle del lote o continuar desde workflow.",
+        _ => "La matriz seleccionada cumple los datos minimos y puede enviarse al workflow institucional."
+    };
 
     private IReadOnlyList<FlowStep> FlowSteps =>
     [
@@ -397,13 +432,69 @@
         }
     }
 
+    private async Task SubmitSelectedMatrixAsync()
+    {
+        if (!CanSubmitSelectedMatrix || _selectedMatrix is null)
+            return;
+
+        _submittingToWorkflow = true;
+        _message = null;
+        var matrixId = _selectedMatrix.Summary.RegistrationMatrixId;
+
+        try
+        {
+            var response = await MatrixClient.SubmitToStagingAsync(matrixId, new SubmitRegistrationMatrixRequest
+            {
+                ValidateAfterCreate = true,
+                UseAuthorWorkflow = true
+            });
+
+            if (response.Success && response.Data is not null)
+            {
+                _selectedMatrix = response.Data.Matrix;
+                _lastSubmittedBatchId = response.Data.BatchResult?.Batch.Summary.ImportBatchId ?? response.Data.Matrix.Summary.LastImportBatchId;
+
+                var index = _matrices.FindIndex(x => x.RegistrationMatrixId == matrixId);
+                if (index >= 0)
+                    _matrices[index] = response.Data.Matrix.Summary;
+
+                _message = !string.IsNullOrWhiteSpace(response.Data.Message)
+                    ? response.Data.Message
+                    : "Matriz enviada al workflow correctamente.";
+
+                if (_lastSubmittedBatchId.HasValue)
+                    _message += $" Lote generado: {_lastSubmittedBatchId.Value}.";
+            }
+            else
+            {
+                _message = response.Message ?? response.Data?.Message ?? "No fue posible enviar la matriz al workflow.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _message = $"No fue posible enviar la matriz al workflow: {ex.Message}";
+        }
+        finally
+        {
+            _submittingToWorkflow = false;
+        }
+    }
+
     private void GoToMatrix() => Nav.NavigateTo("/articles/module/matrix");
+    private void GoToWorkflow() => Nav.NavigateTo("/articles/module/workflow");
+    private void OpenCurrentBatch()
+    {
+        if (ActiveBatchId.HasValue)
+            Nav.NavigateTo($"/scientific-production/article-review-staging?batchId={ActiveBatchId.Value}");
+    }
+
     private bool IsSelected(RegistrationMatrixSummaryDto matrix) => _selectedMatrix?.Summary.RegistrationMatrixId == matrix.RegistrationMatrixId;
 
     private static string StatusLabel(string? status) => status?.Trim() switch
     {
         "Draft" => "Borrador",
         "Submitted" => "Enviado",
+        "SubmittedToWorkflow" => "En workflow",
         "Processed" => "Procesado",
         "Error" => "Con errores",
         { Length: > 0 } value => value,

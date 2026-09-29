@@ -212,6 +212,27 @@
     white-space: nowrap;
 }
 
+.articles-matrix-flow-status--linked {
+    background: rgba(216, 184, 79, 0.15);
+    color: #6f5514;
+    cursor: pointer;
+}
+
+.articles-matrix-submit {
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--articles-ink), var(--articles-teal));
+    color: #ffffff;
+    min-height: 2.45rem;
+}
+
+.articles-matrix-submit:disabled {
+    border-color: rgba(47, 95, 91, 0.14);
+    background: #eef3f1;
+    color: #8a9995;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
 @media (max-width: 1280px) {
     .articles-matrix-page .articles-matrix-sidebar {
         position: static;

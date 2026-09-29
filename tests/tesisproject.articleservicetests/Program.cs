@@ -83,8 +83,16 @@ try
     await db.Set<RegistrationMatrix>().Where(m => m.RegistrationMatrixId == id).ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, "Submitted"));
     Check(!(await Matrix(s => s.AddRowAsync(id, "owner-A", false))).Success && !(await Matrix(s => s.DeleteMatrixAsync(id, "owner-A", false))).Success,
         "Non-Draft matrix cannot mutate or delete");
-    Check((await Matrix(s => s.SubmitToStagingAsync(id, new(), "owner-A", false))).ErrorCode == "ARTICLES_MATRIX_STAGING_PENDING", "Staging remains unimplemented");
     await db.Set<RegistrationMatrix>().Where(m => m.RegistrationMatrixId == id).ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, "Draft"));
+    var submitted = await Matrix(s => s.SubmitToStagingAsync(id, new() { ValidateAfterCreate = true, UseAuthorWorkflow = true }, "owner-A", false));
+    Check(submitted.Success
+        && submitted.Data!.Matrix.Summary.Status == "SubmittedToWorkflow"
+        && submitted.Data.Matrix.Summary.LastImportBatchId == id
+        && submitted.Data.BatchResult?.Batch.Summary.ImportBatchId == id,
+        "Matrix submit creates workflow batch bridge");
+    await db.Set<RegistrationMatrix>().Where(m => m.RegistrationMatrixId == id).ExecuteUpdateAsync(s => s
+        .SetProperty(m => m.Status, "Draft")
+        .SetProperty(m => m.LastImportBatchId, (int?)null));
     Check((await Matrix(s => s.DeleteMatrixAsync(id, "owner-A", false))).Success && !await db.Set<RegistrationMatrixRow>().AnyAsync(r => r.RegistrationMatrixId == id), "Delete Draft graph respects Unified NoAction");
 
     var local = new IdentityUser<int> { UserName = "institutional", Email = "original@example.test", NormalizedEmail = "ORIGINAL@EXAMPLE.TEST" };

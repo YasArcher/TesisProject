@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.backend.Data.UnifiedEntities.Articles;
 using tesisproject.backend.Services.Unified.Interfaces;
+using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.DTOs.MassRegistration;
 using tesisproject.shared.Responses;
 
@@ -145,14 +146,93 @@ public sealed class UnifiedRegistrationMatrixService : IUnifiedRegistrationMatri
 
     public async Task<ServiceResult<RegistrationMatrixSubmissionResultDto>> SubmitToStagingAsync(int matrixId, SubmitRegistrationMatrixRequest request, string? ownerUserId, bool includeAll, CancellationToken ct = default)
     {
-        var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: false, ct);
+        var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: true, ct);
         if (matrix is null)
             return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("No se encontro la matriz solicitada.", ErrorType.NotFound, "ARTICLES_MATRIX_NOT_FOUND");
 
-        return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail(
-            "La matriz ya puede prepararse como borrador. El envio a staging se activara cuando integremos BulkImport y Workflow en la fusion.",
-            ErrorType.Validation,
-            "ARTICLES_MATRIX_STAGING_PENDING");
+        if (!IsDraft(matrix))
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("La matriz ya fue enviada y no puede reenviarse desde esta vista.", ErrorType.Validation, "ARTICLES_MATRIX_ALREADY_SUBMITTED");
+
+        if (matrix.Rows.Count == 0)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("Agrega al menos una fila antes de enviar la matriz a revision.", ErrorType.Validation, "ARTICLES_MATRIX_ROWS_REQUIRED");
+
+        var missingRequired = matrix.Rows.Sum(row => matrix.Columns.Count(column =>
+            column.Field?.IsRequired == true &&
+            string.IsNullOrWhiteSpace(row.Cells.FirstOrDefault(cell => cell.FieldId == column.FieldId)?.RawValue)));
+        if (missingRequired > 0)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail($"Completa {missingRequired} campo(s) obligatorio(s) antes de enviar la matriz.", ErrorType.Validation, "ARTICLES_MATRIX_REQUIRED_VALUES_MISSING");
+
+        var now = DateTime.UtcNow;
+        matrix.Status = request.UseAuthorWorkflow ? "SubmittedToWorkflow" : "Submitted";
+        matrix.LastImportBatchId = matrix.RegistrationMatrixId;
+        matrix.UpdatedAt = now;
+        foreach (var row in matrix.Rows)
+        {
+            row.Status = "Submitted";
+            row.UpdatedAt = now;
+        }
+
+        await _uow.SaveChangesAsync(ct);
+        var detail = MapDetail(matrix);
+        var result = new RegistrationMatrixSubmissionResultDto
+        {
+            Message = request.UseAuthorWorkflow
+                ? "La matriz fue enviada a la bandeja de revision para continuar el flujo institucional."
+                : "La matriz fue marcada como enviada para revision.",
+            Matrix = detail,
+            BatchResult = BuildSubmissionBatchResult(detail, now)
+        };
+
+        return ServiceResult<RegistrationMatrixSubmissionResultDto>.Ok(result);
+    }
+
+    private static BulkImportActionResultDto BuildSubmissionBatchResult(RegistrationMatrixDetailDto matrix, DateTime submittedAt)
+    {
+        var rows = matrix.Rows.Select(row => new BulkImportRowPreviewDto
+        {
+            ImportBatchRowId = row.RegistrationMatrixRowId,
+            RowNumber = row.RowNumber,
+            RowStatus = "Submitted",
+            Cells = row.Cells.Select(cell =>
+            {
+                var column = matrix.Columns.FirstOrDefault(x => x.FieldId == cell.FieldId);
+                return new BulkImportRowCellDto
+                {
+                    FieldId = cell.FieldId,
+                    EntityName = column?.EntityName ?? string.Empty,
+                    FieldKey = column?.FieldKey ?? string.Empty,
+                    FieldLabel = column?.FieldLabel ?? string.Empty,
+                    RawValue = cell.RawValue,
+                    NormalizedValue = cell.RawValue,
+                    IsValid = true,
+                    ValueType = column?.DataType ?? string.Empty
+                };
+            }).ToList()
+        }).ToList();
+
+        return new BulkImportActionResultDto
+        {
+            Message = "Borrador enviado a revision.",
+            InsertedRows = matrix.Rows.Count,
+            Batch = new BulkImportBatchDetailDto
+            {
+                Summary = new BulkImportBatchSummaryDto
+                {
+                    ImportBatchId = matrix.Summary.LastImportBatchId ?? matrix.Summary.RegistrationMatrixId,
+                    BatchCode = $"MATRIX-{matrix.Summary.RegistrationMatrixId:D6}",
+                    SourceType = "RegistrationMatrix",
+                    EntityName = matrix.Summary.EntityName,
+                    TotalRows = matrix.Rows.Count,
+                    SuccessfulRows = matrix.Rows.Count,
+                    ValidRows = matrix.Rows.Count,
+                    Status = matrix.Summary.Status,
+                    StartedAt = submittedAt,
+                    FinishedAt = submittedAt,
+                    Notes = matrix.Notes
+                },
+                Rows = rows
+            }
+        };
     }
 
     private async Task<List<FieldCatalogEntry>> LoadEligibleFieldsAsync(IReadOnlyCollection<int> fieldIds, CancellationToken ct)

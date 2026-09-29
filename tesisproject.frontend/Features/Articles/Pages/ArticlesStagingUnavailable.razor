@@ -15,10 +15,13 @@
 @page "/management/uodide-review-staging-frame"
 @page "/scientific-production/uodide-review-staging-frame"
 @using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.MassRegistration
 @attribute [Authorize]
+@inject IRegistrationMatrixClient MatrixClient
 @inject NavigationManager Nav
 
-@* Modulo articulos: rutas de staging protegidas dentro de la plataforma integrada. *@
+@* Modulo articulos: rutas de staging y revision protegidas dentro de la plataforma integrada. *@
 <PageTitle>@CurrentContext.Title | Plataforma integrada</PageTitle>
 
 <div class="articles-module-page articles-protected-page h-full min-h-0 overflow-y-auto bg-page-bg">
@@ -83,6 +86,105 @@
                 </aside>
             </div>
         </section>
+
+        @if (BatchId.HasValue)
+        {
+            <section class="articles-review-panel rounded-lg border border-border bg-background p-5 shadow-sm md:p-6">
+                @if (_loadingMatrix)
+                {
+                    <div class="articles-review-empty">
+                        <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
+                        <p>Cargando lote enviado...</p>
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(_matrixError))
+                {
+                    <div class="articles-review-empty articles-review-empty--error">
+                        <h2>No fue posible cargar el lote</h2>
+                        <p>@_matrixError</p>
+                        <button type="button" class="articles-protected-primary rounded-md px-4 py-2 text-sm font-semibold text-white" @onclick="LoadMatrixAsync">
+                            Intentar nuevamente
+                        </button>
+                    </div>
+                }
+                else if (_matrix is not null)
+                {
+                    <div class="flex flex-col gap-4 border-b border-border pb-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <p class="text-xs font-bold uppercase text-muted">Detalle del lote</p>
+                            <h2 class="mt-1 text-xl font-bold text-foreground">@_matrix.Summary.Name</h2>
+                            <p class="mt-2 max-w-3xl text-sm text-muted">
+                                Revisa las filas enviadas desde la matriz. Esta vista permite validar visualmente el contenido antes de continuar con acciones de workflow.
+                            </p>
+                        </div>
+                        <span class="articles-review-status">@StatusLabel(_matrix.Summary.Status)</span>
+                    </div>
+
+                    <div class="articles-review-metrics mt-4">
+                        <article>
+                            <span>Filas</span>
+                            <strong>@_matrix.Rows.Count</strong>
+                        </article>
+                        <article>
+                            <span>Columnas</span>
+                            <strong>@_matrix.Columns.Count</strong>
+                        </article>
+                        <article>
+                            <span>Obligatorios</span>
+                            <strong>@_matrix.Columns.Count(x => x.IsRequired)</strong>
+                        </article>
+                        <article>
+                            <span>Completitud</span>
+                            <strong>@CompletionRate%</strong>
+                        </article>
+                    </div>
+
+                    <div class="articles-review-table-wrap mt-5">
+                        <table class="articles-review-table">
+                            <thead>
+                                <tr>
+                                    <th>Fila</th>
+                                    @foreach (var column in _matrix.Columns)
+                                    {
+                                        <th>
+                                            <span>@column.FieldLabel</span>
+                                            @if (column.IsRequired)
+                                            {
+                                                <em>Obligatorio</em>
+                                            }
+                                        </th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in _matrix.Rows)
+                                {
+                                    <tr @key="row.RegistrationMatrixRowId">
+                                        <td class="articles-review-row-number">@row.RowNumber</td>
+                                        @foreach (var column in _matrix.Columns)
+                                        {
+                                            var value = GetCellValue(row, column.FieldId);
+                                            <td class="@(column.IsRequired && string.IsNullOrWhiteSpace(value) ? "is-missing" : null)">
+                                                @(string.IsNullOrWhiteSpace(value) ? "No informado" : value)
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="articles-review-actions">
+                        <button type="button" class="articles-protected-primary rounded-md px-4 py-2 text-sm font-semibold text-white" @onclick="GoWorkflow">
+                            Volver al workflow
+                        </button>
+                        <button type="button" class="articles-protected-secondary rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground" @onclick="GoMatrix">
+                            Abrir matriz
+                        </button>
+                    </div>
+                }
+            </section>
+        }
     </div>
 </div>
 
@@ -90,10 +192,62 @@
     [SupplyParameterFromQuery(Name = "batchId")]
     public int? BatchId { get; set; }
 
+    private RegistrationMatrixDetailDto? _matrix;
+    private bool _loadingMatrix;
+    private string? _matrixError;
+
+    private int CompletionRate
+    {
+        get
+        {
+            if (_matrix is null || _matrix.Rows.Count == 0 || _matrix.Columns.Count == 0)
+                return 0;
+
+            var total = _matrix.Rows.Count * _matrix.Columns.Count;
+            var filled = _matrix.Rows.Sum(row => _matrix.Columns.Count(column => !string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId))));
+            return (int)Math.Round(filled * 100m / total, MidpointRounding.AwayFromZero);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (BatchId.HasValue)
+            await LoadMatrixAsync();
+    }
+
+    private async Task LoadMatrixAsync()
+    {
+        if (!BatchId.HasValue)
+            return;
+
+        _loadingMatrix = true;
+        _matrixError = null;
+        var result = await MatrixClient.GetMatrixAsync(BatchId.Value);
+        if (result.Success && result.Data is not null)
+            _matrix = result.Data;
+        else
+            _matrixError = result.Message ?? "No se pudo obtener el detalle del lote seleccionado.";
+        _loadingMatrix = false;
+    }
+
     private void GoWorkflow() => Nav.NavigateTo("/articles/module/workflow");
     private void GoArticles() => Nav.NavigateTo("/articles");
     private void GoRegister() => Nav.NavigateTo("/articles/module/register");
     private void GoBulkImport() => Nav.NavigateTo("/articles/module/bulk-import");
+    private void GoMatrix() => Nav.NavigateTo("/articles/module/matrix");
+
+    private static string? GetCellValue(RegistrationMatrixRowDto row, int fieldId)
+        => row.Cells.FirstOrDefault(x => x.FieldId == fieldId)?.RawValue;
+
+    private static string StatusLabel(string? status)
+        => status switch
+        {
+            "SubmittedToWorkflow" => "En revision",
+            "Submitted" => "Enviado",
+            "Draft" => "Borrador",
+            _ when !string.IsNullOrWhiteSpace(status) => status,
+            _ => "Sin estado"
+        };
 
     private ProtectedContext CurrentContext
     {

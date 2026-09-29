@@ -72,6 +72,163 @@
     min-height: 16rem;
 }
 
+.articles-workflow-test-panel {
+    border-color: rgba(14, 116, 144, 0.16) !important;
+}
+
+.articles-workflow-test-badge {
+    width: fit-content;
+    border-radius: 999px;
+    background: rgba(14, 116, 144, 0.1);
+    color: #0e7490;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 0.45rem 0.75rem;
+}
+
+.articles-workflow-test-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+    gap: 0.85rem;
+}
+
+.articles-workflow-test-card {
+    min-height: 7.25rem;
+    border: 1px solid rgba(14, 116, 144, 0.16);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(240, 253, 250, 0.86), rgba(255, 255, 255, 0.92));
+    color: var(--foreground);
+    padding: 1rem;
+    text-align: left;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.articles-workflow-test-card:hover {
+    border-color: rgba(14, 116, 144, 0.36);
+    box-shadow: 0 14px 26px rgba(15, 23, 42, 0.09);
+    transform: translateY(-1px);
+}
+
+.articles-workflow-test-card span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 999px;
+    background: #12343b;
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+
+.articles-workflow-test-card strong {
+    display: block;
+    margin-top: 0.7rem;
+    color: var(--foreground);
+    font-size: 0.98rem;
+}
+
+.articles-workflow-test-card small {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.articles-workflow-batches {
+    border-color: rgba(47, 95, 91, 0.16) !important;
+}
+
+.articles-workflow-batch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+}
+
+.articles-workflow-batch-card {
+    border: 1px solid rgba(47, 95, 91, 0.16);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(240, 253, 250, 0.78));
+    padding: 1rem;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.articles-workflow-batch-card:hover {
+    border-color: rgba(47, 95, 91, 0.35);
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.09);
+    transform: translateY(-1px);
+}
+
+.articles-workflow-batch-card span {
+    display: block;
+    color: #2f5f5b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.articles-workflow-batch-card strong {
+    display: -webkit-box;
+    margin-top: 0.3rem;
+    overflow: hidden;
+    color: var(--foreground);
+    font-size: 1rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.articles-workflow-batch-card em {
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: rgba(216, 184, 79, 0.18);
+    color: #6f5c11;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 800;
+    padding: 0.28rem 0.65rem;
+}
+
+.articles-workflow-batch-card dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin: 0.95rem 0 0;
+}
+
+.articles-workflow-batch-card dt {
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.articles-workflow-batch-card dd {
+    color: var(--foreground);
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin: 0.15rem 0 0;
+}
+
+.articles-workflow-batch-card button {
+    width: 100%;
+    margin-top: 0.95rem;
+    border: 1px solid rgba(47, 95, 91, 0.22);
+    border-radius: 8px;
+    background: #12343b;
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 800;
+    padding: 0.58rem 0.85rem;
+    transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.articles-workflow-batch-card button:hover {
+    background: #2f5f5b;
+    transform: translateY(-1px);
+}
+
 @media (max-width: 640px) {
     .articles-workflow-hero__top {
         padding: 1rem;

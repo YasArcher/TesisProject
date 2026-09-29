@@ -7,6 +7,7 @@
 @using tesisproject.shared.DTOs.MassRegistration
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IRegistrationMatrixClient MatrixClient
+@inject NavigationManager Nav
 <div class="articles-module-page articles-matrix-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
         <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-end xl:justify-between">
@@ -95,7 +96,24 @@
                             <div class="flex flex-wrap gap-2">
                                 <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="AddRowAsync" disabled="@_busy">Agregar fila</button>
                                 <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="ReviewMatrixAsync" disabled="@(_busy || _selected.Rows.Count == 0)">Revisar matriz</button>
-                                <span class="articles-matrix-flow-status" title="Primero revisa que la matriz tenga filas y campos obligatorios completos.">Envio pendiente</span>
+                                <button class="articles-matrix-submit rounded-lg px-3 py-2 text-sm font-semibold"
+                                        @onclick="SubmitMatrixToWorkflowAsync"
+                                        disabled="@(!CanSubmitMatrix)">
+                                    @(_submittingToWorkflow ? "Enviando..." : "Enviar a revision")
+                                </button>
+                                @if (_selected.Summary.LastImportBatchId.HasValue)
+                                {
+                                    <button class="articles-matrix-flow-status articles-matrix-flow-status--linked"
+                                            type="button"
+                                            title="Abrir seguimiento del lote enviado."
+                                            @onclick="GoToWorkflow">
+                                        Lote @_selected.Summary.LastImportBatchId
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="articles-matrix-flow-status" title="Primero revisa que la matriz tenga filas y campos obligatorios completos.">Envio pendiente</span>
+                                }
                                 <button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @onclick="DeleteSelectedAsync" disabled="@_busy">Eliminar borrador</button>
                             </div>
                         </div>
@@ -179,6 +197,7 @@
     private bool _creating;
     private bool _busy;
     private bool _matrixReviewed;
+    private bool _submittingToWorkflow;
     private string? _message;
     private bool _messageIsError;
 
@@ -189,6 +208,12 @@
     private string MatrixReviewMessage => MissingRequiredCellCount > 0
         ? "Completa los campos marcados en rojo antes de continuar con la preparacion del lote."
         : "La matriz no tiene campos obligatorios pendientes. Ya puede continuar con la siguiente fase operativa.";
+    private bool CanSubmitMatrix => _selected is not null
+        && !_busy
+        && !_submittingToWorkflow
+        && _matrixReviewed
+        && _selected.Rows.Count > 0
+        && MissingRequiredCellCount == 0;
 
     private List<ResolvedFormFieldDto> ActiveFields => _form?.Sections
         .SelectMany(s => s.Fields)
@@ -328,6 +353,53 @@
             : "La matriz esta lista como borrador revisado. Continua con el flujo institucional cuando corresponda.",
             MissingRequiredCellCount > 0);
         return Task.CompletedTask;
+    }
+
+    private async Task SubmitMatrixToWorkflowAsync()
+    {
+        if (_selected is null)
+            return;
+
+        if (!CanSubmitMatrix)
+        {
+            Show("Revisa la matriz y completa los campos obligatorios antes de enviarla a revision.", true);
+            return;
+        }
+
+        _submittingToWorkflow = true;
+        try
+        {
+            var result = await MatrixClient.SubmitToStagingAsync(_selected.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest
+            {
+                ValidateAfterCreate = true,
+                UseAuthorWorkflow = true
+            });
+
+            if (!result.Success || result.Data is null)
+            {
+                Show(result.Message ?? "No pude enviar la matriz a revision.", true);
+                return;
+            }
+
+            _selected = result.Data.Matrix;
+            _selectedMatrixId = _selected.Summary.RegistrationMatrixId;
+            _matrixReviewed = true;
+            var batchId = result.Data.BatchResult?.Batch?.Summary?.ImportBatchId ?? _selected.Summary.LastImportBatchId;
+            Show(batchId.HasValue
+                    ? $"Matriz enviada a revision. Lote generado: {batchId.Value}."
+                    : !string.IsNullOrWhiteSpace(result.Data.Message) ? result.Data.Message : "Matriz enviada a revision.",
+                false);
+            await LoadAsync();
+        }
+        finally
+        {
+            _submittingToWorkflow = false;
+        }
+    }
+
+    private void GoToWorkflow()
+    {
+        Nav.NavigateTo("/articles/module/workflow");
     }
 
     private static string? GetCellValue(RegistrationMatrixRowDto row, int fieldId)

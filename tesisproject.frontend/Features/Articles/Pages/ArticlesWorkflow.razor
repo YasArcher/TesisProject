@@ -6,8 +6,10 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @using tesisproject.shared.DTOs.Auth
+@using tesisproject.shared.DTOs.MassRegistration
 @inject IArticleClientService ArticlesClient
 @inject IAuthClientService AuthClient
+@inject IRegistrationMatrixClient MatrixClient
 @inject NavigationManager Nav
 <div class="articles-module-page articles-workflow-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
@@ -51,8 +53,8 @@
                     <strong>@CurrentPageWithDoi</strong>
                 </div>
                 <div class="articles-workflow-metric rounded-md border border-border bg-page-bg px-4 py-3">
-                    <span>Con autores</span>
-                    <strong>@CurrentPageWithAuthors</strong>
+                    <span>Lotes enviados</span>
+                    <strong>@SubmittedMatrices.Count</strong>
                 </div>
             </div>
         </header>
@@ -73,6 +75,33 @@
                 </button>
             </div>
         </section>
+
+        <section class="articles-workflow-test-panel rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
+            <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase text-muted">Ruta de prueba recomendada</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Registro, matriz y workflow</h2>
+                    <p class="mt-2 max-w-3xl text-sm text-muted">
+                        Usa esta secuencia para validar la fusion del modulo de articulos sin salir del entorno integrado.
+                    </p>
+                </div>
+                <span class="articles-workflow-test-badge">Prueba guiada</span>
+            </div>
+
+            <div class="articles-workflow-test-grid mt-4">
+                @foreach (var action in TestActions)
+                {
+                    <button type="button"
+                            class="articles-workflow-test-card"
+                            @onclick="() => NavigateTo(action.Target)">
+                        <span>@action.Step</span>
+                        <strong>@action.Title</strong>
+                        <small>@action.Description</small>
+                    </button>
+                }
+            </div>
+        </section>
+
         @if (_session is not null)
         {
             <section class="articles-workflow-role-panel rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
@@ -106,6 +135,64 @@
                 </div>
             </section>
         }
+
+        <section class="articles-workflow-batches rounded-lg border border-border bg-background p-4 shadow-sm md:p-5">
+            <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase text-muted">Envios por matriz</p>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Lotes enviados a revision</h2>
+                    <p class="mt-2 max-w-3xl text-sm text-muted">
+                        Aqui aparecen las matrices que ya salieron del borrador y pueden continuar su revision por rol.
+                    </p>
+                </div>
+                <button type="button"
+                        class="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-primary-subtle"
+                        @onclick="GoToMatrix">
+                    Abrir matriz
+                </button>
+            </div>
+
+            @if (SubmittedMatrices.Count == 0)
+            {
+                <div class="mt-4 rounded-lg border border-dashed border-border bg-page-bg p-5 text-sm text-muted">
+                    Todavia no hay matrices enviadas a revision. Crea una matriz, completa las filas obligatorias y utiliza "Enviar a revision".
+                </div>
+            }
+            else
+            {
+                <div class="articles-workflow-batch-grid mt-4">
+                    @foreach (var matrix in SubmittedMatrices)
+                    {
+                        <article class="articles-workflow-batch-card" @key="matrix.RegistrationMatrixId">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <span>@WorkflowStatusLabel(matrix.Status)</span>
+                                    <strong>@matrix.Name</strong>
+                                </div>
+                                <em>@(matrix.LastImportBatchId.HasValue ? $"Lote {matrix.LastImportBatchId}" : "Enviado")</em>
+                            </div>
+                            <dl>
+                                <div>
+                                    <dt>Filas</dt>
+                                    <dd>@matrix.RowCount</dd>
+                                </div>
+                                <div>
+                                    <dt>Columnas</dt>
+                                    <dd>@matrix.ColumnCount</dd>
+                                </div>
+                                <div>
+                                    <dt>Fecha</dt>
+                                    <dd>@FormatDate(matrix.UpdatedAt ?? matrix.CreatedAt)</dd>
+                                </div>
+                            </dl>
+                            <button type="button" @onclick="() => OpenReviewBatch(matrix)">
+                                Revisar seguimiento
+                            </button>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
 
         @if (_loading)
         {
@@ -206,19 +293,31 @@
 
 @code {
     private ArticlePageDto _page = new();
+    private List<RegistrationMatrixSummaryDto> _matrices = [];
     private bool _loading = true;
     private string? _error;
     private CurrentSessionResponse? _session;
     private const int PageSize = 10;
 
     private int CurrentPageWithDoi => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.Doi));
-    private int CurrentPageWithAuthors => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.AuthorsSummary) || item.Participants is { Count: > 0 });
+    private List<RegistrationMatrixSummaryDto> SubmittedMatrices => _matrices
+        .Where(matrix => matrix.LastImportBatchId.HasValue || matrix.Status.Contains("Submitted", StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(matrix => matrix.UpdatedAt ?? matrix.CreatedAt)
+        .ToList();
+    private int? LatestSubmittedBatchId => SubmittedMatrices.FirstOrDefault()?.LastImportBatchId;
 
     private IReadOnlyList<WorkflowBox> WorkflowBoxes =>
     [
-        new("Autor", _session?.Articles.CanUseWorkflow == true, _page.Items.Count.ToString("N0"), "Seguimiento de articulos enviados, correcciones y observaciones devueltas.", "Ver envios", "/scientific-production/author-workspace"),
-        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Pendiente", "Toma de caso, revision inicial y devolucion al autor cuando corresponda.", "Revisar casos", "/scientific-production/uodide-review-staging"),
-        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Pendiente", "Validacion final, correccion tecnica y procesamiento definitivo.", "Validar final", "/scientific-production/area-tecnica-review-staging")
+        new("Autor", _session?.Articles.CanUseWorkflow == true, "Envios", "Seguimiento de articulos enviados, correcciones y observaciones devueltas.", "Ver envios", "/scientific-production/author-workspace"),
+        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Revision", "Toma de caso, revision inicial y devolucion al autor cuando corresponda.", "Revisar casos", BuildReviewTarget("/scientific-production/uodide-review-staging")),
+        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Final", "Validacion final, correccion tecnica y procesamiento definitivo.", "Validar final", BuildReviewTarget("/scientific-production/area-tecnica-review-staging"))
+    ];
+
+    private static IReadOnlyList<TestAction> TestActions =>
+    [
+        new("1", "Formulario individual", "Captura un articulo desde el formulario activo.", "/articles/module/register"),
+        new("2", "Matriz tabular", "Crea filas, revisa campos obligatorios y envia a revision.", "/articles/module/matrix"),
+        new("3", "Workflow", "Verifica seguimiento, revision UODIDE y area tecnica.", "/articles/module/workflow")
     ];
 
     protected override Task OnInitializedAsync() => LoadPageAsync(1);
@@ -245,6 +344,10 @@
         else
             _error = FriendlyError(result.ErrorCode, result.Message);
 
+        var matrixResult = await MatrixClient.GetMatricesAsync(100);
+        if (matrixResult.Success && matrixResult.Data is not null)
+            _matrices = matrixResult.Data;
+
         _loading = false;
     }
 
@@ -254,7 +357,15 @@
 
     private void GoToArticles() => Nav.NavigateTo("/articles");
     private void GoToRegister() => Nav.NavigateTo("/articles/module/register");
+    private void GoToMatrix() => Nav.NavigateTo("/articles/module/matrix");
     private void OpenArticle(int articleId) => Nav.NavigateTo($"/articles?articleId={articleId}");
+    private void OpenReviewBatch(RegistrationMatrixSummaryDto matrix)
+        => Nav.NavigateTo(matrix.LastImportBatchId.HasValue
+            ? $"/scientific-production/article-review-staging?batchId={matrix.LastImportBatchId}"
+            : "/articles/module/workflow");
+    private string BuildReviewTarget(string baseRoute)
+        => LatestSubmittedBatchId.HasValue ? $"{baseRoute}?batchId={LatestSubmittedBatchId.Value}" : baseRoute;
+    private void NavigateTo(string target) => Nav.NavigateTo(target);
     private void OpenWorkflowBox(WorkflowBox box)
     {
         if (!box.Enabled)
@@ -269,6 +380,18 @@
     private static string DisplayAuthors(string? value)
         => string.IsNullOrWhiteSpace(value) ? "Sin autores informados" : value;
 
+    private static string WorkflowStatusLabel(string? status)
+        => status switch
+        {
+            "SubmittedToWorkflow" => "En revision",
+            "Submitted" => "Enviado",
+            "Draft" => "Borrador",
+            _ when !string.IsNullOrWhiteSpace(status) => status,
+            _ => "Sin estado"
+        };
+
+    private static string FormatDate(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
     private static string FriendlyError(string? code, string? message)
         => code switch
         {
@@ -278,4 +401,5 @@
         };
 
     private sealed record WorkflowBox(string Title, bool Enabled, string Count, string Detail, string Action, string Target);
+    private sealed record TestAction(string Step, string Title, string Description, string Target);
 }
