@@ -47,8 +47,8 @@ Articles/Product se clasificaron así:
 | `RegistrationMatrix` | 1 | `RegistrationMatrixId`; creada por usuario | `BULK_IMPORT` / `OPERATIONAL` | Excluida |
 | `RegistrationMatrixColumn` | 15 | FK a matriz y `FieldCatalog` | `BULK_IMPORT` / `OPERATIONAL` | Excluida |
 | `RegistrationMatrixRow` / `RegistrationMatrixCell` | 0 / 0 | FKs de importación | `BULK_IMPORT` | Excluida |
-| `FieldCatalog` | 54 | `FieldId`; configuración editable y campos dinámicos | `USER_GENERATED` / `UNCERTAIN` | Excluida |
-| `FormDefinitions` / `FormFields` | 2 / 23 | configuración editable con fechas de creación/edición | `USER_GENERATED` | Excluida |
+| `FieldCatalog` | 54 | `FieldId`; catálogo base de campos físicos, dinámicos y compuestos | Mixta | 40 aceptadas; 14 temporales/externas excluidas |
+| `FormDefinitions` / `FormFields` | 2 / 23 | formularios y asignación ordenada de campos | `ARTICLE_FORM_CONFIGURATION` | 2 / 23 aceptadas |
 | `OperationExecutionHistory` | 1 | `ExecutionId` | `SYSTEM` / `ETL` | Excluida |
 | tablas `AspNet*`, `AppUsers`, `RefreshTokens` | varias | Identity | `IDENTITY` | Excluidas |
 
@@ -65,7 +65,10 @@ Las tablas DW no están en el conjunto operacional `dbo` sembrado. `ProjectsDW.*
 | `SpecificFields` | 25 | IDs 1-25 |
 | `DetailedFields` | 90 | IDs 1-90 |
 | `IndexingSources` | 8 | IDs 1-8 |
-| **Total nuevo** | **151** | |
+| `FieldCatalog` | 40 | IDs 1-32, 34-40 y 1036 |
+| `FormDefinitions` | 2 | IDs 1-2 |
+| `FormFields` | 23 | asignaciones canónicas del backup |
+| **Total nuevo** | **216** | |
 
 Se conservaron IDs, nombres Unicode, códigos, `null`, booleanos, relaciones y orden padre-hijo.
 
@@ -101,10 +104,14 @@ Matriz de comparación con seeds existentes:
 | `SpecificFields` | 39 | 0 | 25 | 0 | 25 | 14 | 5 DW y 9 ambiguas |
 | `DetailedFields` | 104 | 0 | 90 | 0 | 90 | 14 | 5 DW y 9 ambiguas |
 | `IndexingSources` | 8 | 0 | 8 | 0 | 8 | 0 | Catálogo inicial |
+| `FieldCatalog` | 54 | 0 | 40 | 0 | 40 | 14 | Se excluye campo temporal 33 y metadatos externos 1037-1049 |
+| `FormDefinitions` | 2 | 0 | 2 | 0 | 2 | 0 | Formularios iniciales de artículo y participantes |
+| `FormFields` | 23 | 0 | 23 | 0 | 23 | 0 | Composición, orden y reglas de ambos formularios |
 
 ## New catalog rows
 
-La fuente canónica quedó en C# tipado dentro de `ArticlesCatalogSeedData`.
+La fuente canónica quedó en C# tipado dentro de `ArticlesCatalogSeedData` y
+`ArticlesFormSeedData`.
 La inserción conserva identidad mediante el mismo patrón `SqlBulkCopy` transaccional usado por
 la migración existente. Conflictos por ID o business key producen `CATALOG_ID_CONFLICT`; no se
 sobrescriben ni duplican filas.
@@ -118,7 +125,7 @@ sobrescriben ni duplican filas.
 ## Operational-data exclusions
 
 Se excluyeron Articles, Products, Authors, ProductAuthors, ProductValues, ArticleIndexings,
-Venues, ExternalResearchers, matrices de registro, formularios editables, archivos, proyectos,
+Venues, ExternalResearchers, matrices de registro, archivos, proyectos,
 presupuestos, historial de operaciones y datos ETL.
 
 La matriz del backup fue creada a las `2026-09-29 23:36:50` y su nombre incorpora la fecha de
@@ -142,15 +149,15 @@ Se excluyeron por `UNCERTAIN`, sin incorporación automática:
 - `BroadFields` IDs 1006-1008, 1011-1012;
 - `SpecificFields` IDs 1006-1008, 1012-1017;
 - `DetailedFields` IDs 1006-1008, 1012-1017;
-- campos dinámicos/externos de `FieldCatalog`, incluidos IDs 1037-1049 de Scopus;
-- definiciones y asignaciones de formularios editadas durante desarrollo.
+- metadatos externos invisibles de `FieldCatalog`, IDs 1037-1049 de Scopus, cuya descripción
+  indica que no alteran el formulario de registro.
 
 Estos registros forman grupos de IDs altos, no pertenecen al bloque canónico continuo y no tienen
 una fuente normativa actual que permita declararlos inequívocamente como catálogo inicial.
 
 ## ID conflicts
 
-No hubo conflicto de ID entre las 151 filas aceptadas y el modelo actual.
+No hubo conflicto de ID entre las 216 filas aceptadas y el modelo actual.
 
 Las filas `ProductAttributeDefinitions` 40-43 del backup asignaban al ProductType 2 los atributos
 5, 6, 8 y 9. Se excluyeron por incompatibilidad estructural con la definición canónica actual.
@@ -186,7 +193,7 @@ Orden interno de `UNIFIED_ARTICLES_CATALOGS_V1`:
 
 ## Validation result
 
-Base limpia: `tesis_unified_articles_seed_validation`, creada desde estado inexistente.
+Base limpia final: `tesis_unified_articles_forms_validation_v2`, creada desde estado inexistente.
 
 - Unified EF migrations: 2 aplicadas, 0 pendientes.
 - ProjectsDW EF migrations: 2 aplicadas, 0 pendientes.
@@ -195,10 +202,11 @@ Base limpia: `tesis_unified_articles_seed_validation`, creada desde estado inexi
 - `PROJECTS_INITIAL_CATALOG_V1`: `SUCCEEDED`, una ejecución exitosa.
 - `UNIFIED_ARTICLES_CATALOGS_V1`: `SUCCEEDED`, una ejecución exitosa.
 - Segunda aplicación: `DATA_MIGRATION_ALREADY_APPLIED`; no duplicó registros.
-- Resultado compacto: 151 insertadas, conteo por catálogo, sin filas completas ni secretos.
+- Resultado compacto: 216 insertadas, conteo por catálogo/configuración, sin filas completas ni secretos.
 - Comparación binaria por ID, nombre, código, campos funcionales y FKs: 0 diferencias en cada catálogo.
+- Comparación completa de `FieldCatalog` (40 aceptadas), `FormDefinitions` (2) y `FormFields` (23): 0 diferencias.
 - `ARTICLES_INITIAL_CATALOG_DATA_DIFF = 0`.
-- Prueba runtime: 47 verificaciones aprobadas.
+- Prueba runtime: 48 verificaciones aprobadas.
 - Prueba deployment: 26 verificaciones aprobadas, incluidas las tres cadenas EF y ambas Data Migrations.
 - Unified model tests: 127 verificaciones aprobadas.
 - Unified services tests: 14.548 aserciones aprobadas.

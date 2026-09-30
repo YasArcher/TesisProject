@@ -164,8 +164,11 @@ internal static class DeploymentTests
                 await db.BroadFields.CountAsync() != 9 ||
                 await db.SpecificFields.CountAsync() != 25 ||
                 await db.DetailedFields.CountAsync() != 90 ||
-                await db.IndexingSources.CountAsync() != 8)
-                throw new Exception("Articles canonical catalog counts are incomplete");
+                await db.IndexingSources.CountAsync() != 8 ||
+                await db.FieldCatalogEntries.CountAsync() != 40 ||
+                await db.FormDefinitions.CountAsync() != 2 ||
+                await db.FormFieldDefinitions.CountAsync() != 23)
+                throw new Exception("Articles canonical catalog and form counts are incomplete");
             count++;
             var projectsResult = await scope.ServiceProvider.GetRequiredService<IProjectsDwEtlService>().RunFullLoadAsync();
             if (!projectsResult.Success) throw new Exception("Projects full load returned failure");

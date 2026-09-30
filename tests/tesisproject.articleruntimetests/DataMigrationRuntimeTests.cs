@@ -107,19 +107,32 @@ internal static class DataMigrationRuntimeTests
                 x.OperationCode == OperationCodes.UnifiedArticlesCatalogsV1 &&
                 x.Status == OperationExecutionStatuses.Succeeded);
             using var articlesResult = JsonDocument.Parse(articlesExecution.ResultJson!);
-            Check(articlesResult.RootElement.GetProperty("inserted").GetInt32() == 151 &&
-                  articlesResult.RootElement.GetProperty("catalogs").GetProperty("DetailedFields").GetInt32() == 90,
-                "Articles ResultJson stores compact 151-row catalog summary");
+            Check(articlesResult.RootElement.GetProperty("inserted").GetInt32() == 216 &&
+                  articlesResult.RootElement.GetProperty("catalogs").GetProperty("DetailedFields").GetInt32() == 90 &&
+                  articlesResult.RootElement.GetProperty("catalogs").GetProperty("FieldCatalog").GetInt32() == 40 &&
+                  articlesResult.RootElement.GetProperty("catalogs").GetProperty("FormDefinitions").GetInt32() == 2 &&
+                  articlesResult.RootElement.GetProperty("catalogs").GetProperty("FormFields").GetInt32() == 23,
+                "Articles ResultJson stores compact 216-row catalog and form summary");
             Check(await db.PublicationStatuses.CountAsync() == 3 &&
                   await db.ResearchLines.CountAsync() == 16 &&
                   await db.BroadFields.CountAsync() == 9 &&
                   await db.SpecificFields.CountAsync() == 25 &&
                   await db.DetailedFields.CountAsync() == 90 &&
-                  await db.IndexingSources.CountAsync() == 8,
-                "Articles initial catalog counts match accepted backup rows");
+                  await db.IndexingSources.CountAsync() == 8 &&
+                  await db.FieldCatalogEntries.CountAsync() == 40 &&
+                  await db.FormDefinitions.CountAsync() == 2 &&
+                  await db.FormFieldDefinitions.CountAsync() == 23,
+                "Articles initial catalog and form counts match accepted backup rows");
+            Check(await db.FormDefinitions.AllAsync(x => x.IsActive) &&
+                  await db.FormFieldDefinitions.AllAsync(x =>
+                      db.FormDefinitions.Any(form => form.FormId == x.FormId) &&
+                      db.FieldCatalogEntries.Any(field => field.FieldId == x.FieldId)),
+                "Articles form definitions preserve valid field catalog relationships");
             Check(!await db.PublicationStatuses.AnyAsync(x => x.Name.Contains("DW")) &&
                   !await db.ResearchLines.AnyAsync(x => x.Name.StartsWith("DW")) &&
-                  !await db.BroadFields.AnyAsync(x => x.BroadFieldId >= 1000),
+                  !await db.BroadFields.AnyAsync(x => x.BroadFieldId >= 1000) &&
+                  !await db.FieldCatalogEntries.AnyAsync(x => x.FieldId == 33 ||
+                      (x.FieldId >= 1037 && x.FieldId <= 1049)),
                 "Articles migration excludes DW and uncertain high-ID fixtures");
             Check(await db.ProductAttributeDefinitions.CountAsync(x => x.ProductTypeId == 2) == 6 &&
                   !await db.ProductAttributeDefinitions.AnyAsync(x => x.ProductTypeId == 2 &&

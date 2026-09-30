@@ -191,6 +191,7 @@ internal static class ArticlesCatalogSeedData
                 new(8, null, null, "ERIC", true, true),
             ],
             [nameof(IndexingSourceRow.Name)]),
+        .. ArticlesFormSeedData.Tables,
     ];
 }
 
