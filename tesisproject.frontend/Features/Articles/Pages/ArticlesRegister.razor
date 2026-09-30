@@ -7,10 +7,12 @@
 @using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.shared.DTOs.Articles
 @using tesisproject.shared.Validation
+@using Microsoft.JSInterop
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IArticleClientService ArticleClient
 @inject IProductTypeClientService ProductTypeClient
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 <div class="articles-module-page articles-register-page h-full min-h-0 overflow-y-auto bg-page-bg">
     <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
         <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 xl:flex-row xl:items-end xl:justify-between">
@@ -36,7 +38,7 @@
             </div>
         </header>
 
-        <ArticlesModuleNav Title="Registro individual conectado al formulario activo" Class="mb-5" />
+
 
         @if (_loading)
         {
@@ -85,7 +87,7 @@
 
             @if (!string.IsNullOrWhiteSpace(_statusMessage))
             {
-                <section class="mb-5 rounded-lg border @StatusBorderClass @StatusBgClass p-4">
+                <section id="register-observations-summary" class="mb-5 scroll-mt-24 rounded-lg border @StatusBorderClass @StatusBgClass p-4">
                     <h2 class="text-sm font-bold @StatusTitleClass">@_statusTitle</h2>
                     <p class="mt-1 text-sm @StatusTextClass">@_statusMessage</p>
                     @if (_missingOptional.Count > 0)
@@ -97,32 +99,47 @@
 
             <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <main class="articles-form-stack space-y-4">
-                    <section class="rounded-lg border border-border bg-background p-5">
-                        <div class="mb-4 border-b border-border pb-3">
-                            <h2 class="text-lg font-bold text-foreground">Tipo de producción</h2>
-                            <p class="text-xs text-muted">Selecciona si el registro corresponde a producción científica o regional.</p>
-                        </div>
+                    <section class="articles-accordion-panel rounded-lg border border-border bg-background p-0">
+                        <button type="button"
+                                class="articles-accordion-header"
+                                aria-expanded="@_isProductTypeExpanded"
+                                @onclick="ToggleProductTypeSection">
+                            <span>
+                                <span class="articles-accordion-eyebrow">Clasificación inicial</span>
+                                <span class="articles-accordion-title">Tipo de producción</span>
+                                <span class="articles-accordion-description">Selecciona si el registro corresponde a producción científica o regional.</span>
+                            </span>
+                            <span class="articles-accordion-meta">
+                                <span class="articles-accordion-badge">@GetSelectedProductTypeLabel()</span>
+                                <span class="articles-accordion-toggle">@(_isProductTypeExpanded ? "Ocultar" : "Mostrar")</span>
+                            </span>
+                        </button>
 
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            @foreach (var productType in VisibleArticleProductTypes)
-                            {
-                                var selected = _selectedProductTypeId == productType.Id;
-                                <button type="button"
-                                        class="rounded-lg border p-4 text-left transition @(selected ? "border-primary bg-primary-subtle text-primary" : "border-border bg-page-bg text-foreground hover:border-primary hover:bg-primary-subtle")"
-                                        @onclick="() => SelectProductType(productType.Id)">
-                                    <span class="block text-sm font-bold">@GetProductTypeDisplayName(productType)</span>
-                                    <span class="mt-1 block text-xs @(selected ? "text-primary" : "text-muted")">@GetProductTypeDescription(productType.Id)</span>
-                                </button>
-                            }
-                        </div>
+                        @if (_isProductTypeExpanded)
+                        {
+                            <div class="articles-accordion-body">
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    @foreach (var productType in VisibleArticleProductTypes)
+                                    {
+                                        var selected = _selectedProductTypeId == productType.Id;
+                                        <button type="button"
+                                                class="rounded-lg border p-4 text-left transition @(selected ? "border-primary bg-primary-subtle text-primary" : "border-border bg-page-bg text-foreground hover:border-primary hover:bg-primary-subtle")"
+                                                @onclick="() => SelectProductType(productType.Id)">
+                                            <span class="block text-sm font-bold">@GetProductTypeDisplayName(productType)</span>
+                                            <span class="mt-1 block text-xs @(selected ? "text-primary" : "text-muted")">@GetProductTypeDescription(productType.Id)</span>
+                                        </button>
+                                    }
+                                </div>
 
-                        @if (_productTypes.Count == 0)
-                        {
-                            <p class="mt-3 text-xs font-semibold text-amber-700">No se pudieron cargar los tipos de producción. Revisa el catálogo de ProductTypes.</p>
-                        }
-                        @if (_validation.TryGetValue(ProductTypeValidationKey, out var productTypeMessage))
-                        {
-                            <p class="mt-3 text-xs font-semibold text-red-700">@productTypeMessage</p>
+                                @if (_productTypes.Count == 0)
+                                {
+                                    <p class="mt-3 text-xs font-semibold text-amber-700">No se pudieron cargar los tipos de producción. Revisa el catálogo de ProductTypes.</p>
+                                }
+                                @if (_validation.TryGetValue(ProductTypeValidationKey, out var productTypeMessage))
+                                {
+                                    <p class="mt-3 text-xs font-semibold text-red-700">@productTypeMessage</p>
+                                }
+                            </div>
                         }
                     </section>
 
@@ -134,57 +151,88 @@
                             continue;
                         }
 
-                        <section class="rounded-lg border border-border bg-background p-5">
-                            <div class="mb-4 flex flex-col gap-1 border-b border-border pb-3 sm:flex-row sm:items-end sm:justify-between">
-                                <div>
-                                    <h2 class="text-lg font-bold text-foreground">@formSection.GroupName</h2>
-                                    <p class="text-xs text-muted">@fields.Count campo(s) configurados desde administración</p>
-                                </div>
-                                <span class="w-fit rounded-lg bg-primary-subtle px-3 py-1 text-xs font-bold text-primary">
-                                    @fields.Count(f => f.IsRequired) requerido(s)
-                                </span>
-                            </div>
+                        var sectionKey = GetFormSectionKey(formSection.DisplayOrder, formSection.GroupName);
+                        var expanded = IsFormSectionExpanded(sectionKey);
+                        var sectionHasErrors = fields.Any(field => _validation.ContainsKey(field.FieldId));
 
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                @foreach (var field in fields)
-                                {
-                                    <div class="@(GetColumnClass(field))">
-                                        <label class="block">
-                                            <span class="mb-1 flex items-center gap-2 text-xs font-semibold text-muted">
-                                                @field.FieldLabel
-                                                @if (field.IsRequired)
+                        <section class="articles-accordion-panel rounded-lg border border-border bg-background p-0 @(sectionHasErrors ? "articles-accordion-panel--warning" : null)">
+                            <button type="button"
+                                    class="articles-accordion-header"
+                                    aria-expanded="@expanded"
+                                    @onclick="() => ToggleFormSection(sectionKey)">
+                                <span>
+                                    <span class="articles-accordion-eyebrow">Sección del formulario</span>
+                                    <span class="articles-accordion-title">@formSection.GroupName</span>
+                                    <span class="articles-accordion-description">@fields.Count campo(s) configurados desde administración</span>
+                                </span>
+                                <span class="articles-accordion-meta">
+                                    <span class="articles-accordion-badge @(sectionHasErrors ? "articles-accordion-badge--warning" : null)">
+                                        @(sectionHasErrors ? "Revisar" : $"{fields.Count(f => f.IsRequired)} requerido(s)")
+                                    </span>
+                                    <span class="articles-accordion-toggle">@(expanded ? "Ocultar" : "Mostrar")</span>
+                                </span>
+                            </button>
+
+                            @if (expanded)
+                            {
+                                <div class="articles-accordion-body">
+                                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        @foreach (var field in fields)
+                                        {
+                                            <div class="@(GetColumnClass(field))">
+                                                <label class="block">
+                                                    <span class="mb-1 flex items-center gap-2 text-xs font-semibold text-muted">
+                                                        @field.FieldLabel
+                                                        @if (field.IsRequired)
+                                                        {
+                                                            <span class="rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">Obligatorio</span>
+                                                        }
+                                                    </span>
+                                                    @RenderField(field)
+                                                </label>
+                                                @if (!string.IsNullOrWhiteSpace(field.HelpText))
                                                 {
-                                                    <span class="rounded bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">Obligatorio</span>
+                                                    <p class="mt-1 text-xs text-muted">@field.HelpText</p>
                                                 }
-                                            </span>
-                                            @RenderField(field)
-                                        </label>
-                                        @if (!string.IsNullOrWhiteSpace(field.HelpText))
-                                        {
-                                            <p class="mt-1 text-xs text-muted">@field.HelpText</p>
-                                        }
-                                        @if (_validation.TryGetValue(field.FieldId, out var message))
-                                        {
-                                            <p class="mt-1 text-xs font-semibold text-red-700">@message</p>
+                                                @if (_validation.TryGetValue(field.FieldId, out var message))
+                                                {
+                                                    <p class="mt-1 text-xs font-semibold text-red-700">@message</p>
+                                                }
+                                            </div>
                                         }
                                     </div>
-                                }
-                            </div>
+                                </div>
+                            }
                         </section>
                     }
 
-                    <section class="rounded-lg border border-border bg-background p-5">
-                        <div class="mb-4 flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h2 class="text-lg font-bold text-foreground">Participantes</h2>
-                                <p class="text-xs text-muted">Debe existir al menos un autor o coautor asociado al registro.</p>
-                            </div>
-                            <button type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle" @onclick="AddParticipant">
-                                Agregar participante
-                            </button>
-                        </div>
+                    <section class="articles-accordion-panel rounded-lg border border-border bg-background p-0 @(HasParticipantValidationErrors ? "articles-accordion-panel--warning" : null)">
+                        <button type="button"
+                                class="articles-accordion-header"
+                                aria-expanded="@_isParticipantsExpanded"
+                                @onclick="ToggleParticipantsSection">
+                            <span>
+                                <span class="articles-accordion-eyebrow">Autores y coautores</span>
+                                <span class="articles-accordion-title">Participantes</span>
+                                <span class="articles-accordion-description">Debe existir al menos un autor o coautor asociado al registro.</span>
+                            </span>
+                            <span class="articles-accordion-meta">
+                                <span class="articles-accordion-badge @(HasParticipantValidationErrors ? "articles-accordion-badge--warning" : null)">
+                                    @(HasParticipantValidationErrors ? "Revisar" : $"{_participants.Count} participante(s)")
+                                </span>
+                                <span class="articles-accordion-toggle">@(_isParticipantsExpanded ? "Ocultar" : "Mostrar")</span>
+                            </span>
+                        </button>
 
-                        <div class="space-y-3">
+                        @if (_isParticipantsExpanded)
+                        {
+                            <div class="articles-accordion-body">
+                                <div class="mb-4 flex justify-end">
+                                    <button type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle" @onclick="AddParticipant">
+                                        Agregar participante
+                                    </button>
+                                </div>
+                                <div class="space-y-3">
                             @foreach (var participant in _participants)
                             {
                                 <article class="rounded-lg border border-border bg-page-bg p-4" @key="participant.Id">
@@ -245,7 +293,9 @@
                                     </div>
                                 </article>
                             }
-                        </div>
+                                </div>
+                            </div>
+                        }
                     </section>
                 </main>
 
@@ -266,16 +316,47 @@
                                 <p class="text-lg font-bold text-foreground">@MissingRequiredCount</p>
                             </div>
                         </div>
-                        <button type="button"
-                                class="mt-4 w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-                                @onclick="ValidateDraft">
-                            Validar registro
-                        </button>
-                        <button type="button"
-                                class="mt-2 w-full rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
-                                @onclick="RequestSubmitDirectRegistrationAsync" disabled="@_submitting">
-                            @(_submitting ? "Registrando..." : "Registrar articulo")
-                        </button>
+
+                        <div class="mt-4 grid grid-cols-2 gap-2">
+                            <button type="button"
+                                    class="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-primary-subtle"
+                                    @onclick="ExpandAllFormSections">
+                                Expandir todo
+                            </button>
+                            <button type="button"
+                                    class="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-primary-subtle"
+                                    @onclick="CollapseAllFormSections">
+                                Contraer todo
+                            </button>
+                        </div>
+
+                        @if (_submitted)
+                        {
+                            <div class="mt-4 rounded-lg border @( _validation.Count == 0 ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50") p-3">
+                                <p class="text-xs font-bold uppercase @( _validation.Count == 0 ? "text-emerald-800" : "text-rose-800")">
+                                    @(_validation.Count == 0 ? "Sin observaciones" : "Observaciones activas")
+                                </p>
+                                @if (_validation.Count == 0)
+                                {
+                                    <p class="mt-1 text-xs text-emerald-800">El registro está listo para continuar.</p>
+                                }
+                                else
+                                {
+                                    <ul class="mt-2 space-y-1 text-xs text-rose-800">
+                                        @foreach (var validationMessage in GetValidationMessages().Take(6))
+                                        {
+                                            <li>@validationMessage</li>
+                                        }
+                                    </ul>
+                                    @if (_validation.Count > 6)
+                                    {
+                                        <p class="mt-2 text-xs font-semibold text-rose-800">Hay más observaciones en las secciones marcadas.</p>
+                                    }
+                                }
+                            </div>
+                        }
+
+
                     </section>
 
                     <section class="rounded-lg border border-border bg-background p-5">
@@ -291,6 +372,61 @@
         }
     </div>
 </div>
+
+@if (!_loading && _articleForm is not null && string.IsNullOrWhiteSpace(_error))
+{
+    <button type="button"
+            class="articles-register-floating-action"
+            title="Acciones del registro"
+            aria-label="Abrir acciones del registro"
+            @onclick="OpenRegisterActionModal">
+        <span class="articles-register-floating-action__icon" aria-hidden="true">✓</span>
+        <span>Validar / registrar</span>
+    </button>
+}
+
+@if (_showRegisterActionModal)
+{
+    <div class="articles-register-action-modal-backdrop" @onclick="CloseRegisterActionModal">
+        <section class="articles-register-action-modal" role="dialog" aria-modal="true" aria-labelledby="register-action-title" @onclick:stopPropagation="true">
+            <div class="articles-register-action-modal__header">
+                <p>Confirmación del registro</p>
+                <h2 id="register-action-title">Validar o registrar artículo</h2>
+                <span>Primero puedes validar para ver observaciones. Registrar guarda el artículo solo si la información cumple las reglas configuradas.</span>
+            </div>
+
+            <div class="articles-register-action-modal__summary">
+                <div>
+                    <span>Completados</span>
+                    <strong>@CompletedRequiredCount</strong>
+                </div>
+                <div>
+                    <span>Pendientes</span>
+                    <strong>@MissingRequiredCount</strong>
+                </div>
+                <div>
+                    <span>Participantes</span>
+                    <strong>@_participants.Count</strong>
+                </div>
+            </div>
+
+            <div class="articles-register-action-modal__actions">
+                <button type="button" class="articles-register-action-modal__primary" disabled="@_submitting" @onclick="RegisterFromRegisterActionModalAsync">
+                    <strong>@(_submitting ? "Registrando..." : "Registrar artículo")</strong>
+                    <span>Valida y guarda el artículo en producción científica.</span>
+                </button>
+                <button type="button" class="articles-register-action-modal__secondary" @onclick="ValidateFromRegisterActionModalAsync">
+                    <strong>Solo validar</strong>
+                    <span>Revisar campos y mostrar observaciones sin registrar.</span>
+                </button>
+            </div>
+
+            <button type="button" class="articles-register-action-modal__close" @onclick="CloseRegisterActionModal">
+                Cancelar
+            </button>
+        </section>
+    </div>
+}
 
 
             @if (_showOptionalConfirmation)
@@ -330,11 +466,26 @@
     private readonly List<CatalogListItemDTO> _productTypes = [];
     private readonly List<ParticipantDraft> _participants = [new()];
     private readonly List<string> _missingOptional = [];
+    private static readonly HashSet<string> CatalogFieldKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "academictermid",
+        "publicationstatusid",
+        "researchlineid",
+        "broadfieldid",
+        "specificfieldid",
+        "detailedfieldid",
+        "facultyid",
+        "indexingsourceid"
+    };
     private const int ProductTypeValidationKey = -50;
     private bool _loading = true;
     private bool _submitted;
     private bool _submitting;
     private bool _showOptionalConfirmation;
+    private bool _showRegisterActionModal;
+    private bool _isProductTypeExpanded = true;
+    private bool _isParticipantsExpanded = true;
+    private readonly HashSet<string> _expandedFormSections = new(StringComparer.OrdinalIgnoreCase);
     private string? _error;
     private string? _statusTitle;
     private string? _statusMessage;
@@ -380,9 +531,11 @@
         _articleForm = article.Data;
         _participantForm = participant.Success ? participant.Data : null;
 
+        InitializeExpandedSections();
         SeedDefaults();
         await LoadProductTypesAsync();
         await LoadCatalogsAsync();
+        await RefreshInitialDependentCatalogsAsync();
         _loading = false;
     }
 
@@ -401,7 +554,7 @@
     {
         foreach (var field in VisibleArticleFields)
         {
-            if (!_values.ContainsKey(field.FieldId))
+            if (!_values.TryGetValue(field.FieldId, out var current) || string.IsNullOrWhiteSpace(current))
                 _values[field.FieldId] = field.DefaultValue;
         }
     }
@@ -410,9 +563,14 @@
     {
         foreach (var field in VisibleArticleFields.Where(NeedsCatalog))
         {
+            if (IsDependentCatalogField(field))
+            {
+                _catalogs[field.FieldId] = [];
+                continue;
+            }
+
             var result = await FormConfigurationClient.GetCatalogItemsByFieldAsync(field.FieldId);
-            if (result.Success && result.Data is not null)
-                _catalogs[field.FieldId] = result.Data;
+            _catalogs[field.FieldId] = result.Success && result.Data is not null ? result.Data : [];
         }
     }
 
@@ -520,11 +678,28 @@
         _catalogs[field.FieldId] = result.Success && result.Data is not null ? result.Data : [];
     }
 
+    private async Task RefreshInitialDependentCatalogsAsync()
+    {
+        var broadFieldId = TryInt(GetValueByKey("broadfieldid"));
+        if (broadFieldId.HasValue)
+            await ReloadCatalogByKeyAsync("specificfieldid", broadFieldId);
+
+        var specificFieldId = TryInt(GetValueByKey("specificfieldid"));
+        if (specificFieldId.HasValue)
+            await ReloadCatalogByKeyAsync("detailedfieldid", specificFieldId);
+    }
+
     private void ClearValueByKey(string fieldKey)
     {
         var fieldId = GetFieldIdByKey(fieldKey);
         if (fieldId.HasValue)
             _values[fieldId.Value] = null;
+    }
+
+    private string GetValueByKey(string fieldKey)
+    {
+        var field = VisibleArticleFields.FirstOrDefault(item => GetEffectiveFieldKey(item) == fieldKey);
+        return field is null ? string.Empty : GetValue(field);
     }
 
     private int? GetFieldIdByKey(string fieldKey)
@@ -545,6 +720,7 @@
 
         ValidateParticipants();
         ValidateProductType();
+        ExpandSectionsWithValidationErrors();
 
         if (_validation.Count == 0)
         {
@@ -566,7 +742,10 @@
     {
         ValidateDraft();
         if (_validation.Count > 0)
+        {
+            await FocusObservationsAsync();
             return;
+        }
 
         if (_missingOptional.Count > 0)
         {
@@ -575,6 +754,30 @@
         }
 
         await SubmitDirectRegistrationAsync();
+    }
+
+    private void OpenRegisterActionModal() => _showRegisterActionModal = true;
+
+    private void CloseRegisterActionModal() => _showRegisterActionModal = false;
+
+    private async Task ValidateFromRegisterActionModalAsync()
+    {
+        _showRegisterActionModal = false;
+        ValidateDraft();
+        await FocusObservationsAsync();
+    }
+
+    private async Task RegisterFromRegisterActionModalAsync()
+    {
+        _showRegisterActionModal = false;
+        await RequestSubmitDirectRegistrationAsync();
+    }
+
+    private async Task FocusObservationsAsync()
+    {
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
+        await JS.InvokeVoidAsync("fusionScrollToElement", "register-observations-summary");
     }
 
     private async Task ConfirmOptionalSubmitAsync()
@@ -852,6 +1055,86 @@
             _ => "Tipo de producción disponible para el registro."
         };
 
+    private bool HasParticipantValidationErrors => _validation.Keys.Any(key => key < 0 && key != ProductTypeValidationKey);
+
+    private static string GetFormSectionKey(int displayOrder, string? groupName)
+        => $"{displayOrder}:{groupName ?? "General"}";
+
+    private bool IsFormSectionExpanded(string sectionKey)
+        => _expandedFormSections.Contains(sectionKey);
+
+    private void ToggleFormSection(string sectionKey)
+    {
+        if (!_expandedFormSections.Add(sectionKey))
+            _expandedFormSections.Remove(sectionKey);
+    }
+
+    private void ToggleProductTypeSection() => _isProductTypeExpanded = !_isProductTypeExpanded;
+
+    private void ToggleParticipantsSection() => _isParticipantsExpanded = !_isParticipantsExpanded;
+
+    private void InitializeExpandedSections()
+    {
+        _expandedFormSections.Clear();
+        var firstSection = _articleForm?.Sections
+            .OrderBy(section => section.DisplayOrder)
+            .FirstOrDefault(section => section.Fields.Any(IsRenderable));
+
+        if (firstSection is not null)
+            _expandedFormSections.Add(GetFormSectionKey(firstSection.DisplayOrder, firstSection.GroupName));
+
+        _isProductTypeExpanded = true;
+        _isParticipantsExpanded = true;
+    }
+
+    private void ExpandSectionsWithValidationErrors()
+    {
+        if (_validation.ContainsKey(ProductTypeValidationKey))
+            _isProductTypeExpanded = true;
+
+        if (HasParticipantValidationErrors)
+            _isParticipantsExpanded = true;
+
+        if (_articleForm is null)
+            return;
+
+        foreach (var section in _articleForm.Sections)
+        {
+            if (section.Fields.Any(field => _validation.ContainsKey(field.FieldId)))
+                _expandedFormSections.Add(GetFormSectionKey(section.DisplayOrder, section.GroupName));
+        }
+    }
+
+    private string GetSelectedProductTypeLabel()
+    {
+        var productType = _productTypes.FirstOrDefault(type => type.Id == _selectedProductTypeId);
+        return productType is null ? "Sin seleccionar" : GetProductTypeDisplayName(productType);
+    }
+
+    private IEnumerable<string> GetValidationMessages()
+        => _validation.Values
+            .Where(message => !string.IsNullOrWhiteSpace(message))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+    private void ExpandAllFormSections()
+    {
+        if (_articleForm is null)
+            return;
+
+        foreach (var section in _articleForm.Sections.Where(section => section.Fields.Any(IsRenderable)))
+            _expandedFormSections.Add(GetFormSectionKey(section.DisplayOrder, section.GroupName));
+
+        _isProductTypeExpanded = true;
+        _isParticipantsExpanded = true;
+    }
+
+    private void CollapseAllFormSections()
+    {
+        _expandedFormSections.Clear();
+        _isProductTypeExpanded = false;
+        _isParticipantsExpanded = false;
+    }
+
     private void BackToArticles() => Nav.NavigateTo("/articles");
 
     private void AddParticipant()
@@ -872,7 +1155,18 @@
     }
 
     private bool IsRenderable(ResolvedFormFieldDto field) => field.IsActive && field.IsVisible;
-    private bool NeedsCatalog(ResolvedFormFieldDto field) => !string.IsNullOrWhiteSpace(field.ReferenceTableName) || NormalizeType(field.SourceType).Contains("catalog");
+    private bool NeedsCatalog(ResolvedFormFieldDto field)
+    {
+        var sourceType = NormalizeType(field.SourceType);
+        var dataType = NormalizeType(field.DataType);
+        return !string.IsNullOrWhiteSpace(field.ReferenceTableName)
+            || sourceType.Contains("catalog")
+            || sourceType.Contains("catálogo")
+            || dataType is "fk" or "foreignkey" or "catalog" or "catalogreference"
+            || CatalogFieldKeys.Contains(GetEffectiveFieldKey(field));
+    }
+
+    private bool IsDependentCatalogField(ResolvedFormFieldDto field) => GetEffectiveFieldKey(field) is "specificfieldid" or "detailedfieldid";
     private bool IsEmpty(ResolvedFormFieldDto field) => string.IsNullOrWhiteSpace(GetValue(field));
     private bool HasValidation(ResolvedFormFieldDto field) => _validation.ContainsKey(field.FieldId);
     private string GetValue(ResolvedFormFieldDto field) => _values.TryGetValue(field.FieldId, out var value) ? value ?? string.Empty : string.Empty;
@@ -919,3 +1213,6 @@
         public string Affiliation { get; set; } = "Universidad Técnica de Ambato";
     }
 }
+
+
+

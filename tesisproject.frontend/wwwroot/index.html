@@ -37,6 +37,15 @@
         };
     </script>
 
-    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        window.fusionScrollToElement = (elementId) => {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (typeof element.focus === 'function') {
+                element.focus({ preventScroll: true });
+            }
+        };
+    </script>    <script src="_framework/blazor.webassembly.js"></script>
 </body>
 </html>

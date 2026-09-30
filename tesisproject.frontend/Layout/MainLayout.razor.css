@@ -448,3 +448,12 @@
 .fusion-app-shell.is-sidebar-collapsed .fusion-header-description {
     max-width: 42rem;
 }
+
+.fusion-app-header {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.fusion-header-brand {
+    width: 2.85rem;
+    justify-content: center;
+}
