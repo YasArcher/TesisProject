@@ -56,21 +56,29 @@ public sealed class UnifiedArticleConfigurationRepository(UnifiedDideDbContext c
             (d.ProductTypeId == (int)BaseProductTypeId.ScientificProduction || d.ProductTypeId == (int)BaseProductTypeId.RegionalProduction))
             .Select(d => d.ProductTypeId).Distinct().CountAsync(ct) == 2;
     }
-    public Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string key, CancellationToken ct) => key switch
+    public Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string key, int? parentId, CancellationToken ct) => key switch
     {
         "faculties" or "faculty" or "facultyid" => context.Set<Faculty>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.FacultyId, Name = x.Name }).ToListAsync(ct),
-        "research-lines" or "researchline" or "researchlineid" => context.Set<ResearchLine>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.ResearchLineId, Name = x.Name }).ToListAsync(ct),
-        "indexing-sources" or "indexingsource" or "indexingsourceid" => context.Set<IndexingSource>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.Id, Name = x.Name }).ToListAsync(ct),
-        "publication-statuses" or "publicationstatus" or "publicationstatusid" => context.Set<PublicationStatus>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.PublicationStatusId, Name = x.Name }).ToListAsync(ct),
+        "research-lines" or "researchlines" or "researchline" or "researchlineid" => context.Set<ResearchLine>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.ResearchLineId, Name = x.Name }).ToListAsync(ct),
+        "indexing-sources" or "indexingsources" or "indexingsource" or "indexingsourceid" => context.Set<IndexingSource>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.Id, Name = x.Name }).ToListAsync(ct),
+        "publication-statuses" or "publicationstatuses" or "publicationstatus" or "publicationstatusid" => context.Set<PublicationStatus>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.PublicationStatusId, Name = x.Name }).ToListAsync(ct),
+        "academic-terms" or "academicterms" or "academicterm" or "academictermid" => context.Set<AcademicTerm>().AsNoTracking().OrderByDescending(x => x.StartDate).ThenBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.AcademicTermId, Name = x.Name }).ToListAsync(ct),
+        "broad-fields" or "broadfields" or "broadfield" or "broadfieldid" => context.Set<BroadField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.BroadFieldId, Name = x.Name }).ToListAsync(ct),
+        "specific-fields" or "specificfields" or "specificfield" or "specificfieldid" => context.Set<SpecificField>().AsNoTracking().Where(x => !parentId.HasValue || x.BroadFieldId == parentId.Value).OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.SpecificFieldId, Name = x.Name }).ToListAsync(ct),
+        "detailed-fields" or "detailedfields" or "detailedfield" or "detailedfieldid" => context.Set<DetailedField>().AsNoTracking().Where(x => !parentId.HasValue || x.SpecificFieldId == parentId.Value).OrderBy(x => x.Name).Select(x => new CatalogItemDto { Id = x.DetailedFieldId, Name = x.Name }).ToListAsync(ct),
         _ => Task.FromResult(new List<CatalogItemDto>())
     };
     public Task<List<CatalogAdminItemDto>> ReadAdminCatalogAsync(string key, CancellationToken ct) => key switch
     {
         // Unified Faculty has Acronym; a numeric external identity is not a display code.
         "faculties" => context.Set<Faculty>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.FacultyId, Name = x.Name, Code = x.Acronym }).ToListAsync(ct),
-        "research-lines" => context.Set<ResearchLine>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.ResearchLineId, Name = x.Name }).ToListAsync(ct),
-        "indexing-sources" => context.Set<IndexingSource>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.Id, Name = x.Name }).ToListAsync(ct),
-        "publication-statuses" => context.Set<PublicationStatus>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.PublicationStatusId, Name = x.Name }).ToListAsync(ct),
+        "research-lines" or "researchlines" => context.Set<ResearchLine>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.ResearchLineId, Name = x.Name }).ToListAsync(ct),
+        "indexing-sources" or "indexingsources" => context.Set<IndexingSource>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.Id, Name = x.Name }).ToListAsync(ct),
+        "publication-statuses" or "publicationstatuses" => context.Set<PublicationStatus>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.PublicationStatusId, Name = x.Name }).ToListAsync(ct),
+        "academic-terms" or "academicterms" => context.Set<AcademicTerm>().AsNoTracking().OrderByDescending(x => x.StartDate).ThenBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.AcademicTermId, Name = x.Name }).ToListAsync(ct),
+        "broad-fields" or "broadfields" => context.Set<BroadField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.BroadFieldId, Name = x.Name }).ToListAsync(ct),
+        "specific-fields" or "specificfields" => context.Set<SpecificField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.SpecificFieldId, Name = x.Name, Code = x.Code }).ToListAsync(ct),
+        "detailed-fields" or "detailedfields" => context.Set<DetailedField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.DetailedFieldId, Name = x.Name, Code = x.Code }).ToListAsync(ct),
         _ => Task.FromResult(new List<CatalogAdminItemDto>())
     };
 

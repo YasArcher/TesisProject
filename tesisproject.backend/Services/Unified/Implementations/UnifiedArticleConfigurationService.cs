@@ -116,7 +116,7 @@ public sealed class UnifiedArticleConfigurationService(IUnifiedArticleConfigurat
             return ServiceResult<List<CatalogItemDto>>.Fail("Campo no encontrado.", ErrorType.NotFound, "CONFIG_FIELD_NOT_FOUND");
 
         var key = field.ReferenceTableName ?? field.FieldKey;
-        var items = await ReadCatalogItemsAsync(key, ct);
+        var items = await ReadCatalogItemsAsync(key, parentId, ct);
         return ServiceResult<List<CatalogItemDto>>.Ok(items, "Catalogo obtenido.");
     }
     public async Task<ServiceResult<ResolvedFormDto>> GetResolvedForm(string formKey, CancellationToken ct)
@@ -685,8 +685,8 @@ public sealed class UnifiedArticleConfigurationService(IUnifiedArticleConfigurat
         return null;
     }
 
-    private Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string key, CancellationToken ct)
-        => repository.ReadCatalogItemsAsync(NormalizeCatalogKey(key), ct);
+    private Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string key, int? parentId, CancellationToken ct)
+        => repository.ReadCatalogItemsAsync(NormalizeCatalogKey(key), parentId, ct);
 
     private static string NormalizeCatalogKey(string? key)
         => (key ?? string.Empty).Trim().Replace("_", "-").ToLowerInvariant();

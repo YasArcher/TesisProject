@@ -23,7 +23,7 @@ public interface IUnifiedArticleConfigurationRepository
     void RemoveOption(DynamicFieldOption option);
     Task DeactivateFormsAsync(string entityName, int? exceptFormId, CancellationToken ct);
     Task<bool> HasCanonicalAttributeAsync(int attributeId, CancellationToken ct);
-    Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string normalizedKey, CancellationToken ct);
+    Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string normalizedKey, int? parentId, CancellationToken ct);
     Task<List<CatalogAdminItemDto>> ReadAdminCatalogAsync(string normalizedKey, CancellationToken ct);
 
     Task<List<FormSummaryDto>> ListFormsAsync(string? entityName, CancellationToken ct);
