@@ -3,6 +3,7 @@
 @page "/scientific-production/workflow-review"
 @page "/management/author-workspace"
 @page "/scientific-production/author-workspace"
+@using tesisproject.frontend.Features.Articles.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @using tesisproject.shared.DTOs.Auth
@@ -227,7 +228,7 @@
         }
         else
         {
-            <section class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <section class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
                 @foreach (var article in _page.Items)
                 {
                     <article @key="article.Id" class="articles-workflow-card rounded-lg border border-border bg-background p-4 shadow-sm">

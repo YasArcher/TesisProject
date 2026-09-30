@@ -57,6 +57,8 @@
                 </div>
             </div>
         </header>
+
+        <ArticlesModuleNav Title="Indicadores y sincronizacion analitica" />
         @if (!string.IsNullOrWhiteSpace(_syncMessage) || !string.IsNullOrWhiteSpace(_syncError))
         {
             <section class="articles-reporting-panel rounded-lg border @(string.IsNullOrWhiteSpace(_syncError) ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50") p-4 shadow-sm">

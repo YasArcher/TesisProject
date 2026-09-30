@@ -102,7 +102,7 @@
 
 .articles-manual-route-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.9rem;
 }
 
@@ -154,7 +154,7 @@
 
 .articles-manual-check-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.85rem;
 }
 
@@ -182,4 +182,30 @@
     color: #65736f;
     font-size: 0.875rem;
     line-height: 1.5;
+}
+
+
+@media (max-width: 1100px) {
+    .articles-manual-route-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .articles-manual-route-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+@media (max-width: 1100px) {
+    .articles-manual-check-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .articles-manual-check-grid {
+        grid-template-columns: 1fr;
+    }
 }

@@ -255,7 +255,7 @@
 
 .articles-external-preview-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.9rem;
 }
 
@@ -380,5 +380,18 @@
     .articles-external-status {
         min-width: 0;
         width: 100%;
+    }
+}
+
+
+@media (max-width: 1100px) {
+    .articles-external-preview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .articles-external-preview-grid {
+        grid-template-columns: 1fr;
     }
 }

@@ -1,5 +1,6 @@
 @page "/articles/module/profile"
 @page "/perfilview"
+@using tesisproject.frontend.Features.Articles.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Auth
 @inject IAuthClientService AuthClient
@@ -107,7 +108,7 @@
                 </article>
             </section>
 
-            <section class="articles-profile-details mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <section class="articles-profile-details mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <article class="articles-workspace-panel rounded-lg border border-border bg-background p-5">
                     <h2 class="text-lg font-bold text-foreground">Roles asignados</h2>
                     <div class="mt-3 flex flex-wrap gap-2">
