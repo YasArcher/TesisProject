@@ -7,6 +7,9 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Services.Analytic.Implementations;
 using tesisproject.backend.Services.Analytic.Interfaces;
 using tesisproject.backend.Services.Unified;
+using tesisproject.backend.Services.Unified.Contracts.Administration;
+using tesisproject.backend.Services.Unified.Interfaces;
+using tesisproject.shared.Errors;
 
 internal static class DeploymentTests
 {
@@ -21,7 +24,9 @@ internal static class DeploymentTests
                 ["ConnectionStrings:ArticlesDwConnection"] = articles,
                 ["ExternalApis:BaseUrl"] = "http://127.0.0.1:1",
                 ["ExternalApis:TimeoutSeconds"] = "1",
-                ["Storage:RootPath"] = Path.GetTempPath()
+                ["Storage:RootPath"] = Path.GetTempPath(),
+                ["AdministrativeOperations:Enabled"] = "true",
+                ["AdministrativeOperations:Secret"] = "deployment-test-secret"
             }).Build();
         void Reject(IConfiguration config)
         {
@@ -43,7 +48,10 @@ internal static class DeploymentTests
         _ = UnifiedDatabaseDeployment.GetValidatedConnection(Config(valid, valid, valid));
         count++;
 
-        var database = "tesis_unified_deployment_test_" + Guid.NewGuid().ToString("N");
+        var database = Environment.GetEnvironmentVariable("DEPLOYMENT_TEST_DATABASE")
+            ?? "tesis_unified_deployment_test_" + Guid.NewGuid().ToString("N");
+        var preserveDatabase = string.Equals(
+            Environment.GetEnvironmentVariable("DEPLOYMENT_TEST_PRESERVE"), "true", StringComparison.OrdinalIgnoreCase);
         var connection = $@"Server=.\DINNOVA;Database={database};Integrated Security=True;Encrypt=False;TrustServerCertificate=True";
         await using var db = new UnifiedDideDbContext(new DbContextOptionsBuilder<UnifiedDideDbContext>()
             .UseSqlServer(connection, sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", "dbo")).Options);
@@ -132,6 +140,33 @@ internal static class DeploymentTests
             services.AddScoped<IArticlesDwEtlService, ArticlesDwEtlService>();
             await using var provider = services.BuildServiceProvider();
             await using var scope = provider.CreateAsyncScope();
+            var dataMigrations = scope.ServiceProvider.GetRequiredService<IDataMigrationService>();
+            var listed = await dataMigrations.ListAsync();
+            if (!listed.Success || listed.Data is null || listed.Data.Count != 2 ||
+                listed.Data[0].Code != OperationCodes.ProjectsInitialCatalogV1 ||
+                listed.Data[1].Code != OperationCodes.UnifiedArticlesCatalogsV1)
+                throw new Exception("Expected ordered data migrations are unavailable through generic registry");
+            count++;
+            var projectsCatalogs = await dataMigrations.ApplyAsync(
+                OperationCodes.ProjectsInitialCatalogV1, "deployment-test-secret", null, "Deployment Test");
+            var articlesCatalogs = await dataMigrations.ApplyAsync(
+                OperationCodes.UnifiedArticlesCatalogsV1, "deployment-test-secret", null, "Deployment Test");
+            if (!projectsCatalogs.Success || !articlesCatalogs.Success)
+                throw new Exception("Canonical data migrations failed on fresh deployment database");
+            count++;
+            var articlesSecondApply = await dataMigrations.ApplyAsync(
+                OperationCodes.UnifiedArticlesCatalogsV1, "deployment-test-secret", null, "Deployment Test");
+            if (articlesSecondApply.ErrorCode != ErrorCodes.AdministrativeOperations.DataMigrationAlreadyApplied)
+                throw new Exception("Articles data migration rerun was not rejected idempotently");
+            count++;
+            if (await db.PublicationStatuses.CountAsync() != 3 ||
+                await db.ResearchLines.CountAsync() != 16 ||
+                await db.BroadFields.CountAsync() != 9 ||
+                await db.SpecificFields.CountAsync() != 25 ||
+                await db.DetailedFields.CountAsync() != 90 ||
+                await db.IndexingSources.CountAsync() != 8)
+                throw new Exception("Articles canonical catalog counts are incomplete");
+            count++;
             var projectsResult = await scope.ServiceProvider.GetRequiredService<IProjectsDwEtlService>().RunFullLoadAsync();
             if (!projectsResult.Success) throw new Exception("Projects full load returned failure");
             count++;
@@ -145,7 +180,10 @@ internal static class DeploymentTests
             if (await db.ArticleReads.CountAsync() != 0) throw new Exception("Unexpected Article seed");
             count++;
         }
-        finally { await db.Database.EnsureDeletedAsync(); }
-        Console.WriteLine($"PASS: {count} deployment checks; fresh single database, three migration streams, idempotent rerun and no invented seeds.");
+        finally
+        {
+            if (!preserveDatabase) await db.Database.EnsureDeletedAsync();
+        }
+        Console.WriteLine($"PASS: {count} deployment checks; fresh single database, three migration streams, ordered data migrations and idempotent rerun.");
     }
 }

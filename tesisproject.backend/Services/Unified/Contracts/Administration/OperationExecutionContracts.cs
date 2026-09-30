@@ -21,6 +21,7 @@ public static class OperationExecutionStatuses
 public static class OperationCodes
 {
     public const string ProjectsInitialCatalogV1 = "PROJECTS_INITIAL_CATALOG_V1";
+    public const string UnifiedArticlesCatalogsV1 = "UNIFIED_ARTICLES_CATALOGS_V1";
     public const string ProjectsMatrixImport = "PROJECTS_MATRIX_IMPORT";
     public const string FacultiesSync = "FACULTIES_SYNC";
     public const string AcademicTermsSync = "ACADEMIC_TERMS_SYNC";

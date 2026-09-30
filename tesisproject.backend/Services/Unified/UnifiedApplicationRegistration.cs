@@ -14,6 +14,7 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.backend.Services.Unified.Implementations;
 using tesisproject.backend.Services.Unified.DataMigrations.ProjectsInitialCatalog;
+using tesisproject.backend.Services.Unified.DataMigrations.ArticlesInitialCatalog;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Implementations;
 
@@ -45,6 +46,7 @@ public static class UnifiedApplicationRegistration
         services.AddScoped<IOperationExecutionHistoryService, OperationExecutionHistoryService>();
         services.AddScoped<IDataMigrationService, DataMigrationService>();
         services.AddScoped<IDataMigration, ProjectsInitialCatalogV1>();
+        services.AddScoped<IDataMigration, UnifiedArticlesCatalogsV1>();
         services.AddOptions<AdministrativeOperationsOptions>()
             .Bind(configuration.GetSection(AdministrativeOperationsOptions.SectionName));
         services.AddScoped<IUnifiedProjectsDwSource, UnifiedProjectsDwSource>();

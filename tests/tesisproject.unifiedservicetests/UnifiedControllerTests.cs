@@ -37,8 +37,15 @@ internal static class UnifiedControllerTests
         var owned = services.Where(d => d.ServiceType.Namespace?.Contains(".Unified") == true || d.ServiceType == typeof(UnifiedDideDbContext)).ToArray();
         foreach (var group in owned.GroupBy(d => d.ServiceType))
         {
-            check(group.Count() == 1, "Single registration: " + group.Key);
-            check(group.Single().Lifetime == (group.Key == typeof(IUnifiedAcademicCatalogSnapshotClient) ? ServiceLifetime.Transient : ServiceLifetime.Scoped), "Scoped: " + group.Key);
+            var expectedRegistrations = group.Key == typeof(IDataMigration) ? 2 : 1;
+            check(group.Count() == expectedRegistrations, "Expected registration count: " + group.Key);
+            var expectedLifetime = group.Key == typeof(IUnifiedAcademicCatalogSnapshotClient)
+                ? ServiceLifetime.Transient
+                : ServiceLifetime.Scoped;
+            check(group.All(x => x.Lifetime == expectedLifetime), "Expected lifetime: " + group.Key);
+            if (group.Key == typeof(IDataMigration))
+                check(group.Select(x => x.ImplementationType).Distinct().Count() == 2,
+                    "Distinct canonical IDataMigration implementations");
         }
         check(!services.Any(d => d.ServiceType.FullName == "tesisproject.backend.Data.AppDbContext" || d.ServiceType.FullName == "tesisproject.backend.UnitOfWork.Interfaces.IUnitOfWork"), "No operational legacy context/UoW");
         await using (var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true }))

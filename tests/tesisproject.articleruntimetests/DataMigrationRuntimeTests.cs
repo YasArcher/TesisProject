@@ -7,6 +7,7 @@ using tesisproject.backend.Data.UnifiedEntities.Administration;
 using tesisproject.backend.Data.UnifiedEntities.Catalogs;
 using tesisproject.backend.Repositories.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Contracts.Administration;
+using tesisproject.backend.Services.Unified.DataMigrations.ArticlesInitialCatalog;
 using tesisproject.backend.Services.Unified.DataMigrations.ProjectsInitialCatalog;
 using tesisproject.backend.Services.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
@@ -43,10 +44,23 @@ internal static class DataMigrationRuntimeTests
             await db.Database.ExecuteSqlRawAsync(
                 "SET IDENTITY_INSERT dbo.ProductTypes ON; INSERT dbo.ProductTypes (Id,Name,IsActive,IsLocked) VALUES (1,N'Producto smoke',1,0); SET IDENTITY_INSERT dbo.ProductTypes OFF;");
             var history = new OperationExecutionHistoryService(new OperationExecutionHistoryRepository(db));
-            var service = new DataMigrationService([new ProjectsInitialCatalogV1(db)], history, db,
+            var service = new DataMigrationService(
+                [new ProjectsInitialCatalogV1(db), new UnifiedArticlesCatalogsV1(db)], history, db,
                 Options.Create(new AdministrativeOperationsOptions { Enabled = true, Secret = "runtime-test-secret" }));
             var before = await service.ListAsync();
-            Check(before.Success && before.Data!.Single().Applied == false, "PROJECTS_INITIAL_CATALOG_V1 starts pending");
+            Check(before.Success && before.Data!.Count == 2 && before.Data.All(x => !x.Applied) &&
+                  before.Data[0].Code == OperationCodes.ProjectsInitialCatalogV1 &&
+                  before.Data[1].Code == OperationCodes.UnifiedArticlesCatalogsV1,
+                "Generic endpoint registry lists both ordered data migrations as pending");
+
+            var missingDependency = await service.ApplyAsync(OperationCodes.UnifiedArticlesCatalogsV1,
+                "runtime-test-secret", null, "Runtime Test");
+            Check(missingDependency.ErrorCode == ErrorCodes.AdministrativeOperations.DataMigrationFailed &&
+                  !await db.PublicationStatuses.AnyAsync() &&
+                  await db.OperationExecutionHistories.AnyAsync(x =>
+                      x.OperationCode == OperationCodes.UnifiedArticlesCatalogsV1 &&
+                      x.Status == OperationExecutionStatuses.Failed),
+                "Articles catalog migration fails cleanly before PROJECTS_INITIAL_CATALOG_V1");
 
             var applied = await service.ApplyAsync(OperationCodes.ProjectsInitialCatalogV1,
                 "runtime-test-secret", null, "Runtime Test");
@@ -85,14 +99,46 @@ internal static class DataMigrationRuntimeTests
                     .ListIdentifiersByCodesAsync(["TRANSLATION-PROBE"])).Count == 0,
                 "Project identifier projection executes on SQL Server");
 
+            var articlesApplied = await service.ApplyAsync(OperationCodes.UnifiedArticlesCatalogsV1,
+                "runtime-test-secret", null, "Runtime Test");
+            Check(articlesApplied.Success && articlesApplied.Data!.Status == OperationExecutionStatuses.Succeeded,
+                "UNIFIED_ARTICLES_CATALOGS_V1 succeeds after shared catalog dependency");
+            var articlesExecution = await db.OperationExecutionHistories.AsNoTracking().SingleAsync(x =>
+                x.OperationCode == OperationCodes.UnifiedArticlesCatalogsV1 &&
+                x.Status == OperationExecutionStatuses.Succeeded);
+            using var articlesResult = JsonDocument.Parse(articlesExecution.ResultJson!);
+            Check(articlesResult.RootElement.GetProperty("inserted").GetInt32() == 151 &&
+                  articlesResult.RootElement.GetProperty("catalogs").GetProperty("DetailedFields").GetInt32() == 90,
+                "Articles ResultJson stores compact 151-row catalog summary");
+            Check(await db.PublicationStatuses.CountAsync() == 3 &&
+                  await db.ResearchLines.CountAsync() == 16 &&
+                  await db.BroadFields.CountAsync() == 9 &&
+                  await db.SpecificFields.CountAsync() == 25 &&
+                  await db.DetailedFields.CountAsync() == 90 &&
+                  await db.IndexingSources.CountAsync() == 8,
+                "Articles initial catalog counts match accepted backup rows");
+            Check(!await db.PublicationStatuses.AnyAsync(x => x.Name.Contains("DW")) &&
+                  !await db.ResearchLines.AnyAsync(x => x.Name.StartsWith("DW")) &&
+                  !await db.BroadFields.AnyAsync(x => x.BroadFieldId >= 1000),
+                "Articles migration excludes DW and uncertain high-ID fixtures");
+            Check(await db.ProductAttributeDefinitions.CountAsync(x => x.ProductTypeId == 2) == 6 &&
+                  !await db.ProductAttributeDefinitions.AnyAsync(x => x.ProductTypeId == 2 &&
+                      new[] { 5, 6, 8, 9 }.Contains(x.ProductAttributeId)),
+                "Regional production keeps only canonical attributes 1, 2, 3, 4, 7 and 10");
+
+            var secondArticles = await service.ApplyAsync(OperationCodes.UnifiedArticlesCatalogsV1,
+                "runtime-test-secret", null, "Runtime Test");
+            Check(secondArticles.ErrorCode == ErrorCodes.AdministrativeOperations.DataMigrationAlreadyApplied,
+                "Second Articles apply returns DATA_MIGRATION_ALREADY_APPLIED");
+
             var second = await service.ApplyAsync(OperationCodes.ProjectsInitialCatalogV1,
                 "runtime-test-secret", null, "Runtime Test");
             Check(second.ErrorCode == ErrorCodes.AdministrativeOperations.DataMigrationAlreadyApplied,
                 "Second apply returns DATA_MIGRATION_ALREADY_APPLIED");
             Check(await db.OperationExecutionHistories.CountAsync(x =>
                 x.OperationType == OperationExecutionTypes.DataMigration &&
-                x.Status == OperationExecutionStatuses.Succeeded) == 1,
-                "Only one successful execution exists");
+                x.Status == OperationExecutionStatuses.Succeeded) == 2,
+                "Exactly one successful execution exists per canonical data migration");
 
             db.OperationExecutionHistories.Add(new OperationExecutionHistory
             {

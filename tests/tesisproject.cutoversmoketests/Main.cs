@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using tesisproject.backend.Controllers.Unified;
 using tesisproject.backend.Data;
+using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 
 // Explicit local operator tool. No hosted services, startup migration or automatic sync.
@@ -98,7 +99,9 @@ await using (var scope = app.Services.CreateAsyncScope())
     }
     foreach (var descriptor in builder.Services.Where(d => d.ServiceType.Namespace?.Contains(".Unified") == true))
     {
-        Check(builder.Services.Count(d => d.ServiceType == descriptor.ServiceType) == 1, "Unique Unified registration " + descriptor.ServiceType.Name);
+        var expectedRegistrations = descriptor.ServiceType == typeof(IDataMigration) ? 2 : 1;
+        Check(builder.Services.Count(d => d.ServiceType == descriptor.ServiceType) == expectedRegistrations,
+            "Expected Unified registration count " + descriptor.ServiceType.Name);
         if (descriptor.ImplementationType is { } implementation)
         {
             foreach (var dependency in implementation.GetConstructors().SelectMany(c => c.GetParameters()).Select(p => p.ParameterType))
