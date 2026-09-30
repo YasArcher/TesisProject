@@ -697,6 +697,76 @@ public sealed class UnifiedArticleConfigurationService(IUnifiedArticleConfigurat
         return ServiceResult<List<CatalogAdminItemDto>>.Ok(items, "Catalogo administrativo obtenido.");
     }
 
+    public Task<ServiceResult<CatalogAdminItemDto>> CreateAdminCatalog(string catalogKey, UpsertCatalogItemRequest request, CancellationToken ct)
+        => MutateAsync(() => CreateAdminCatalogCore(catalogKey, request, ct), ct);
+
+    public Task<ServiceResult<CatalogAdminItemDto>> UpdateAdminCatalog(string catalogKey, int id, UpsertCatalogItemRequest request, CancellationToken ct)
+        => MutateAsync(() => UpdateAdminCatalogCore(catalogKey, id, request, ct), ct);
+
+    public Task<ServiceResult<NoContent>> DeleteAdminCatalog(string catalogKey, int id, CancellationToken ct)
+        => MutateAsync(() => DeleteAdminCatalogCore(catalogKey, id, ct), ct);
+
+    private async Task<ServiceResult<CatalogAdminItemDto>> CreateAdminCatalogCore(string catalogKey, UpsertCatalogItemRequest request, CancellationToken ct)
+    {
+        var key = NormalizeCatalogKey(catalogKey);
+        var validation = ValidateAdminCatalogRequest(key, request);
+        if (validation is not null)
+            return ServiceResult<CatalogAdminItemDto>.Fail(validation, ErrorType.Validation, "CONFIG_CATALOG_INVALID");
+
+        var created = await repository.CreateAdminCatalogAsync(key, request, ct);
+        if (created is null)
+            return ServiceResult<CatalogAdminItemDto>.Fail("Catálogo no soportado o relación padre inválida.", ErrorType.Validation, "CONFIG_CATALOG_UNSUPPORTED");
+
+        return ServiceResult<CatalogAdminItemDto>.Ok(created, "Elemento de catálogo creado.");
+    }
+
+    private async Task<ServiceResult<CatalogAdminItemDto>> UpdateAdminCatalogCore(string catalogKey, int id, UpsertCatalogItemRequest request, CancellationToken ct)
+    {
+        if (id <= 0)
+            return ServiceResult<CatalogAdminItemDto>.Fail("Identificador de catálogo inválido.", ErrorType.Validation, "CONFIG_CATALOG_ID_INVALID");
+
+        var key = NormalizeCatalogKey(catalogKey);
+        var validation = ValidateAdminCatalogRequest(key, request);
+        if (validation is not null)
+            return ServiceResult<CatalogAdminItemDto>.Fail(validation, ErrorType.Validation, "CONFIG_CATALOG_INVALID");
+
+        if (!await repository.AdminCatalogItemExistsAsync(key, id, ct))
+            return ServiceResult<CatalogAdminItemDto>.Fail("Elemento de catálogo no encontrado.", ErrorType.NotFound, "CONFIG_CATALOG_ITEM_NOT_FOUND");
+
+        var updated = await repository.UpdateAdminCatalogAsync(key, id, request, ct);
+        if (updated is null)
+            return ServiceResult<CatalogAdminItemDto>.Fail("Catálogo no soportado o relación padre inválida.", ErrorType.Validation, "CONFIG_CATALOG_UNSUPPORTED");
+
+        return ServiceResult<CatalogAdminItemDto>.Ok(updated, "Elemento de catálogo actualizado.");
+    }
+
+    private async Task<ServiceResult<NoContent>> DeleteAdminCatalogCore(string catalogKey, int id, CancellationToken ct)
+    {
+        if (id <= 0)
+            return ServiceResult<NoContent>.Fail("Identificador de catálogo inválido.", ErrorType.Validation, "CONFIG_CATALOG_ID_INVALID");
+
+        var key = NormalizeCatalogKey(catalogKey);
+        if (!await repository.AdminCatalogItemExistsAsync(key, id, ct))
+            return ServiceResult<NoContent>.Fail("Elemento de catálogo no encontrado.", ErrorType.NotFound, "CONFIG_CATALOG_ITEM_NOT_FOUND");
+
+        if (await repository.AdminCatalogItemInUseAsync(key, id, ct))
+            return ServiceResult<NoContent>.Fail("No se puede eliminar un catálogo usado por registros o por elementos dependientes.", ErrorType.Conflict, "CONFIG_CATALOG_ITEM_IN_USE");
+
+        var deleted = await repository.DeleteAdminCatalogAsync(key, id, ct);
+        return deleted
+            ? ServiceResult<NoContent>.Ok(default, "Elemento de catálogo eliminado.")
+            : ServiceResult<NoContent>.Fail("Elemento de catálogo no encontrado.", ErrorType.NotFound, "CONFIG_CATALOG_ITEM_NOT_FOUND");
+    }
+
+    private static string? ValidateAdminCatalogRequest(string key, UpsertCatalogItemRequest request)
+    {
+        if (request is null) return "La solicitud es obligatoria.";
+        if (string.IsNullOrWhiteSpace(request.Name)) return "El nombre del catálogo es obligatorio.";
+        if ((key is "specific-fields" or "specificfields" or "detailed-fields" or "detailedfields") && !request.ParentId.HasValue)
+            return "El catálogo seleccionado requiere una relación padre.";
+        return null;
+    }
+
 
     private async Task<ServiceResult<T>> MutateAsync<T>(Func<Task<ServiceResult<T>>> operation, CancellationToken ct)
     {
@@ -705,3 +775,4 @@ public sealed class UnifiedArticleConfigurationService(IUnifiedArticleConfigurat
         { return ServiceResult<T>.Fail("La configuración está duplicada o tiene referencias en uso.", ErrorType.Conflict, "CONFIG_PERSISTENCE_CONFLICT"); }
     }
 }
+

@@ -6,6 +6,7 @@
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.Validation
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IArticleClientService ArticleClient
 @inject IProductTypeClientService ProductTypeClient
@@ -444,6 +445,21 @@
             return;
         }
 
+        if (NormalizeType(field.DataType) == "boolean")
+        {
+            builder.OpenElement(sequence++, "label");
+            builder.AddAttribute(sequence++, "class", $"flex items-center gap-2 rounded-lg border {(HasValidation(field) ? "border-red-300 bg-red-50" : "border-border bg-background")} px-3 py-2 text-sm text-foreground disabled:opacity-70");
+            builder.OpenElement(sequence++, "input");
+            builder.AddAttribute(sequence++, "type", "checkbox");
+            builder.AddAttribute(sequence++, "checked", IsTruthy(value));
+            builder.AddAttribute(sequence++, "disabled", disabled);
+            builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, async args => await SetValueAsync(field, IsTruthy(args.Value?.ToString()) ? "true" : "false")));
+            builder.CloseElement();
+            builder.AddContent(sequence++, "Si");
+            builder.CloseElement();
+            return;
+        }
+
         var type = NormalizeType(field.DataType) switch
         {
             "date" => "date",
@@ -773,20 +789,16 @@
         _validation.Remove(field.FieldId);
         var value = GetValue(field);
 
-        if (field.IsRequired && string.IsNullOrWhiteSpace(value))
-        {
-            _validation[field.FieldId] = $"{field.FieldLabel} es obligatorio.";
-            return;
-        }
+        var message = DynamicFieldValidationEngine.Validate(
+            field.FieldLabel,
+            field.DataType,
+            field.IsRequired,
+            field.MaxLength,
+            field.ValidationRule,
+            ToValidationValue(field.DataType, value));
 
-        if (string.IsNullOrWhiteSpace(value))
-            return;
-
-        if (field.MaxLength.HasValue && value.Length > field.MaxLength.Value)
-            _validation[field.FieldId] = $"No debe superar {field.MaxLength.Value} caracteres.";
-
-        if (NormalizeType(field.DataType) == "date" && DateTime.TryParse(value, out var date) && date.Date > DateTime.Today)
-            _validation[field.FieldId] = "La fecha no puede ser futura.";
+        if (!string.IsNullOrWhiteSpace(message))
+            _validation[field.FieldId] = message;
     }
 
     private void ValidateParticipants()
@@ -864,6 +876,22 @@
     private string GetValue(ResolvedFormFieldDto field) => _values.TryGetValue(field.FieldId, out var value) ? value ?? string.Empty : string.Empty;
     private string GetColumnClass(ResolvedFormFieldDto field) => field.ColumnSpan is >= 2 ? "md:col-span-2" : string.Empty;
     private static string NormalizeType(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
+    private static DynamicFieldValidationValue ToValidationValue(string? dataType, string? rawValue)
+    {
+        var value = string.IsNullOrWhiteSpace(rawValue) ? null : rawValue.Trim();
+        if (value is null)
+            return new DynamicFieldValidationValue();
+
+        return NormalizeType(dataType) switch
+        {
+            "integer" or "int" or "number" when int.TryParse(value, out var intValue) => new DynamicFieldValidationValue { Int = intValue },
+            "decimal" when decimal.TryParse(value, out var decimalValue) => new DynamicFieldValidationValue { Decimal = decimalValue },
+            "date" or "datetime" when DateTime.TryParse(value, out var dateValue) => new DynamicFieldValidationValue { Date = dateValue },
+            "boolean" => new DynamicFieldValidationValue { Bool = IsTruthy(value) },
+            _ => new DynamicFieldValidationValue { Text = value }
+        };
+    }
+    private static bool IsTruthy(string? value) => value is not null && (value.Equals("true", StringComparison.OrdinalIgnoreCase) || value.Equals("1") || value.Equals("si", StringComparison.OrdinalIgnoreCase));
     private bool ParticipantMissing(string? value) => _submitted && string.IsNullOrWhiteSpace(value);
 
     private IEnumerable<(string Value, string Label)> GetOptions(ResolvedFormFieldDto field)

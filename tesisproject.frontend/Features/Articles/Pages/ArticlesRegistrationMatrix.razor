@@ -3,8 +3,10 @@
 @page "/management/registration-matrix"
 @page "/scientific-production/registration-matrix"
 @using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.MassRegistration
+@using tesisproject.shared.Validation
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IRegistrationMatrixClient MatrixClient
 @inject NavigationManager Nav
@@ -166,13 +168,10 @@
                                             @foreach (var column in _selected.Columns)
                                             {
                                                 <td class="min-w-48 border-b border-border px-2 py-2">
-                                                    <input class="w-full rounded-lg border @(IsRequiredCellMissing(row, column) ? "border-red-300 bg-red-50" : "border-border bg-page-bg") px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none"
-                                                           value="@GetCellValue(row, column.FieldId)"
-                                                           maxlength="@ColumnMaxLength(column)"
-                                                           @onchange="args => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, args.Value?.ToString())" />
-                                                    @if (IsRequiredCellMissing(row, column))
+                                                    @RenderMatrixCell(row, column)
+                                                    @if (!string.IsNullOrWhiteSpace(GetCellValidationMessage(row, column)))
                                                     {
-                                                        <p class="mt-1 text-xs font-semibold text-red-700">Campo requerido</p>
+                                                        <p class="mt-1 text-xs font-semibold text-red-700">@GetCellValidationMessage(row, column)</p>
                                                     }
                                                 </td>
                                             }
@@ -200,6 +199,7 @@
     private bool _submittingToWorkflow;
     private string? _message;
     private bool _messageIsError;
+    private readonly Dictionary<int, List<CatalogItemDto>> _matrixCatalogs = [];
 
     private string MessageClass => _messageIsError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
     private int RequiredColumnCount => _selected?.Columns.Count(c => c.IsRequired) ?? 0;
@@ -263,6 +263,7 @@
             }
             _selected = result.Data;
             _selectedMatrixId = result.Data.Summary.RegistrationMatrixId;
+            await LoadMatrixCatalogsAsync();
             await LoadAsync();
             Show("Matriz creada como borrador.", false);
         }
@@ -283,6 +284,7 @@
         _selected = result.Data;
         _selectedMatrixId = matrixId;
         _matrixReviewed = false;
+        await LoadMatrixCatalogsAsync();
     }
 
     private async Task AddRowAsync()
@@ -298,6 +300,7 @@
                 return;
             }
             _selected = result.Data;
+            await LoadMatrixCatalogsAsync();
             _matrixReviewed = false;
             Show("Fila agregada.", false);
         }
@@ -317,6 +320,7 @@
             return;
         }
         _selected = result.Data;
+        await LoadMatrixCatalogsAsync();
         _matrixReviewed = false;
     }
 
@@ -406,12 +410,140 @@
         => row.Cells.FirstOrDefault(c => c.FieldId == fieldId)?.RawValue;
 
     private static bool IsRequiredCellMissing(RegistrationMatrixRowDto row, RegistrationMatrixColumnDto column)
-        => column.IsRequired && string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId));
+        => !string.IsNullOrWhiteSpace(GetCellValidationMessage(row, column));
+
+    private static string? GetCellValidationMessage(RegistrationMatrixRowDto row, RegistrationMatrixColumnDto column)
+    {
+        var rawValue = GetCellValue(row, column.FieldId);
+        return DynamicFieldValidationEngine.Validate(
+            column.FieldLabel,
+            column.DataType,
+            column.IsRequired,
+            ColumnMaxLength(column),
+            column.ValidationRule,
+            ToValidationValue(column.DataType, rawValue));
+    }
 
     private static int ColumnMaxLength(RegistrationMatrixColumnDto column)
-        => column.FieldKey.Equals("Doi", StringComparison.OrdinalIgnoreCase) ? 20
+        => column.MaxLength ?? (column.FieldKey.Equals("Doi", StringComparison.OrdinalIgnoreCase) ? 20
             : column.FieldKey.Equals("Email", StringComparison.OrdinalIgnoreCase) ? 30
-            : 4000;
+            : 4000);
+
+    private RenderFragment RenderMatrixCell(RegistrationMatrixRowDto row, RegistrationMatrixColumnDto column) => builder =>
+    {
+        var sequence = 0;
+        var value = GetCellValue(row, column.FieldId) ?? string.Empty;
+        var css = $"w-full rounded-lg border {(IsRequiredCellMissing(row, column) ? "border-red-300 bg-red-50" : "border-border bg-page-bg")} px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none";
+        var disabled = !column.IsEditable || !IsSelectedMatrixDraft;
+
+        if (HasOptions(column))
+        {
+            builder.OpenElement(sequence++, "select");
+            builder.AddAttribute(sequence++, "class", css);
+            builder.AddAttribute(sequence++, "disabled", disabled);
+            builder.AddAttribute(sequence++, "value", value);
+            builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, args.Value?.ToString())));
+            builder.OpenElement(sequence++, "option");
+            builder.AddAttribute(sequence++, "value", string.Empty);
+            builder.AddContent(sequence++, "Seleccionar");
+            builder.CloseElement();
+
+            foreach (var option in GetColumnOptions(column))
+            {
+                builder.OpenElement(sequence++, "option");
+                builder.AddAttribute(sequence++, "value", option.Value);
+                builder.AddContent(sequence++, option.Label);
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+            return;
+        }
+
+        if (NormalizeType(column.DataType) == "boolean")
+        {
+            builder.OpenElement(sequence++, "label");
+            builder.AddAttribute(sequence++, "class", "flex items-center gap-2 rounded-lg border border-border bg-page-bg px-3 py-2 text-sm text-foreground");
+            builder.OpenElement(sequence++, "input");
+            builder.AddAttribute(sequence++, "type", "checkbox");
+            builder.AddAttribute(sequence++, "checked", IsTruthy(value));
+            builder.AddAttribute(sequence++, "disabled", disabled);
+            builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, IsTruthy(args.Value?.ToString()) ? "true" : "false")));
+            builder.CloseElement();
+            builder.AddContent(sequence++, "Si");
+            builder.CloseElement();
+            return;
+        }
+
+        var type = NormalizeType(column.DataType) switch
+        {
+            "date" => "date",
+            "number" or "integer" or "decimal" => "number",
+            _ => "text"
+        };
+
+        builder.OpenElement(sequence++, "input");
+        builder.AddAttribute(sequence++, "class", css);
+        builder.AddAttribute(sequence++, "type", type);
+        builder.AddAttribute(sequence++, "disabled", disabled);
+        builder.AddAttribute(sequence++, "value", value);
+        if (type == "text")
+            builder.AddAttribute(sequence++, "maxlength", ColumnMaxLength(column));
+        if (type == "date")
+            builder.AddAttribute(sequence++, "max", DateTime.Today.ToString("yyyy-MM-dd"));
+        builder.AddAttribute(sequence++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, args => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, args.Value?.ToString())));
+        builder.CloseElement();
+    };
+
+    private async Task LoadMatrixCatalogsAsync()
+    {
+        _matrixCatalogs.Clear();
+        if (_selected is null) return;
+
+        foreach (var column in _selected.Columns.Where(NeedsCatalog))
+        {
+            var result = await FormConfigurationClient.GetCatalogItemsByFieldAsync(column.FieldId);
+            _matrixCatalogs[column.FieldId] = result.Success && result.Data is not null ? result.Data : [];
+        }
+    }
+
+    private bool HasOptions(RegistrationMatrixColumnDto column)
+        => column.Options.Any(option => option.IsActive) || _matrixCatalogs.ContainsKey(column.FieldId);
+
+    private bool IsSelectedMatrixDraft => _selected?.Summary.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool NeedsCatalog(RegistrationMatrixColumnDto column)
+        => !string.IsNullOrWhiteSpace(column.ReferenceTableName) || NormalizeType(column.SourceType).Contains("catalog");
+
+    private IEnumerable<(string Value, string Label)> GetColumnOptions(RegistrationMatrixColumnDto column)
+    {
+        foreach (var option in column.Options.Where(item => item.IsActive).OrderBy(item => item.DisplayOrder))
+            yield return (option.OptionValue, option.OptionLabel);
+
+        if (_matrixCatalogs.TryGetValue(column.FieldId, out var items))
+        {
+            foreach (var item in items)
+                yield return (item.Id.ToString(), item.Name);
+        }
+    }
+
+    private static string NormalizeType(string? value) => (value ?? string.Empty).Trim().ToLowerInvariant();
+    private static DynamicFieldValidationValue ToValidationValue(string? dataType, string? rawValue)
+    {
+        var value = string.IsNullOrWhiteSpace(rawValue) ? null : rawValue.Trim();
+        if (value is null)
+            return new DynamicFieldValidationValue();
+
+        return NormalizeType(dataType) switch
+        {
+            "integer" or "int" or "number" when int.TryParse(value, out var intValue) => new DynamicFieldValidationValue { Int = intValue },
+            "decimal" when decimal.TryParse(value, out var decimalValue) => new DynamicFieldValidationValue { Decimal = decimalValue },
+            "date" or "datetime" when DateTime.TryParse(value, out var dateValue) => new DynamicFieldValidationValue { Date = dateValue },
+            "boolean" => new DynamicFieldValidationValue { Bool = IsTruthy(value) },
+            _ => new DynamicFieldValidationValue { Text = value }
+        };
+    }
+    private static bool IsTruthy(string? value) => value is not null && (value.Equals("true", StringComparison.OrdinalIgnoreCase) || value.Equals("1") || value.Equals("si", StringComparison.OrdinalIgnoreCase));
 
     private static string StatusLabel(string? status)
         => status?.Equals("Draft", StringComparison.OrdinalIgnoreCase) == true ? "Borrador" : status ?? "Sin estado";

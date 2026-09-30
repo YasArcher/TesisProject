@@ -12,7 +12,9 @@ public sealed class UnifiedArticleRegistrationMatrixRepository(UnifiedDideDbCont
     : GenericRepository<RegistrationMatrix>(context), IUnifiedArticleRegistrationMatrixRepository
 {
     public IQueryable<RegistrationMatrix> QueryWithDetails(bool asNoTracking = true) => Query(asNoTracking)
-        .Include(m => m.Columns.OrderBy(c => c.DisplayOrder).ThenBy(c => c.RegistrationMatrixColumnId)).ThenInclude(c => c.Field)
+        .Include(m => m.Columns.OrderBy(c => c.DisplayOrder).ThenBy(c => c.RegistrationMatrixColumnId))
+            .ThenInclude(c => c.Field)
+                .ThenInclude(f => f!.Options)
         .Include(m => m.Rows.OrderBy(r => r.RowNumber)).ThenInclude(r => r.Cells)
         .AsSingleQuery();
 

@@ -9,6 +9,7 @@ using tesisproject.backend.Services.Unified.Implementations;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.shared.Errors;
+using tesisproject.shared.DTOs.MassRegistration;
 using tesisproject.shared.Responses;
 
 var assertions = 0;
@@ -114,6 +115,25 @@ foreach (var type in classes)
 Check(typeof(IUnifiedUnitOfWork).GetProperties().Length == 58, "Unified UoW contract includes 58 repositories with Articles.");
 Check(typeof(IUnifiedProductService).GetMethod("CreateAsync") is not null && typeof(IUnifiedProductService).GetMethod("GetByIdAsync") is not null,
     "Product author-dependent methods are now operational.");
+var matrixColumnContract = new RegistrationMatrixColumnDto
+{
+    SourceType = "CatalogReference",
+    ReferenceTableName = "faculties",
+    MaxLength = 120,
+    ValidationRule = "email",
+    IsVisible = true,
+    IsEditable = true
+};
+Check(matrixColumnContract.SourceType == "CatalogReference"
+    && matrixColumnContract.ReferenceTableName == "faculties"
+    && matrixColumnContract.MaxLength == 120
+    && matrixColumnContract.ValidationRule == "email"
+    && matrixColumnContract.IsVisible
+    && matrixColumnContract.IsEditable,
+    "Article registration matrix columns expose field metadata required by dynamic form rendering.");
+Check(tesisproject.shared.Validation.DynamicFieldValidationEngine.Validate("Cantidad", "number", true, null, null,
+        new tesisproject.shared.Validation.DynamicFieldValidationValue { Text = "abc" }) == "Cantidad debe contener un número válido.",
+    "Dynamic validation recognizes number data type used by article forms.");
 await AtomicityTests.RunAsync(Check);
 await ProductTests.RunAsync(Check);
 await AcademicReferenceTests.RunAsync(Check);

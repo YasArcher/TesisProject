@@ -71,16 +71,201 @@ public sealed class UnifiedArticleConfigurationRepository(UnifiedDideDbContext c
     public Task<List<CatalogAdminItemDto>> ReadAdminCatalogAsync(string key, CancellationToken ct) => key switch
     {
         // Unified Faculty has Acronym; a numeric external identity is not a display code.
-        "faculties" => context.Set<Faculty>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.FacultyId, Name = x.Name, Code = x.Acronym }).ToListAsync(ct),
+        "faculties" => context.Set<Faculty>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.FacultyId, Name = x.Name, Code = x.Acronym, ParentId = x.ParentFacultyId, ParentName = x.Parent != null ? x.Parent.Name : null }).ToListAsync(ct),
         "research-lines" or "researchlines" => context.Set<ResearchLine>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.ResearchLineId, Name = x.Name }).ToListAsync(ct),
         "indexing-sources" or "indexingsources" => context.Set<IndexingSource>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.Id, Name = x.Name }).ToListAsync(ct),
         "publication-statuses" or "publicationstatuses" => context.Set<PublicationStatus>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.PublicationStatusId, Name = x.Name }).ToListAsync(ct),
         "academic-terms" or "academicterms" => context.Set<AcademicTerm>().AsNoTracking().OrderByDescending(x => x.StartDate).ThenBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.AcademicTermId, Name = x.Name }).ToListAsync(ct),
         "broad-fields" or "broadfields" => context.Set<BroadField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.BroadFieldId, Name = x.Name }).ToListAsync(ct),
-        "specific-fields" or "specificfields" => context.Set<SpecificField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.SpecificFieldId, Name = x.Name, Code = x.Code }).ToListAsync(ct),
-        "detailed-fields" or "detailedfields" => context.Set<DetailedField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.DetailedFieldId, Name = x.Name, Code = x.Code }).ToListAsync(ct),
+        "specific-fields" or "specificfields" => context.Set<SpecificField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.SpecificFieldId, Name = x.Name, Code = x.Code, ParentId = x.BroadFieldId, ParentName = x.BroadField.Name }).ToListAsync(ct),
+        "detailed-fields" or "detailedfields" => context.Set<DetailedField>().AsNoTracking().OrderBy(x => x.Name).Select(x => new CatalogAdminItemDto { Id = x.DetailedFieldId, Name = x.Name, Code = x.Code, ParentId = x.SpecificFieldId, ParentName = x.SpecificField.Name }).ToListAsync(ct),
         _ => Task.FromResult(new List<CatalogAdminItemDto>())
     };
+
+    public async Task<CatalogAdminItemDto?> CreateAdminCatalogAsync(string key, UpsertCatalogItemRequest request, CancellationToken ct)
+    {
+        var name = request.Name.Trim();
+        switch (key)
+        {
+            case "faculties":
+                var faculty = new Faculty { Name = name, Acronym = NormalizeOptional(request.Code), ParentFacultyId = request.ParentId };
+                context.Add(faculty);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = faculty.FacultyId, Name = faculty.Name, Code = faculty.Acronym, ParentId = faculty.ParentFacultyId };
+            case "research-lines":
+            case "researchlines":
+                var researchLine = new ResearchLine { Name = name };
+                context.Add(researchLine);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = researchLine.ResearchLineId, Name = researchLine.Name };
+            case "indexing-sources":
+            case "indexingsources":
+                var indexingSource = new IndexingSource { Name = name, Abbreviation = NormalizeOptional(request.Code), ReferenceUrl = NormalizeOptional(request.JournalUrl), IsActive = true };
+                context.Add(indexingSource);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = indexingSource.Id, Name = indexingSource.Name, Code = indexingSource.Abbreviation, JournalUrl = indexingSource.ReferenceUrl };
+            case "publication-statuses":
+            case "publicationstatuses":
+                var nextStatusId = await NextPublicationStatusIdAsync(ct);
+                var status = new PublicationStatus { PublicationStatusId = nextStatusId, Name = name };
+                context.Add(status);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = status.PublicationStatusId, Name = status.Name };
+            case "academic-terms":
+            case "academicterms":
+                var term = new AcademicTerm { Name = name };
+                context.Add(term);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = term.AcademicTermId, Name = term.Name };
+            case "broad-fields":
+            case "broadfields":
+                var broadField = new BroadField { Name = name };
+                context.Add(broadField);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = broadField.BroadFieldId, Name = broadField.Name };
+            case "specific-fields":
+            case "specificfields":
+                if (!request.ParentId.HasValue || !await context.Set<BroadField>().AnyAsync(x => x.BroadFieldId == request.ParentId.Value, ct)) return null;
+                var specificField = new SpecificField { Name = name, Code = NormalizeOptional(request.Code), BroadFieldId = request.ParentId.Value };
+                context.Add(specificField);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = specificField.SpecificFieldId, Name = specificField.Name, Code = specificField.Code, ParentId = specificField.BroadFieldId };
+            case "detailed-fields":
+            case "detailedfields":
+                if (!request.ParentId.HasValue || !await context.Set<SpecificField>().AnyAsync(x => x.SpecificFieldId == request.ParentId.Value, ct)) return null;
+                var detailedField = new DetailedField { Name = name, Code = NormalizeOptional(request.Code), SpecificFieldId = request.ParentId.Value };
+                context.Add(detailedField);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = detailedField.DetailedFieldId, Name = detailedField.Name, Code = detailedField.Code, ParentId = detailedField.SpecificFieldId };
+            default:
+                return null;
+        }
+    }
+
+    public async Task<CatalogAdminItemDto?> UpdateAdminCatalogAsync(string key, int id, UpsertCatalogItemRequest request, CancellationToken ct)
+    {
+        var name = request.Name.Trim();
+        switch (key)
+        {
+            case "faculties":
+                var faculty = await context.Set<Faculty>().FindAsync([id], ct);
+                if (faculty is null) return null;
+                faculty.Name = name; faculty.Acronym = NormalizeOptional(request.Code); faculty.ParentFacultyId = request.ParentId;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = faculty.FacultyId, Name = faculty.Name, Code = faculty.Acronym, ParentId = faculty.ParentFacultyId };
+            case "research-lines":
+            case "researchlines":
+                var researchLine = await context.Set<ResearchLine>().FindAsync([id], ct);
+                if (researchLine is null) return null;
+                researchLine.Name = name;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = researchLine.ResearchLineId, Name = researchLine.Name };
+            case "indexing-sources":
+            case "indexingsources":
+                var indexingSource = await context.Set<IndexingSource>().FindAsync([id], ct);
+                if (indexingSource is null) return null;
+                indexingSource.Name = name; indexingSource.Abbreviation = NormalizeOptional(request.Code); indexingSource.ReferenceUrl = NormalizeOptional(request.JournalUrl);
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = indexingSource.Id, Name = indexingSource.Name, Code = indexingSource.Abbreviation, JournalUrl = indexingSource.ReferenceUrl };
+            case "publication-statuses":
+            case "publicationstatuses":
+                if (id is < byte.MinValue or > byte.MaxValue) return null;
+                var status = await context.Set<PublicationStatus>().FindAsync([(byte)id], ct);
+                if (status is null) return null;
+                status.Name = name;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = status.PublicationStatusId, Name = status.Name };
+            case "academic-terms":
+            case "academicterms":
+                var term = await context.Set<AcademicTerm>().FindAsync([id], ct);
+                if (term is null) return null;
+                term.Name = name;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = term.AcademicTermId, Name = term.Name };
+            case "broad-fields":
+            case "broadfields":
+                var broadField = await context.Set<BroadField>().FindAsync([id], ct);
+                if (broadField is null) return null;
+                broadField.Name = name;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = broadField.BroadFieldId, Name = broadField.Name };
+            case "specific-fields":
+            case "specificfields":
+                if (!request.ParentId.HasValue || !await context.Set<BroadField>().AnyAsync(x => x.BroadFieldId == request.ParentId.Value, ct)) return null;
+                var specificField = await context.Set<SpecificField>().FindAsync([id], ct);
+                if (specificField is null) return null;
+                specificField.Name = name; specificField.Code = NormalizeOptional(request.Code); specificField.BroadFieldId = request.ParentId.Value;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = specificField.SpecificFieldId, Name = specificField.Name, Code = specificField.Code, ParentId = specificField.BroadFieldId };
+            case "detailed-fields":
+            case "detailedfields":
+                if (!request.ParentId.HasValue || !await context.Set<SpecificField>().AnyAsync(x => x.SpecificFieldId == request.ParentId.Value, ct)) return null;
+                var detailedField = await context.Set<DetailedField>().FindAsync([id], ct);
+                if (detailedField is null) return null;
+                detailedField.Name = name; detailedField.Code = NormalizeOptional(request.Code); detailedField.SpecificFieldId = request.ParentId.Value;
+                await context.SaveChangesAsync(ct);
+                return new CatalogAdminItemDto { Id = detailedField.DetailedFieldId, Name = detailedField.Name, Code = detailedField.Code, ParentId = detailedField.SpecificFieldId };
+            default:
+                return null;
+        }
+    }
+
+    public async Task<bool> DeleteAdminCatalogAsync(string key, int id, CancellationToken ct)
+    {
+        object? entity = key switch
+        {
+            "faculties" => await context.Set<Faculty>().FindAsync([id], ct),
+            "research-lines" or "researchlines" => await context.Set<ResearchLine>().FindAsync([id], ct),
+            "indexing-sources" or "indexingsources" => await context.Set<IndexingSource>().FindAsync([id], ct),
+            "publication-statuses" or "publicationstatuses" when id is >= byte.MinValue and <= byte.MaxValue => await context.Set<PublicationStatus>().FindAsync([(byte)id], ct),
+            "academic-terms" or "academicterms" => await context.Set<AcademicTerm>().FindAsync([id], ct),
+            "broad-fields" or "broadfields" => await context.Set<BroadField>().FindAsync([id], ct),
+            "specific-fields" or "specificfields" => await context.Set<SpecificField>().FindAsync([id], ct),
+            "detailed-fields" or "detailedfields" => await context.Set<DetailedField>().FindAsync([id], ct),
+            _ => null
+        };
+        if (entity is null) return false;
+        context.Remove(entity);
+        await context.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public Task<bool> AdminCatalogItemExistsAsync(string key, int id, CancellationToken ct) => key switch
+    {
+        "faculties" => context.Set<Faculty>().AnyAsync(x => x.FacultyId == id, ct),
+        "research-lines" or "researchlines" => context.Set<ResearchLine>().AnyAsync(x => x.ResearchLineId == id, ct),
+        "indexing-sources" or "indexingsources" => context.Set<IndexingSource>().AnyAsync(x => x.Id == id, ct),
+        "publication-statuses" or "publicationstatuses" when id is >= byte.MinValue and <= byte.MaxValue => context.Set<PublicationStatus>().AnyAsync(x => x.PublicationStatusId == (byte)id, ct),
+        "academic-terms" or "academicterms" => context.Set<AcademicTerm>().AnyAsync(x => x.AcademicTermId == id, ct),
+        "broad-fields" or "broadfields" => context.Set<BroadField>().AnyAsync(x => x.BroadFieldId == id, ct),
+        "specific-fields" or "specificfields" => context.Set<SpecificField>().AnyAsync(x => x.SpecificFieldId == id, ct),
+        "detailed-fields" or "detailedfields" => context.Set<DetailedField>().AnyAsync(x => x.DetailedFieldId == id, ct),
+        _ => Task.FromResult(false)
+    };
+
+    public async Task<bool> AdminCatalogItemInUseAsync(string key, int id, CancellationToken ct) => key switch
+    {
+        "faculties" => await context.Set<Article>().AnyAsync(x => x.FacultyId == id, ct) || await context.Set<Faculty>().AnyAsync(x => x.ParentFacultyId == id, ct),
+        "research-lines" or "researchlines" => await context.Set<Article>().AnyAsync(x => x.ResearchLineId == id, ct),
+        "indexing-sources" or "indexingsources" => await context.Set<ArticleIndexing>().AnyAsync(x => x.IndexingSourceId == id, ct),
+        "publication-statuses" or "publicationstatuses" when id is >= byte.MinValue and <= byte.MaxValue => await context.Set<Article>().AnyAsync(x => x.PublicationStatusId == (byte)id, ct),
+        "academic-terms" or "academicterms" => await context.Set<Article>().AnyAsync(x => x.AcademicTermId == id, ct),
+        "broad-fields" or "broadfields" => await context.Set<Article>().AnyAsync(x => x.BroadFieldId == id, ct) || await context.Set<SpecificField>().AnyAsync(x => x.BroadFieldId == id, ct),
+        "specific-fields" or "specificfields" => await context.Set<Article>().AnyAsync(x => x.SpecificFieldId == id, ct) || await context.Set<DetailedField>().AnyAsync(x => x.SpecificFieldId == id, ct),
+        "detailed-fields" or "detailedfields" => await context.Set<Article>().AnyAsync(x => x.DetailedFieldId == id, ct),
+        _ => true
+    };
+
+    private async Task<byte> NextPublicationStatusIdAsync(CancellationToken ct)
+    {
+        var maxId = await context.Set<PublicationStatus>().Select(x => (byte?)x.PublicationStatusId).MaxAsync(ct) ?? (byte)0;
+        if (maxId == byte.MaxValue)
+            throw new InvalidOperationException("No hay identificadores disponibles para estados de publicación.");
+        return (byte)(maxId + 1);
+    }
+
+    private static string? NormalizeOptional(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     public Task<List<FormSummaryDto>> ListFormsAsync(string? entityName, CancellationToken ct)
     {

@@ -288,10 +288,29 @@ public sealed class UnifiedRegistrationMatrixService : IUnifiedRegistrationMatri
             FieldKey = x.Field?.FieldKey ?? string.Empty,
             FieldLabel = x.Field?.FieldLabel ?? string.Empty,
             DataType = x.Field?.DataType ?? string.Empty,
+            SourceType = x.Field?.SourceType ?? string.Empty,
+            ReferenceTableName = x.Field?.ReferenceTableName,
             IsRequired = x.Field?.IsRequired ?? false,
             IsDynamic = x.Field?.IsDynamic ?? false,
+            IsVisible = x.Field?.IsVisible ?? false,
+            IsEditable = x.Field?.IsEditable ?? false,
+            MaxLength = x.Field?.MaxLength,
+            ValidationRule = x.Field?.ValidationRule,
             DisplayOrder = x.DisplayOrder,
-            WidthUnits = x.WidthUnits
+            WidthUnits = x.WidthUnits,
+            Options = x.Field?.Options
+                .OrderBy(option => option.DisplayOrder)
+                .ThenBy(option => option.OptionLabel)
+                .Select(option => new tesisproject.shared.DTOs.Configuration.DynamicFieldOptionDto
+                {
+                    DynamicFieldOptionId = option.DynamicFieldOptionId,
+                    FieldId = option.FieldId,
+                    OptionValue = option.OptionValue,
+                    OptionLabel = option.OptionLabel,
+                    DisplayOrder = option.DisplayOrder,
+                    IsActive = option.IsActive
+                })
+                .ToList() ?? []
         }).ToList(),
         Rows = matrix.Rows.OrderBy(x => x.RowNumber).Select(x => new RegistrationMatrixRowDto
         {

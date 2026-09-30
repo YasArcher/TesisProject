@@ -25,6 +25,11 @@ public interface IUnifiedArticleConfigurationRepository
     Task<bool> HasCanonicalAttributeAsync(int attributeId, CancellationToken ct);
     Task<List<CatalogItemDto>> ReadCatalogItemsAsync(string normalizedKey, int? parentId, CancellationToken ct);
     Task<List<CatalogAdminItemDto>> ReadAdminCatalogAsync(string normalizedKey, CancellationToken ct);
+    Task<CatalogAdminItemDto?> CreateAdminCatalogAsync(string normalizedKey, UpsertCatalogItemRequest request, CancellationToken ct);
+    Task<CatalogAdminItemDto?> UpdateAdminCatalogAsync(string normalizedKey, int id, UpsertCatalogItemRequest request, CancellationToken ct);
+    Task<bool> DeleteAdminCatalogAsync(string normalizedKey, int id, CancellationToken ct);
+    Task<bool> AdminCatalogItemExistsAsync(string normalizedKey, int id, CancellationToken ct);
+    Task<bool> AdminCatalogItemInUseAsync(string normalizedKey, int id, CancellationToken ct);
 
     Task<List<FormSummaryDto>> ListFormsAsync(string? entityName, CancellationToken ct);
     Task<List<FormFieldAdminDto>> ListFormFieldsAsync(int formId, CancellationToken ct);

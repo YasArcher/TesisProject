@@ -27,4 +27,7 @@ public interface IUnifiedArticleConfigurationService
     Task<ServiceResult<DynamicFieldOptionDto>> UpdateFieldOption(int fieldId, int optionId, UpdateDynamicFieldOptionRequest request, CancellationToken ct);
     Task<ServiceResult<NoContent>> DeleteFieldOption(int fieldId, int optionId, CancellationToken ct);
     Task<ServiceResult<List<CatalogAdminItemDto>>> GetAdminCatalog(string catalogKey, CancellationToken ct);
+    Task<ServiceResult<CatalogAdminItemDto>> CreateAdminCatalog(string catalogKey, UpsertCatalogItemRequest request, CancellationToken ct);
+    Task<ServiceResult<CatalogAdminItemDto>> UpdateAdminCatalog(string catalogKey, int id, UpsertCatalogItemRequest request, CancellationToken ct);
+    Task<ServiceResult<NoContent>> DeleteAdminCatalog(string catalogKey, int id, CancellationToken ct);
 }

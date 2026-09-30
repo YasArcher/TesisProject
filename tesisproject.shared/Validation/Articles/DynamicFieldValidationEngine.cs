@@ -188,6 +188,8 @@ public static class DynamicFieldValidationEngine
 
     private static bool IsNumericDataType(string? dataType)
         => string.Equals(dataType, "int", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(dataType, "integer", StringComparison.OrdinalIgnoreCase)
+           || string.Equals(dataType, "number", StringComparison.OrdinalIgnoreCase)
            || string.Equals(dataType, "decimal", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsDateDataType(string? dataType)

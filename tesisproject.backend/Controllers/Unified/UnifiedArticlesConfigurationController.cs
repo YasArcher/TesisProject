@@ -127,5 +127,22 @@ public sealed class UnifiedArticlesCatalogsController(IUnifiedArticleConfigurati
     public async Task<ActionResult<ServiceResult<List<CatalogAdminItemDto>>>> GetAdminCatalog(string catalogKey, CancellationToken ct)
         => (await service.GetAdminCatalog(catalogKey, ct)).ToActionResult();
 
+    [HttpPost("admin/{catalogKey}")]
+    public async Task<ActionResult<ServiceResult<CatalogAdminItemDto>>> CreateAdminCatalog(string catalogKey,
+        [FromBody] UpsertCatalogItemRequest request,
+        CancellationToken ct)
+        => (await service.CreateAdminCatalog(catalogKey, request, ct)).ToActionResult();
+
+    [HttpPut("admin/{catalogKey}/{id:int}")]
+    public async Task<ActionResult<ServiceResult<CatalogAdminItemDto>>> UpdateAdminCatalog(string catalogKey,
+        int id,
+        [FromBody] UpsertCatalogItemRequest request,
+        CancellationToken ct)
+        => (await service.UpdateAdminCatalog(catalogKey, id, request, ct)).ToActionResult();
+
+    [HttpDelete("admin/{catalogKey}/{id:int}")]
+    public async Task<ActionResult<ServiceResult<NoContent>>> DeleteAdminCatalog(string catalogKey, int id, CancellationToken ct)
+        => (await service.DeleteAdminCatalog(catalogKey, id, ct)).ToActionResult();
+
 }
 

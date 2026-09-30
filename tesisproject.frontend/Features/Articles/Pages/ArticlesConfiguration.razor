@@ -275,13 +275,21 @@
                                         @foreach (var field in _selectedFormFields.OrderBy(x => x.DisplayOrder))
                                         {
                                             <div class="rounded-lg border border-border bg-page-bg p-3" @key="field.FormFieldId">
-                                                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                                    <div><p class="font-semibold text-foreground">@field.FieldLabel</p><p class="text-xs text-muted">@field.FieldKey · @Display(field.GroupName)</p></div>
-                                                    <div class="flex flex-wrap gap-2 text-xs">
-                                                        <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsVisible ? "Visible" : "No visible")</span>
-                                                        <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsRequired ? "Requerido" : "Opcional")</span>
-                                                        <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsEditable ? "Editable" : "Bloqueado")</span>
-                                                        <button type="button" class="rounded-lg border border-red-200 px-3 py-1 text-red-700 hover:bg-red-50" disabled="@_saving" @onclick="() => RequestRemoveFormField(field)">Quitar</button>
+                                                <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                                                    <div class="min-w-0">
+                                                        <p class="font-semibold text-foreground">@field.FieldLabel</p>
+                                                        <p class="text-xs text-muted">@field.FieldKey · @field.DataType · @(field.FieldIsActive ? "Campo activo" : "Campo inactivo")</p>
+                                                    </div>
+                                                    <div class="grid w-full grid-cols-1 gap-2 text-xs md:grid-cols-[1fr_7rem_auto] xl:max-w-2xl">
+                                                        <input class="rounded-lg border border-border bg-background px-3 py-2" placeholder="Grupo visual" @bind="field.GroupName" />
+                                                        <input type="number" class="rounded-lg border border-border bg-background px-3 py-2" @bind="field.DisplayOrder" />
+                                                        <div class="flex flex-wrap items-center justify-end gap-2">
+                                                            <label class="flex items-center gap-1 rounded-lg bg-background px-2 py-1 text-muted"><input type="checkbox" @bind="field.IsVisible" /> Visible</label>
+                                                            <label class="flex items-center gap-1 rounded-lg bg-background px-2 py-1 text-muted"><input type="checkbox" @bind="field.IsRequired" /> Requerido</label>
+                                                            <label class="flex items-center gap-1 rounded-lg bg-background px-2 py-1 text-muted"><input type="checkbox" @bind="field.IsEditable" /> Editable</label>
+                                                            <button type="button" class="rounded-lg border border-border px-3 py-1 font-semibold text-primary hover:bg-primary-subtle" disabled="@_saving" @onclick="() => SaveFormFieldAsync(field)">Guardar</button>
+                                                            <button type="button" class="rounded-lg border border-red-200 px-3 py-1 font-semibold text-red-700 hover:bg-red-50" disabled="@_saving" @onclick="() => RequestRemoveFormField(field)">Quitar</button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -322,7 +330,7 @@
                                 <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                                     <div>
                                         <h3 class="font-bold text-foreground">@SelectedCatalogLabel</h3>
-                                        <p class="text-xs text-muted">Vista de consulta. La edicion de catalogos se habilitara desde administracion cuando corresponda.</p>
+                                        <p class="text-xs text-muted">Administra los valores que alimentan formularios, filtros y reportes institucionales.</p>
                                     </div>
                                     <button type="button" class="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-primary hover:bg-primary-subtle" disabled="@_loadingCatalogItems" @onclick="() => SelectCatalogAsync(_selectedCatalogKey)">Actualizar catalogo</button>
                                 </div>
@@ -337,19 +345,69 @@
                                 }
                                 else
                                 {
-                                    <div class="mt-4 overflow-x-auto">
-                                        <table class="w-full text-left text-sm" style="min-width: 680px;">
+                                    <div class="mt-4 rounded-lg border border-border bg-background p-3">
+                                        <div class="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,.8fr)_minmax(0,1fr)_auto]">
+                                            <input class="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Nombre del nuevo elemento" @bind="_newCatalogItem.Name" />
+                                            <input class="rounded-lg border border-border bg-background px-3 py-2 text-sm" placeholder="Codigo o acronimo" @bind="_newCatalogItem.Code" />
+                                            @if (CatalogAllowsParent(_selectedCatalogKey))
+                                            {
+                                                <select class="rounded-lg border border-border bg-background px-3 py-2 text-sm" @bind="_newCatalogItem.ParentId">
+                                                    <option value="">@ParentPlaceholder(_selectedCatalogKey)</option>
+                                                    @foreach (var parent in ParentOptionsFor(_selectedCatalogKey))
+                                                    {
+                                                        <option value="@parent.Id">@parent.Name</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <div class="hidden lg:block"></div>
+                                            }
+                                            <button type="button" class="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled="@_saving" @onclick="CreateCatalogItemAsync">Agregar</button>
+                                        </div>
+                                        @if (CatalogRequiresParent(_selectedCatalogKey))
+                                        {
+                                            <p class="mt-2 text-xs text-muted">Este catalogo requiere seleccionar una relacion padre para mantener la jerarquia academica.</p>
+                                        }
+                                    </div>
+
+                                    <div class="mt-4 overflow-x-auto rounded-lg border border-border">
+                                        <table class="w-full text-left text-sm" style="min-width: 760px;">
                                             <thead class="bg-primary-subtle text-xs uppercase text-muted">
-                                                <tr><th class="px-3 py-2">Nombre</th><th class="px-3 py-2">Codigo</th><th class="px-3 py-2">Tipo</th><th class="px-3 py-2">Relacion</th></tr>
+                                                <tr><th class="px-3 py-2">Nombre</th><th class="px-3 py-2">Codigo</th><th class="px-3 py-2">Relacion</th><th class="px-3 py-2 text-right">Acciones</th></tr>
                                             </thead>
                                             <tbody class="divide-y divide-border">
                                                 @foreach (var item in _catalogItems)
                                                 {
-                                                    <tr>
-                                                        <td class="px-3 py-2 font-semibold text-foreground">@Display(item.Name)</td>
-                                                        <td class="px-3 py-2 text-muted">@Display(item.Code ?? item.IssnCode)</td>
-                                                        <td class="px-3 py-2 text-muted">@Display(item.Type)</td>
-                                                        <td class="px-3 py-2 text-muted">@Display(item.ParentName)</td>
+                                                    <tr @key="item.Id">
+                                                        <td class="px-3 py-2">
+                                                            <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground" @bind="item.Name" />
+                                                        </td>
+                                                        <td class="px-3 py-2">
+                                                            <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted" @bind="item.Code" />
+                                                        </td>
+                                                        <td class="px-3 py-2">
+                                                            @if (CatalogAllowsParent(_selectedCatalogKey))
+                                                            {
+                                                                <select class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted" @bind="item.ParentId">
+                                                                    <option value="">Sin relacion</option>
+                                                                    @foreach (var parent in ParentOptionsFor(_selectedCatalogKey, item.Id))
+                                                                    {
+                                                                        <option value="@parent.Id">@parent.Name</option>
+                                                                    }
+                                                                </select>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">@Display(item.ParentName)</span>
+                                                            }
+                                                        </td>
+                                                        <td class="px-3 py-2">
+                                                            <div class="flex justify-end gap-2">
+                                                                <button type="button" class="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary-subtle disabled:opacity-60" disabled="@_saving" @onclick="() => SaveCatalogItemAsync(item)">Guardar</button>
+                                                                <button type="button" class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60" disabled="@_saving" @onclick="() => RequestDeleteCatalogItem(item)">Eliminar</button>
+                                                            </div>
+                                                        </td>
                                                     </tr>
                                                 }
                                             </tbody>
@@ -380,11 +438,15 @@
     private string _selectedCatalogKey = "faculties";
     private bool _loadingCatalogItems;
     private List<CatalogAdminItemDto> _catalogItems = [];
+    private List<CatalogAdminItemDto> _facultyCatalogItems = [];
+    private List<CatalogAdminItemDto> _broadFieldCatalogItems = [];
+    private List<CatalogAdminItemDto> _specificFieldCatalogItems = [];
     private FormSummaryDto? _selectedForm;
     private List<FormFieldAdminDto> _selectedFormFields = [];
     private CreateFormDefinitionRequest _newForm = new() { EntityName = "Article", IsActive = true };
     private CreateDynamicFieldRequest _newField = new() { EntityName = "Article", DataType = "string", SourceType = "Dynamic", IsActive = true, IsVisible = true, IsEditable = true, IsFilterable = true, DisplayOrder = 100 };
     private AddFieldToFormRequest _addFieldRequest = new() { DisplayOrder = 100, IsVisible = true, IsEditable = true };
+    private UpsertCatalogItemRequest _newCatalogItem = new();
     private int? _selectedOptionsFieldId;
     private List<DynamicFieldOptionDto> _fieldOptions = [];
     private CreateDynamicFieldOptionRequest _newOption = new() { DisplayOrder = 100, IsActive = true };
@@ -393,13 +455,24 @@
     private int _pendingFormId;
     private int _pendingFieldId;
     private int _pendingFormFieldId;
+    private int _pendingCatalogItemId;
     private string _pendingTitle = string.Empty;
     private string _pendingMessage = string.Empty;
 
     private static readonly string[] DataTypes = ["string", "number", "integer", "decimal", "date", "boolean", "select"];
     private static readonly (string Key, string Label)[] Tabs = [("forms", "Formularios"), ("fields", "Campos"), ("assignment", "Asignacion"), ("catalogs", "Catalogos")];
-    private static readonly (string Key, string Label, string Detail)[] CatalogDefinitions = [("faculties", "Facultades", "Estructura institucional"), ("research-lines", "Lineas", "Lineas de investigacion"), ("indexing-sources", "Indexaciones", "Fuentes de indexacion"), ("publication-statuses", "Estados", "Estados de publicacion")];
-    private bool RequiresSecondConfirmation => _pendingAction is PendingAction.DeleteForm or PendingAction.DeleteField;
+    private static readonly (string Key, string Label, string Detail)[] CatalogDefinitions =
+    [
+        ("faculties", "Facultades", "Estructura institucional"),
+        ("academic-terms", "Periodos", "Periodos academicos"),
+        ("research-lines", "Lineas", "Lineas de investigacion"),
+        ("broad-fields", "Campos amplios", "Areas academicas generales"),
+        ("specific-fields", "Campos especificos", "Areas dependientes del campo amplio"),
+        ("detailed-fields", "Campos detallados", "Areas dependientes del campo especifico"),
+        ("indexing-sources", "Indexaciones", "Fuentes de indexacion"),
+        ("publication-statuses", "Estados", "Estados de publicacion")
+    ];
+    private bool RequiresSecondConfirmation => _pendingAction is PendingAction.DeleteForm or PendingAction.DeleteField or PendingAction.DeleteCatalogItem;
     private int? SelectedFormId => _selectedForm?.FormId;
 
     private IEnumerable<(string Label, string Value, string Detail)> SummaryItems =>
@@ -460,7 +533,11 @@
         foreach (var item in CatalogDefinitions)
         {
             var result = await FormConfigurationClient.GetAdminCatalogAsync(item.Key);
-            summaries.Add((item.Key, item.Label, result.Success ? result.Data?.Count ?? 0 : 0, item.Detail));
+            var items = result.Success ? result.Data ?? [] : [];
+            summaries.Add((item.Key, item.Label, items.Count, item.Detail));
+            if (item.Key == "faculties") _facultyCatalogItems = items;
+            if (item.Key == "broad-fields") _broadFieldCatalogItems = items;
+            if (item.Key == "specific-fields") _specificFieldCatalogItems = items;
         }
         _catalogSummaries = summaries;
     }
@@ -487,6 +564,7 @@
             }
 
             _catalogItems = result.Data ?? [];
+            _newCatalogItem = new UpsertCatalogItemRequest();
         }
         finally
         {
@@ -556,6 +634,23 @@
         await LoadAsync();
     });
 
+    private async Task SaveFormFieldAsync(FormFieldAdminDto field) => await RunActionAsync(async () =>
+    {
+        if (_selectedForm is null) return;
+        var result = await FormConfigurationClient.UpdateFormFieldAsync(_selectedForm.FormId, field.FormFieldId, new UpdateFormFieldRequest
+        {
+            IsVisible = field.IsVisible,
+            IsRequired = field.IsRequired,
+            IsEditable = field.IsEditable,
+            DisplayOrder = field.DisplayOrder,
+            GroupName = field.GroupName,
+            ColumnSpan = field.ColumnSpan
+        });
+        if (!result.Success) { SetError(result.Message ?? "No fue posible actualizar el campo del formulario."); return; }
+        SetSuccess("Configuracion del campo en el formulario actualizada.");
+        await LoadAsync();
+    });
+
     private async Task ToggleFieldOptionsAsync(FieldCatalogItemDto field)
     {
         if (_selectedOptionsFieldId == field.FieldId)
@@ -605,16 +700,46 @@
         await LoadFieldOptionsAsync(option.FieldId, preserveMessage: true);
     });
 
+    private async Task CreateCatalogItemAsync() => await RunActionAsync(async () =>
+    {
+        var result = await FormConfigurationClient.CreateAdminCatalogItemAsync(_selectedCatalogKey, _newCatalogItem);
+        if (!result.Success || result.Data is null) { SetError(result.Message ?? "No fue posible crear el elemento del catalogo."); return; }
+        SetSuccess($"Elemento '{result.Data.Name}' creado en {SelectedCatalogLabel}.");
+        await RefreshCatalogsAsync();
+    });
+
+    private async Task SaveCatalogItemAsync(CatalogAdminItemDto item) => await RunActionAsync(async () =>
+    {
+        var result = await FormConfigurationClient.UpdateAdminCatalogItemAsync(_selectedCatalogKey, item.Id, new UpsertCatalogItemRequest
+        {
+            Name = item.Name,
+            ParentId = item.ParentId,
+            Code = item.Code,
+            Type = item.Type,
+            IssnCode = item.IssnCode,
+            JournalUrl = item.JournalUrl
+        });
+        if (!result.Success || result.Data is null) { SetError(result.Message ?? "No fue posible guardar el elemento del catalogo."); return; }
+        SetSuccess($"Elemento '{result.Data.Name}' actualizado.");
+        await RefreshCatalogsAsync();
+    });
+
     private void RequestDeleteForm(FormSummaryDto form) { _pendingAction = PendingAction.DeleteForm; _pendingStep = 1; _pendingFormId = form.FormId; _pendingTitle = $"Advertencia 1/2: eliminar formulario '{form.FormName}'"; _pendingMessage = "Eliminar un formulario quita su configuracion de captura. Si solo necesitas pausarlo, usa desactivar."; }
     private void RequestDeleteField(FieldCatalogItemDto field) { _pendingAction = PendingAction.DeleteField; _pendingStep = 1; _pendingFieldId = field.FieldId; _pendingTitle = $"Advertencia 1/2: eliminar campo '{field.FieldLabel}'"; _pendingMessage = "Solo se intentara eliminar campos dinamicos sin valores registrados y sin asignaciones activas en formularios."; }
     private void RequestRemoveFormField(FormFieldAdminDto field) { _pendingAction = PendingAction.RemoveFormField; _pendingStep = 2; _pendingFormId = field.FormId; _pendingFormFieldId = field.FormFieldId; _pendingTitle = $"Quitar campo '{field.FieldLabel}' del formulario"; _pendingMessage = "El campo seguira existiendo en el catalogo maestro, pero ya no aparecera en este formulario."; }
+    private void RequestDeleteCatalogItem(CatalogAdminItemDto item) { _pendingAction = PendingAction.DeleteCatalogItem; _pendingStep = 1; _pendingCatalogItemId = item.Id; _pendingTitle = $"Advertencia 1/2: eliminar '{item.Name}'"; _pendingMessage = "Solo se eliminara si no tiene registros, formularios o elementos dependientes asociados."; }
 
     private async Task ConfirmPendingActionAsync()
     {
         if (RequiresSecondConfirmation && _pendingStep == 1)
         {
             _pendingStep = 2;
-            _pendingTitle = _pendingAction == PendingAction.DeleteForm ? "Confirmacion 2/2: borrar formulario" : "Confirmacion 2/2: borrar campo";
+            _pendingTitle = _pendingAction switch
+            {
+                PendingAction.DeleteForm => "Confirmacion 2/2: borrar formulario",
+                PendingAction.DeleteCatalogItem => "Confirmacion 2/2: borrar elemento de catalogo",
+                _ => "Confirmacion 2/2: borrar campo"
+            };
             _pendingMessage = "Esta accion es definitiva si el sistema permite ejecutarla. Confirma solo si ya revisaste que no afecta registros ni configuracion activa.";
             return;
         }
@@ -639,10 +764,21 @@
                     if (!removeResult.Success) { SetError(removeResult.Message ?? "No fue posible quitar el campo del formulario."); return; }
                     SetSuccess("Campo quitado del formulario.");
                     break;
+                case PendingAction.DeleteCatalogItem:
+                    var catalogResult = await FormConfigurationClient.DeleteAdminCatalogItemAsync(_selectedCatalogKey, _pendingCatalogItemId);
+                    if (!catalogResult.Success) { SetError(catalogResult.Message ?? "No fue posible eliminar el elemento del catalogo."); return; }
+                    SetSuccess("Elemento de catalogo eliminado correctamente.");
+                    break;
             }
             CancelPendingAction();
             await LoadAsync();
         });
+    }
+
+    private async Task RefreshCatalogsAsync()
+    {
+        await LoadCatalogSummariesAsync();
+        await SelectCatalogAsync(_selectedCatalogKey, preserveMessage: true);
     }
 
     private async Task RunActionAsync(Func<Task> action)
@@ -654,7 +790,7 @@
         finally { _saving = false; }
     }
 
-    private void CancelPendingAction() { _pendingAction = PendingAction.None; _pendingStep = 0; _pendingFormId = 0; _pendingFieldId = 0; _pendingFormFieldId = 0; _pendingTitle = string.Empty; _pendingMessage = string.Empty; }
+    private void CancelPendingAction() { _pendingAction = PendingAction.None; _pendingStep = 0; _pendingFormId = 0; _pendingFieldId = 0; _pendingFormFieldId = 0; _pendingCatalogItemId = 0; _pendingTitle = string.Empty; _pendingMessage = string.Empty; }
     private void ClearSelection() { _selectedForm = null; _selectedFormFields = []; _addFieldRequest = new AddFieldToFormRequest { DisplayOrder = 100, IsVisible = true, IsEditable = true }; }
     private void ClearFieldOptions() { _selectedOptionsFieldId = null; _fieldOptions = []; _newOption = new CreateDynamicFieldOptionRequest { DisplayOrder = 100, IsActive = true }; }
     private void SetSuccess(string message) { _message = message; _messageIsError = false; }
@@ -663,7 +799,23 @@
     private int NextOptionOrder => _fieldOptions.Count == 0 ? 100 : _fieldOptions.Max(x => x.DisplayOrder) + 10;
     private string SelectedCatalogLabel => CatalogDefinitions.FirstOrDefault(x => x.Key == _selectedCatalogKey).Label ?? "Catalogo";
     private static bool IsSelectField(FieldCatalogItemDto field) => field.DataType.Equals("select", StringComparison.OrdinalIgnoreCase);
+    private static bool CatalogRequiresParent(string key) => key is "specific-fields" or "specificfields" or "detailed-fields" or "detailedfields";
+    private static bool CatalogAllowsParent(string key) => key is "faculties" or "specific-fields" or "specificfields" or "detailed-fields" or "detailedfields";
+    private IEnumerable<CatalogAdminItemDto> ParentOptionsFor(string key, int? currentId = null) => key switch
+    {
+        "faculties" => _facultyCatalogItems.Where(x => x.Id != currentId),
+        "specific-fields" or "specificfields" => _broadFieldCatalogItems,
+        "detailed-fields" or "detailedfields" => _specificFieldCatalogItems,
+        _ => []
+    };
+    private static string ParentPlaceholder(string key) => key switch
+    {
+        "faculties" => "Facultad padre opcional",
+        "specific-fields" or "specificfields" => "Campo amplio requerido",
+        "detailed-fields" or "detailedfields" => "Campo especifico requerido",
+        _ => "Relacion"
+    };
     private void BackToArticles() => Nav.NavigateTo("/articles");
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "No informado" : value;
-    private enum PendingAction { None, DeleteForm, DeleteField, RemoveFormField }
+    private enum PendingAction { None, DeleteForm, DeleteField, RemoveFormField, DeleteCatalogItem }
 }

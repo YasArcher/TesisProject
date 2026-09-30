@@ -120,6 +120,23 @@ try
     db.Add(faculty); await db.SaveChangesAsync();
     var admin = await service.GetAdminCatalog("faculties", ct);
     Check(admin.Success && admin.Data!.Single().Id == faculty.FacultyId && admin.Data.Single().Code == "FAC", "Administrative catalog uses Unified Faculty ID and acronym");
+    var createdResearchLine = await service.CreateAdminCatalog("research-lines", new UpsertCatalogItemRequest { Name = "Artificial intelligence" }, ct);
+    Check(createdResearchLine.Success && createdResearchLine.Data!.Name == "Artificial intelligence", "Create editable administrative catalog item");
+    var updatedResearchLine = await service.UpdateAdminCatalog("research-lines", createdResearchLine.Data.Id, new UpsertCatalogItemRequest { Name = "Applied artificial intelligence" }, ct);
+    Check(updatedResearchLine.Success && updatedResearchLine.Data!.Name == "Applied artificial intelligence", "Update editable administrative catalog item");
+    Check((await service.DeleteAdminCatalog("research-lines", createdResearchLine.Data.Id, ct)).Success
+        && !(await service.GetAdminCatalog("research-lines", ct)).Data!.Any(item => item.Id == createdResearchLine.Data.Id),
+        "Delete unreferenced administrative catalog item");
+    var broadCatalog = await service.CreateAdminCatalog("broad-fields", new UpsertCatalogItemRequest { Name = "Engineering" }, ct);
+    Check(broadCatalog.Success, "Create broad field catalog item");
+    Check(!(await service.CreateAdminCatalog("specific-fields", new UpsertCatalogItemRequest { Name = "Software" }, ct)).Success,
+        "Hierarchical catalog creation requires parent");
+    var specificCatalog = await service.CreateAdminCatalog("specific-fields", new UpsertCatalogItemRequest { Name = "Software", Code = "SW", ParentId = broadCatalog.Data!.Id }, ct);
+    Check(specificCatalog.Success && specificCatalog.Data!.ParentId == broadCatalog.Data.Id && specificCatalog.Data.Code == "SW", "Create child catalog item with parent");
+    Check(!(await service.DeleteAdminCatalog("broad-fields", broadCatalog.Data.Id, ct)).Success, "Parent catalog item with children cannot be deleted");
+    Check((await service.DeleteAdminCatalog("specific-fields", specificCatalog.Data.Id, ct)).Success
+        && (await service.DeleteAdminCatalog("broad-fields", broadCatalog.Data.Id, ct)).Success,
+        "Delete child before parent in hierarchical catalog");
     var catalogField = new FieldCatalogEntry { FieldKey = "FacultyId", EntityName = "Article", FieldLabel = "Faculty", SourceType = "Physical", DataType = "int", ReferenceTableName = "faculties" };
     db.Add(catalogField); await db.SaveChangesAsync();
     Check((await service.GetCatalogItems(catalogField.FieldId, null, ct)).Data!.Single().Id == faculty.FacultyId, "Field catalog lookup");

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using tesisproject.shared.DTOs.Imports;
+using tesisproject.shared.DTOs.Configuration;
 
 namespace tesisproject.shared.DTOs.MassRegistration
 {
@@ -25,10 +26,17 @@ namespace tesisproject.shared.DTOs.MassRegistration
         public string FieldKey { get; set; } = string.Empty;
         public string FieldLabel { get; set; } = string.Empty;
         public string DataType { get; set; } = string.Empty;
+        public string SourceType { get; set; } = string.Empty;
+        public string? ReferenceTableName { get; set; }
         public bool IsRequired { get; set; }
         public bool IsDynamic { get; set; }
+        public bool IsVisible { get; set; }
+        public bool IsEditable { get; set; }
+        public int? MaxLength { get; set; }
+        public string? ValidationRule { get; set; }
         public int DisplayOrder { get; set; }
         public int WidthUnits { get; set; } = 1;
+        public List<DynamicFieldOptionDto> Options { get; set; } = new();
     }
 
     public class RegistrationMatrixCellDto
