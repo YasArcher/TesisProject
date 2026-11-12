@@ -69,10 +69,10 @@
 }
 
 .articles-profile-page .articles-workspace-panel {
-    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 16%, transparent) !important;
     border-radius: 8px !important;
-    background: rgba(255, 255, 255, 0.97) !important;
-    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+    background: color-mix(in srgb, var(--color-surface) 97%, transparent) !important;
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
 .articles-profile-page .articles-profile-identity {
@@ -84,11 +84,11 @@
 }
 
 .articles-profile-page .articles-workspace-panel h2 {
-    color: #12343b !important;
+    color: var(--color-foreground) !important;
 }
 
 .articles-profile-page .articles-workspace-panel .rounded-lg {
-    border-color: rgba(47, 95, 91, 0.14) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
 }
 
 .articles-profile-page button {

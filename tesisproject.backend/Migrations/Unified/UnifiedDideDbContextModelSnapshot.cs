@@ -634,6 +634,102 @@ namespace tesisproject.backend.Migrations.Unified
                     b.ToTable("ArticleIndexings", "dbo");
                 });
 
+            modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.ArticleStagingBatch", b =>
+                {
+                    b.Property<int>("ArticleStagingBatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ArticleStagingBatchId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("DuplicateRows")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InvalidRows")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReadyRows")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RegistrationMatrixId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TotalRows")
+                        .HasColumnType("int");
+
+                    b.HasKey("ArticleStagingBatchId");
+
+                    b.HasIndex("RegistrationMatrixId")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByUserId", "CreatedAt");
+
+                    b.ToTable("ArticleStagingBatch", "dbo");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.ArticleStagingRow", b =>
+                {
+                    b.Property<int>("ArticleStagingRowId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ArticleStagingRowId"));
+
+                    b.Property<int>("ArticleStagingBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DoiNormalized")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("RegistrationMatrixRowId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ValidationMessage")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.HasKey("ArticleStagingRowId");
+
+                    b.HasIndex("DoiNormalized")
+                        .HasFilter("[DoiNormalized] IS NOT NULL");
+
+                    b.HasIndex("ArticleStagingBatchId", "RegistrationMatrixRowId")
+                        .IsUnique();
+
+                    b.HasIndex("ArticleStagingBatchId", "RowNumber")
+                        .IsUnique();
+
+                    b.ToTable("ArticleStagingRow", "dbo");
+                });
+
             modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.BroadField", b =>
                 {
                     b.Property<int>("BroadFieldId")
@@ -3351,6 +3447,28 @@ namespace tesisproject.backend.Migrations.Unified
                     b.Navigation("IndexingSource");
                 });
 
+            modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.ArticleStagingBatch", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.UnifiedEntities.Articles.RegistrationMatrix", "Matrix")
+                        .WithMany()
+                        .HasForeignKey("RegistrationMatrixId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Matrix");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.ArticleStagingRow", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.UnifiedEntities.Articles.ArticleStagingBatch", "Batch")
+                        .WithMany("Rows")
+                        .HasForeignKey("ArticleStagingBatchId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
             modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.DetailedField", b =>
                 {
                     b.HasOne("tesisproject.backend.Data.UnifiedEntities.Articles.SpecificField", "SpecificField")
@@ -4178,6 +4296,11 @@ namespace tesisproject.backend.Migrations.Unified
                     b.Navigation("Files");
 
                     b.Navigation("Indexings");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.ArticleStagingBatch", b =>
+                {
+                    b.Navigation("Rows");
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.UnifiedEntities.Articles.BroadField", b =>

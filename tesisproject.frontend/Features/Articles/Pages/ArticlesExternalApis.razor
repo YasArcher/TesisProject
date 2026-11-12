@@ -2,8 +2,11 @@
 @page "/management/externalapis"
 @page "/scientific-production/external-apis"
 @using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.ExternalApis
 @attribute [Authorize]
 @inject NavigationManager Nav
+@inject IArticleExternalSearchClientService SearchClient
 
 <PageTitle>APIs externas | Plataforma integrada</PageTitle>
 
@@ -13,16 +16,16 @@
             <div class="articles-external-hero-band px-5 py-5 text-white md:px-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Captura externa</p>
+                        <p class="text-xs font-bold uppercase tracking-wide text-accent">Captura externa</p>
                         <h1 class="mt-2 text-2xl font-bold md:text-3xl">APIs externas</h1>
-                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                            Centro de consulta academica para preparar recuperacion de articulos desde proveedores externos.
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-on-dark/80">
+                            Consulta metadatos academicos sin modificar los registros de la institucion.
                         </p>
                     </div>
                     <div class="articles-external-status">
-                        <span>Estado operativo</span>
-                        <strong>Preparacion segura</strong>
-                        <small>Sin exponer llaves en navegador</small>
+                        <span>Estado de fusion</span>
+                        <strong>Crossref disponible</strong>
+                        <small>Consulta disponible; ingesta pendiente</small>
                     </div>
                 </div>
             </div>
@@ -30,15 +33,15 @@
             <div class="articles-external-summary grid gap-3 px-5 py-4 md:grid-cols-3 md:px-6">
                 <article>
                     <span>Proveedor principal</span>
-                    <strong>Scopus</strong>
+                    <strong>Scopus y Crossref</strong>
                 </article>
                 <article>
                     <span>Uso esperado</span>
-                    <strong>Busqueda previa</strong>
+                    <strong>Consulta de metadatos</strong>
                 </article>
                 <article>
                     <span>Siguiente paso</span>
-                    <strong>Revisar ingesta</strong>
+                    <strong>Integrar staging</strong>
                 </article>
             </div>
         </header>
@@ -47,17 +50,15 @@
 
         <section class="grid gap-5 xl:grid-cols-[minmax(20rem,.72fr)_minmax(0,1fr)]">
             <aside class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
-                <p class="text-xs font-bold uppercase text-muted">Consulta preparada</p>
+                <p class="text-xs font-bold uppercase text-muted">Consulta externa</p>
                 <h2 class="mt-1 text-lg font-bold text-foreground">Parametros de busqueda</h2>
 
                 <div class="mt-4 grid gap-3">
                     <label>
                         <span>Proveedor</span>
                         <select @bind="_providerKey">
-                            @foreach (var provider in Providers)
-                            {
-                                <option value="@provider.Key">@provider.Name</option>
-                            }
+                            <option value="crossref">Crossref</option>
+                            <option value="scopus">Scopus</option>
                         </select>
                     </label>
                     <label>
@@ -65,12 +66,11 @@
                         <select @bind="_queryMode">
                             <option value="general">Texto libre</option>
                             <option value="doi">DOI</option>
-                            <option value="institutional">Filiacion institucional</option>
                         </select>
                     </label>
                     <label>
                         <span>Texto de busqueda</span>
-                        <input @bind="_queryText" placeholder="Titulo, DOI, autor o filiacion" />
+                        <input @bind="_queryText" maxlength="200" placeholder="Titulo, resumen o palabra clave" />
                     </label>
                     <label>
                         <span>Resultados maximos</span>
@@ -83,17 +83,14 @@
                     <p>Las credenciales de proveedores se validan en el servidor. Esta pantalla prepara los parametros y mantiene la ruta de ingesta visible para el usuario.</p>
                 </div>
 
-                <button type="button" class="articles-external-primary mt-4 w-full" @onclick="PrepareSearch">
-                    Preparar consulta
-                </button>
-                <button type="button" class="articles-external-secondary mt-2 w-full" @onclick="GoToIngestion">
-                    Ver ingesta externa
+                <button type="button" class="articles-external-primary mt-4 w-full" disabled="@_searching" @onclick="SearchAsync">
+                    @(_searching ? "Consultando..." : $"Consultar {SelectedProviderName}")
                 </button>
 
                 @if (!string.IsNullOrWhiteSpace(_message))
                 {
                     <div class="articles-external-message mt-4 rounded-lg border border-border p-4 @(string.IsNullOrWhiteSpace(_queryWarning) ? string.Empty : "articles-external-message--warning")">
-                        <strong>@(string.IsNullOrWhiteSpace(_queryWarning) ? "Consulta preparada" : "Datos incompletos")</strong>
+                        <strong>@(string.IsNullOrWhiteSpace(_queryWarning) ? "Resultado de consulta" : "Revisa la busqueda")</strong>
                         <p>@_message</p>
                     </div>
                 }
@@ -107,7 +104,7 @@
                             <h2 class="mt-1 text-lg font-bold text-foreground">Estado de proveedores</h2>
                             <p class="mt-1 text-sm text-muted">La disponibilidad real depende de la configuracion segura del servidor, no del navegador.</p>
                         </div>
-                        <span class="articles-external-pill">@ConfiguredProviders de @Providers.Count listos</span>
+                        <span class="articles-external-pill">2 fuentes de consulta</span>
                     </div>
 
                     <div class="mt-4 grid gap-3 md:grid-cols-2">
@@ -119,7 +116,7 @@
                                         <span>@provider.Kind</span>
                                         <strong>@provider.Name</strong>
                                     </div>
-                                    <em>@(provider.IsConfigured ? "Listo" : "Por validar")</em>
+                                    <em>@provider.Status</em>
                                 </div>
                                 <p>@provider.Description</p>
                             </article>
@@ -127,69 +124,33 @@
                     </div>
                 </section>
 
-                @if (_preparedQuery is not null)
+                @if (_result is not null)
                 {
                     <section class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
                         <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
                             <div>
                                 <p class="text-xs font-bold uppercase text-muted">Previsualizacion</p>
-                                <h2 class="mt-1 text-lg font-bold text-foreground">Consulta preparada</h2>
-                                <p class="mt-1 text-sm text-muted">Estos parametros quedan organizados para ejecutar la busqueda de forma segura y continuar con ingesta.</p>
+                                <h2 class="mt-1 text-lg font-bold text-foreground">Resultados de @_result.ProviderName</h2>
+                                <p class="mt-1 text-sm text-muted">Estos metadatos no se han registrado en la base institucional.</p>
                             </div>
-                            <span class="articles-external-pill">@_preparedQuery.Provider</span>
+                            <span class="articles-external-pill">@_result.Articles.Count resultado(s)</span>
                         </div>
-
-                        <div class="articles-external-query-grid mt-4">
-                            <article>
-                                <span>Modo</span>
-                                <strong>@_preparedQuery.Mode</strong>
-                            </article>
-                            <article>
-                                <span>Busqueda</span>
-                                <strong>@_preparedQuery.Query</strong>
-                            </article>
-                            <article>
-                                <span>Limite</span>
-                                <strong>@_preparedQuery.MaxResults</strong>
-                            </article>
-                        </div>
-
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <button type="button" class="articles-external-primary" @onclick="GoToIngestion">Continuar a ingesta</button>
-                            <button type="button" class="articles-external-secondary" @onclick="ClearPreparedQuery">Limpiar consulta</button>
-                        </div>
-                    </section>
-
-                    <section class="articles-external-panel rounded-lg border border-border bg-background p-5 shadow-sm">
-                        <div class="flex flex-col gap-3 border-b border-border pb-3 md:flex-row md:items-start md:justify-between">
-                            <div>
-                                <p class="text-xs font-bold uppercase text-muted">Resultados preliminares</p>
-                                <h2 class="mt-1 text-lg font-bold text-foreground">Previsualizacion de consulta</h2>
-                                <p class="mt-1 text-sm text-muted">Esta vista organiza lo que el usuario revisara antes de enviar datos a ingesta.</p>
-                            </div>
-                            <span class="articles-external-pill">@_previewResults.Count resultado(s)</span>
-                        </div>
-
-                        <div class="articles-external-preview-grid mt-4">
-                            @foreach (var item in _previewResults)
+                        <div class="mt-4 grid gap-3">
+                            @foreach (var article in _result.Articles)
                             {
-                                <article class="articles-external-preview-card">
-                                    <div class="flex items-start justify-between gap-3">
-                                        <div>
-                                            <span>@item.Source</span>
-                                            <strong>@item.Title</strong>
-                                        </div>
-                                        <em>@item.Year</em>
-                                    </div>
-                                    <p>@item.Detail</p>
-                                    <div class="articles-external-preview-tags">
-                                        <small>@(item.HasDoi ? "DOI disponible" : "Requiere revision")</small>
-                                        <small>@item.Action</small>
-                                    </div>
+                                <article class="rounded-md border border-border p-4">
+                                    <h3 class="font-semibold text-foreground">@article.Title</h3>
+                                    <p class="mt-1 text-sm text-muted">@article.Authors</p>
+                                    <p class="mt-1 text-sm text-muted">@article.JournalName · @article.PublicationYear · DOI: @article.Doi</p>
+                                    @if (Uri.TryCreate(article.SourceUrl, UriKind.Absolute, out var sourceUrl) && sourceUrl.Scheme == Uri.UriSchemeHttps)
+                                    {
+                                        <a href="@sourceUrl" target="_blank" rel="noopener noreferrer" class="mt-2 inline-block text-sm font-semibold text-primary">Ver fuente</a>
+                                    }
                                 </article>
                             }
                         </div>
                     </section>
+
                 }
 
                 <section class="grid gap-5 lg:grid-cols-2">
@@ -230,30 +191,29 @@
 </div>
 
 @code {
-    private string _providerKey = "scopus";
+    private string _providerKey = "crossref";
     private string _queryMode = "general";
     private string? _queryText;
     private int _maxResults = 25;
+    private bool _searching;
     private string? _message;
     private string? _queryWarning;
-    private PreparedQuery? _preparedQuery;
-    private List<ExternalPreviewItem> _previewResults = [];
+    private ExternalApiQueryResultDto? _result;
+    private string SelectedProviderName => _providerKey == "scopus" ? "Scopus" : "Crossref";
 
     private IReadOnlyList<ProviderInfo> Providers =>
     [
-        new("scopus", "Scopus", "Principal", false, "Proveedor prioritario para recuperar articulos con filiacion institucional y DOI."),
-        new("crossref", "Crossref", "Bibliografico", false, "Util para completar DOI, revista, editorial y metadatos abiertos."),
-        new("openalex", "OpenAlex", "Abierto", false, "Fuente abierta para explorar autores, instituciones y produccion cientifica."),
-        new("semantic-scholar", "Semantic Scholar", "Complementario", false, "Apoyo para citas, resumen academico y senales bibliometricas.")
+        new("scopus", "Scopus", "Principal", false, "Requiere llave en el servidor", "Consulta de titulo, resumen, palabras clave o DOI."),
+        new("crossref", "Crossref", "Bibliografico", true, "Disponible", "Consulta de DOI, revista, autores y metadatos abiertos."),
+        new("openalex", "OpenAlex", "Abierto", false, "Pendiente", "Fuente abierta para explorar autores, instituciones y produccion cientifica."),
+        new("semantic-scholar", "Semantic Scholar", "Complementario", false, "Pendiente", "Apoyo para citas, resumen academico y senales bibliometricas.")
     ];
-
-    private int ConfiguredProviders => Providers.Count(x => x.IsConfigured);
 
     private IReadOnlyList<FlowStep> FlowSteps =>
     [
-        new("01", "Consultar proveedor", "El usuario prepara una busqueda por texto, DOI o filiacion institucional."),
-        new("02", "Revisar resultados", "La plataforma debe mostrar articulos encontrados sin registrarlos automaticamente."),
-        new("03", "Enviar a ingesta", "Solo los articulos seleccionados pasan al flujo de ingesta institucional.")
+        new("01", "Consultar una fuente", "Busca por texto o DOI en Scopus o Crossref."),
+        new("02", "Revisar resultados", "Los metadatos se muestran sin modificar los articulos registrados."),
+        new("03", "Integrar ingesta", "El envio a staging quedara disponible cuando se conecte el servicio unificado de importacion.")
     ];
 
     private IReadOnlyList<string> SafetyChecks =>
@@ -264,71 +224,41 @@
         "Los duplicados por DOI deben filtrarse en la fase de ingesta antes de registrar informacion."
     ];
 
-    private void PrepareSearch()
+    private async Task SearchAsync()
     {
-        var provider = Providers.FirstOrDefault(x => x.Key == _providerKey) ?? Providers[0];
         var query = string.IsNullOrWhiteSpace(_queryText) ? string.Empty : _queryText.Trim();
-        var maxResults = Math.Clamp(_maxResults, 1, 100);
-
-        if (string.IsNullOrWhiteSpace(query))
+        if (query.Length is < 2 or > 200 || _maxResults is < 1 or > 100)
         {
-            _queryWarning = "query-required";
-            _preparedQuery = null;
-            _message = "Ingresa un titulo, DOI, autor o filiacion para preparar la consulta.";
+            _queryWarning = "invalid-query";
+            _result = null;
+            _message = "Ingresa al menos dos caracteres y una cantidad entre 1 y 100.";
             return;
         }
-
+        _searching = true;
         _queryWarning = null;
-        _preparedQuery = new PreparedQuery(provider.Name, ModeLabel(_queryMode), query, maxResults);
-        _previewResults = BuildPreviewResults(provider, query, maxResults);
-        _message = $"Consulta preparada para {provider.Name}. La busqueda queda lista para ejecutarse de forma segura y revisar hasta {maxResults} resultado(s) antes de una ingesta.";
-    }
-
-    private void ClearPreparedQuery()
-    {
-        _preparedQuery = null;
-        _previewResults = [];
+        _result = null;
         _message = null;
-        _queryWarning = null;
-    }
-
-    private void GoToIngestion()
-    {
-        if (_preparedQuery is null)
+        try
         {
-            Nav.NavigateTo("/articles/module/external-ingestion");
-            return;
+            var response = await SearchClient.SearchAsync(new ExternalApiQueryRequest
+            {
+                ProviderKey = _providerKey, QueryMode = _queryMode,
+                QueryText = query, MaxResults = _maxResults
+            });
+            if (response.Success && response.Data is not null)
+            {
+                _result = response.Data;
+                _message = _result.Articles.Count == 0 ? "No se encontraron resultados." : null;
+            }
+            else
+            {
+                _queryWarning = "search-failed";
+                _message = response.Message ?? "No fue posible consultar la fuente externa.";
+            }
         }
-
-        var provider = Uri.EscapeDataString(_preparedQuery.Provider);
-        var mode = Uri.EscapeDataString(_preparedQuery.Mode);
-        var query = Uri.EscapeDataString(_preparedQuery.Query);
-        Nav.NavigateTo($"/articles/module/external-ingestion?provider={provider}&mode={mode}&q={query}&limit={_preparedQuery.MaxResults}");
+        finally { _searching = false; }
     }
 
-    private static List<ExternalPreviewItem> BuildPreviewResults(ProviderInfo provider, string query, int maxResults)
-    {
-        var count = Math.Clamp(Math.Min(maxResults, 6), 1, 6);
-        return Enumerable.Range(1, count)
-            .Select(index => new ExternalPreviewItem(
-                provider.Name,
-                $"{query} - resultado academico {index}",
-                $"Coincidencia preliminar obtenida desde {provider.Name}. Antes de registrar debe validarse DOI, revista, autores y filiacion institucional.",
-                DateTime.Today.Year - (index % 5),
-                HasDoi: index % 3 != 0,
-                Action: index % 3 == 0 ? "Revisar antes de ingesta" : "Candidato a ingesta"))
-            .ToList();
-    }
-
-    private static string ModeLabel(string mode) => mode switch
-    {
-        "doi" => "DOI",
-        "institutional" => "Filiacion institucional",
-        _ => "Texto libre"
-    };
-
-    private sealed record ProviderInfo(string Key, string Name, string Kind, bool IsConfigured, string Description);
+    private sealed record ProviderInfo(string Key, string Name, string Kind, bool IsConfigured, string Status, string Description);
     private sealed record FlowStep(string Number, string Title, string Detail);
-    private sealed record PreparedQuery(string Provider, string Mode, string Query, int MaxResults);
-    private sealed record ExternalPreviewItem(string Source, string Title, string Detail, int Year, bool HasDoi, string Action);
 }

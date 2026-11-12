@@ -1,4 +1,6 @@
 using System.Linq.Expressions;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.UnitOfWork.Unified.Interfaces;
 using tesisproject.backend.Data.UnifiedEntities.Articles;
 using tesisproject.backend.Services.Unified.Interfaces;
@@ -86,6 +88,8 @@ public sealed class UnifiedRegistrationMatrixService : IUnifiedRegistrationMatri
         var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: true, ct);
         if (matrix is null) return NotFound();
         if (!IsDraft(matrix)) return Locked<RegistrationMatrixDetailDto>();
+        if (matrix.Rows.Count >= 250)
+            return ServiceResult<RegistrationMatrixDetailDto>.Fail("Cada matriz admite hasta 250 filas.", ErrorType.Validation, "ARTICLES_MATRIX_TOO_LARGE");
 
         matrix.Rows.Add(new RegistrationMatrixRow
         {
@@ -103,13 +107,22 @@ public sealed class UnifiedRegistrationMatrixService : IUnifiedRegistrationMatri
         var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: true, ct);
         if (matrix is null) return NotFound();
         if (!IsDraft(matrix)) return Locked<RegistrationMatrixDetailDto>();
-        if (!matrix.Columns.Any(x => x.FieldId == request.FieldId))
+        var column = matrix.Columns.FirstOrDefault(x => x.FieldId == request.FieldId);
+        if (column is null)
             return ServiceResult<RegistrationMatrixDetailDto>.Fail("El campo seleccionado no pertenece a la matriz.", ErrorType.Validation, "ARTICLES_MATRIX_FIELD_NOT_ALLOWED");
 
         var row = matrix.Rows.FirstOrDefault(x => x.RegistrationMatrixRowId == rowId);
         if (row is null) return NotFound();
 
         var cleaned = string.IsNullOrWhiteSpace(request.RawValue) ? null : request.RawValue.Trim();
+        var maxLength = column.Field?.FieldKey switch
+        {
+            "Doi" => 20,
+            "Email" => 30,
+            _ => Math.Clamp(column.Field?.MaxLength ?? 4000, 1, 4000)
+        };
+        if (cleaned?.Length > maxLength)
+            return ServiceResult<RegistrationMatrixDetailDto>.Fail($"{column.Field?.FieldLabel ?? "El campo"} admite hasta {maxLength} caracteres.", ErrorType.Validation, "ARTICLES_MATRIX_VALUE_TOO_LONG");
         var cell = row.Cells.FirstOrDefault(x => x.FieldId == request.FieldId);
         if (cell is null && cleaned is not null)
         {
@@ -146,94 +159,143 @@ public sealed class UnifiedRegistrationMatrixService : IUnifiedRegistrationMatri
 
     public async Task<ServiceResult<RegistrationMatrixSubmissionResultDto>> SubmitToStagingAsync(int matrixId, SubmitRegistrationMatrixRequest request, string? ownerUserId, bool includeAll, CancellationToken ct = default)
     {
+        try
+        {
+            return await _uow.ExecuteInTransactionAsync(_ => SubmitToStagingCoreAsync(matrixId, request, ownerUserId, includeAll, ct), ct);
+        }
+        catch (DbUpdateException) when (!ct.IsCancellationRequested)
+        {
+            var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: false, ct);
+            var batch = matrix is null ? null : await _uow.ArticleStagingBatches.Query()
+                .FirstOrDefaultAsync(x => x.RegistrationMatrixId == matrixId, ct);
+            if (matrix is not null && batch is not null)
+                return ServiceResult<RegistrationMatrixSubmissionResultDto>.Ok(MapSubmission(matrix, batch, "La matriz ya se encontraba en staging."));
+            throw;
+        }
+    }
+
+    private async Task<ServiceResult<RegistrationMatrixSubmissionResultDto>> SubmitToStagingCoreAsync(int matrixId, SubmitRegistrationMatrixRequest request, string? ownerUserId, bool includeAll, CancellationToken ct)
+    {
         var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: true, ct);
         if (matrix is null)
             return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("No se encontro la matriz solicitada.", ErrorType.NotFound, "ARTICLES_MATRIX_NOT_FOUND");
-
+        if (matrix.Status.Equals("Staged", StringComparison.OrdinalIgnoreCase))
+        {
+            var existing = await _uow.ArticleStagingBatches.Query().FirstOrDefaultAsync(x =>
+                x.RegistrationMatrixId == matrixId, ct);
+            return existing is null
+                ? ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("La matriz ya fue enviada pero no se encontro el lote.", ErrorType.Conflict, "ARTICLES_MATRIX_STAGING_INCONSISTENT")
+                : ServiceResult<RegistrationMatrixSubmissionResultDto>.Ok(MapSubmission(matrix, existing, "La matriz ya se encontraba en staging."));
+        }
         if (!IsDraft(matrix))
-            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("La matriz ya fue enviada y no puede reenviarse desde esta vista.", ErrorType.Validation, "ARTICLES_MATRIX_ALREADY_SUBMITTED");
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("Solo se pueden enviar matrices en borrador.", ErrorType.Validation, "ARTICLES_MATRIX_LOCKED");
+        if (matrix.Rows.Count == 0 || matrix.Columns.Count == 0)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("Agrega al menos una fila y un campo antes de enviar.", ErrorType.Validation, "ARTICLES_MATRIX_EMPTY");
+        if (matrix.Rows.Count > 250)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("Cada lote admite hasta 250 filas. Divide la captura en varias matrices.", ErrorType.Validation, "ARTICLES_MATRIX_TOO_LARGE");
+        if (string.IsNullOrWhiteSpace(matrix.CreatedByUserId))
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("La matriz requiere un propietario valido.", ErrorType.Forbidden, "ARTICLES_MATRIX_OWNER_REQUIRED");
+        if (request is null || !request.ValidateAfterCreate || request.UseAuthorWorkflow)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail(
+                "Este envío solo prepara un lote validado. El envío a revisión todavía no está disponible desde la matriz.",
+                ErrorType.Validation, "ARTICLES_MATRIX_WORKFLOW_NOT_AVAILABLE");
 
-        if (matrix.Rows.Count == 0)
-            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("Agrega al menos una fila antes de enviar la matriz a revision.", ErrorType.Validation, "ARTICLES_MATRIX_ROWS_REQUIRED");
+        var groups = request.RowParticipants ?? [];
+        var rowIds = matrix.Rows.Select(x => x.RegistrationMatrixRowId).ToHashSet();
+        if (groups.Count > matrix.Rows.Count || groups.Select(x => x.RegistrationMatrixRowId).Distinct().Count() != groups.Count ||
+            groups.Any(g => !rowIds.Contains(g.RegistrationMatrixRowId) || g.Participants is null || g.Participants.Count > 20 ||
+                g.Participants.Any(p => p.Cells is null || p.Cells.Count > 30 || p.Cells.Any(c => c.FieldId <= 0 || c.RawValue?.Length > 4000))))
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail("Los participantes enviados no corresponden a las filas de esta matriz.", ErrorType.Validation, "ARTICLES_MATRIX_PARTICIPANTS_INVALID");
 
-        var missingRequired = matrix.Rows.Sum(row => matrix.Columns.Count(column =>
-            column.Field?.IsRequired == true &&
-            string.IsNullOrWhiteSpace(row.Cells.FirstOrDefault(cell => cell.FieldId == column.FieldId)?.RawValue)));
-        if (missingRequired > 0)
-            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail($"Completa {missingRequired} campo(s) obligatorio(s) antes de enviar la matriz.", ErrorType.Validation, "ARTICLES_MATRIX_REQUIRED_VALUES_MISSING");
+        var doiFieldId = matrix.Columns.FirstOrDefault(c => c.Field?.EntityName == "Article" &&
+            string.Equals(c.Field.FieldKey, "Doi", StringComparison.OrdinalIgnoreCase))?.FieldId;
+        var candidateDois = doiFieldId is null ? [] : matrix.Rows.SelectMany(r => r.Cells)
+            .Where(c => c.FieldId == doiFieldId).Select(c => ArticleMatrixStagingPlanner.NormalizeDoi(c.RawValue))
+            .Where(x => x is { Length: <= 20 }).Cast<string>().Distinct().ToArray();
+        var doiVariants = candidateDois.SelectMany(doi => new[] { doi, $"doi:{doi}", $"https://doi.org/{doi}", $"http://doi.org/{doi}" }).ToArray();
+        var registeredDois = candidateDois.Length == 0 ? [] : (await _uow.ArticleReads.Query()
+            .Where(a => a.Doi != null && doiVariants.Contains(a.Doi.Trim().ToLower()))
+            .Select(a => a.Doi!).ToListAsync(ct))
+            .Select(ArticleMatrixStagingPlanner.NormalizeDoi).Where(x => x is not null).Cast<string>().ToArray();
+        var rows = ArticleMatrixStagingPlanner.BuildRows(matrix, registeredDois.ToHashSet(StringComparer.OrdinalIgnoreCase), groups);
+        if (rows.Any(x => Encoding.UTF8.GetByteCount(x.SnapshotJson) > 16_384) ||
+            rows.Sum(x => Encoding.UTF8.GetByteCount(x.SnapshotJson)) > 2_097_152)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail(
+                "El lote contiene demasiado texto. Reduce el contenido de las filas antes de enviarlo.",
+                ErrorType.Validation, "ARTICLES_MATRIX_SNAPSHOT_TOO_LARGE");
+        var invalidRows = rows.Where(x => x.Status == "Invalid").ToList();
+        if (invalidRows.Count > 0)
+            return ServiceResult<RegistrationMatrixSubmissionResultDto>.Fail(
+                $"Corrige {invalidRows.Count} fila(s) antes de enviar. Primera observacion: fila {invalidRows[0].RowNumber}: {invalidRows[0].ValidationMessage}",
+                ErrorType.Validation, "ARTICLES_MATRIX_STAGING_INVALID");
 
-        var now = DateTime.UtcNow;
-        matrix.Status = request.UseAuthorWorkflow ? "SubmittedToWorkflow" : "Submitted";
-        matrix.LastImportBatchId = matrix.RegistrationMatrixId;
-        matrix.UpdatedAt = now;
+        var batch = new ArticleStagingBatch
+        {
+            RegistrationMatrixId = matrixId,
+            CreatedByUserId = matrix.CreatedByUserId,
+            Status = "Staged",
+            TotalRows = rows.Count,
+            ReadyRows = rows.Count(x => x.Status == "Ready"),
+            DuplicateRows = rows.Count(x => x.Status == "Duplicate"),
+            InvalidRows = 0,
+            Rows = rows
+        };
+        await _uow.ArticleStagingBatches.AddAsync(batch, ct);
+        await _uow.SaveChangesAsync(ct);
+        matrix.Status = "Staged";
+        matrix.UpdatedAt = DateTime.UtcNow;
+        var statuses = rows.ToDictionary(x => x.RegistrationMatrixRowId, x => x.Status);
         foreach (var row in matrix.Rows)
         {
-            row.Status = "Submitted";
-            row.UpdatedAt = now;
+            row.Status = statuses[row.RegistrationMatrixRowId];
+            row.UpdatedAt = matrix.UpdatedAt;
         }
-
         await _uow.SaveChangesAsync(ct);
-        var detail = MapDetail(matrix);
-        var result = new RegistrationMatrixSubmissionResultDto
-        {
-            Message = request.UseAuthorWorkflow
-                ? "La matriz fue enviada a la bandeja de revision para continuar el flujo institucional."
-                : "La matriz fue marcada como enviada para revision.",
-            Matrix = detail,
-            BatchResult = BuildSubmissionBatchResult(detail, now)
-        };
-
-        return ServiceResult<RegistrationMatrixSubmissionResultDto>.Ok(result);
+        return ServiceResult<RegistrationMatrixSubmissionResultDto>.Ok(MapSubmission(matrix, batch,
+            $"Lote preparado: {batch.ReadyRows} fila(s) listas y {batch.DuplicateRows} DOI duplicado(s). Ningun articulo se registro aun."));
     }
 
-    private static BulkImportActionResultDto BuildSubmissionBatchResult(RegistrationMatrixDetailDto matrix, DateTime submittedAt)
+    public async Task<ServiceResult<BulkImportBatchSummaryDto>> GetStagingSummaryAsync(int matrixId, string? ownerUserId, bool includeAll, CancellationToken ct = default)
     {
-        var rows = matrix.Rows.Select(row => new BulkImportRowPreviewDto
-        {
-            ImportBatchRowId = row.RegistrationMatrixRowId,
-            RowNumber = row.RowNumber,
-            RowStatus = "Submitted",
-            Cells = row.Cells.Select(cell =>
-            {
-                var column = matrix.Columns.FirstOrDefault(x => x.FieldId == cell.FieldId);
-                return new BulkImportRowCellDto
-                {
-                    FieldId = cell.FieldId,
-                    EntityName = column?.EntityName ?? string.Empty,
-                    FieldKey = column?.FieldKey ?? string.Empty,
-                    FieldLabel = column?.FieldLabel ?? string.Empty,
-                    RawValue = cell.RawValue,
-                    NormalizedValue = cell.RawValue,
-                    IsValid = true,
-                    ValueType = column?.DataType ?? string.Empty
-                };
-            }).ToList()
-        }).ToList();
-
-        return new BulkImportActionResultDto
-        {
-            Message = "Borrador enviado a revision.",
-            InsertedRows = matrix.Rows.Count,
-            Batch = new BulkImportBatchDetailDto
-            {
-                Summary = new BulkImportBatchSummaryDto
-                {
-                    ImportBatchId = matrix.Summary.LastImportBatchId ?? matrix.Summary.RegistrationMatrixId,
-                    BatchCode = $"MATRIX-{matrix.Summary.RegistrationMatrixId:D6}",
-                    SourceType = "RegistrationMatrix",
-                    EntityName = matrix.Summary.EntityName,
-                    TotalRows = matrix.Rows.Count,
-                    SuccessfulRows = matrix.Rows.Count,
-                    ValidRows = matrix.Rows.Count,
-                    Status = matrix.Summary.Status,
-                    StartedAt = submittedAt,
-                    FinishedAt = submittedAt,
-                    Notes = matrix.Notes
-                },
-                Rows = rows
-            }
-        };
+        var matrix = await FindMatrixAsync(matrixId, ownerUserId, includeAll, asTracking: false, ct);
+        if (matrix is null || !matrix.Status.Equals("Staged", StringComparison.OrdinalIgnoreCase))
+            return ServiceResult<BulkImportBatchSummaryDto>.Fail("No se encontro un lote para esta matriz.", ErrorType.NotFound, "ARTICLES_STAGING_NOT_FOUND");
+        var batch = await _uow.ArticleStagingBatches.Query().FirstOrDefaultAsync(x =>
+            x.RegistrationMatrixId == matrixId, ct);
+        return batch is null
+            ? ServiceResult<BulkImportBatchSummaryDto>.Fail("No se encontro un lote para esta matriz.", ErrorType.NotFound, "ARTICLES_STAGING_NOT_FOUND")
+            : ServiceResult<BulkImportBatchSummaryDto>.Ok(MapBatchSummary(batch));
     }
+
+    private static RegistrationMatrixSubmissionResultDto MapSubmission(RegistrationMatrix matrix, ArticleStagingBatch batch, string message) => new()
+    {
+        Message = message,
+        Matrix = MapDetail(matrix),
+        BatchResult = new BulkImportActionResultDto
+        {
+            Message = message,
+            Batch = new BulkImportBatchDetailDto { Summary = MapBatchSummary(batch) },
+            InsertedRows = 0,
+            DuplicateRows = batch.DuplicateRows,
+            FailedRows = batch.InvalidRows
+        }
+    };
+
+    private static BulkImportBatchSummaryDto MapBatchSummary(ArticleStagingBatch batch) => new()
+    {
+        ImportBatchId = batch.ArticleStagingBatchId,
+        BatchCode = $"MATRIX-{batch.ArticleStagingBatchId:D6}",
+        SourceType = "Matrix",
+        EntityName = "Article",
+        SourceReference = batch.RegistrationMatrixId.ToString(),
+        TotalRows = batch.TotalRows,
+        ValidRows = batch.ReadyRows,
+        DuplicateRows = batch.DuplicateRows,
+        ErrorRows = batch.InvalidRows,
+        Status = batch.Status,
+        StartedAt = batch.CreatedAt,
+        CreatedBy = batch.CreatedByUserId
+    };
 
     private async Task<List<FieldCatalogEntry>> LoadEligibleFieldsAsync(IReadOnlyCollection<int> fieldIds, CancellationToken ct)
     {

@@ -50,6 +50,7 @@ namespace tesisproject.shared.DTOs.Imports
         public int TotalRows { get; set; }
         public int SuccessfulRows { get; set; }
         public int ErrorRows { get; set; }
+        public int DuplicateRows { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime StartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }

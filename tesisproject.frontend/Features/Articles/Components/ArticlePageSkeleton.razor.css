@@ -1,0 +1,75 @@
+.article-page-skeleton {
+    display: grid;
+    gap: 1rem;
+    width: 100%;
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+}
+
+.article-page-skeleton__metrics,
+.article-page-skeleton__form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.article-page-skeleton__form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.article-page-skeleton__metric,
+.article-page-skeleton__field,
+.article-page-skeleton__row,
+.article-page-skeleton__chart,
+.article-page-skeleton__summary {
+    display: grid;
+    align-content: start;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+
+.article-page-skeleton__rows {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.article-page-skeleton__line,
+.article-page-skeleton__chart-body {
+    height: 0.8rem;
+    border-radius: 4px;
+    background: var(--color-skeleton);
+    animation: article-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.article-page-skeleton__line--title { width: 45%; height: 1.3rem; }
+.article-page-skeleton__line--medium { width: 65%; }
+.article-page-skeleton__line--short { width: 35%; }
+.article-page-skeleton__line--label { width: 48%; }
+.article-page-skeleton__line--value { width: 58%; height: 1.5rem; }
+.article-page-skeleton__line--input { width: 100%; height: 2.5rem; }
+.article-page-skeleton__chart-body { width: 100%; height: 10rem; }
+
+@keyframes article-skeleton-pulse {
+    50% { opacity: 0.48; }
+}
+
+@media (max-width: 900px) {
+    .article-page-skeleton__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+    .article-page-skeleton { padding: 0.75rem; }
+    .article-page-skeleton__metrics,
+    .article-page-skeleton__form { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .article-page-skeleton__line,
+    .article-page-skeleton__chart-body { animation: none; }
+}

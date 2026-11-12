@@ -112,7 +112,7 @@ foreach (var type in classes)
             $"Legacy persistence dependency: {type.Name} -> {signature}");
     }
 }
-Check(typeof(IUnifiedUnitOfWork).GetProperties().Length == 58, "Unified UoW contract includes 58 repositories with Articles.");
+Check(typeof(IUnifiedUnitOfWork).GetProperties().Length == 59, "Unified UoW contract includes 59 repositories with Article staging.");
 Check(typeof(IUnifiedProductService).GetMethod("CreateAsync") is not null && typeof(IUnifiedProductService).GetMethod("GetByIdAsync") is not null,
     "Product author-dependent methods are now operational.");
 var matrixColumnContract = new RegistrationMatrixColumnDto
@@ -147,6 +147,9 @@ ProjectMatrixDateParsingTests.Run(Check);
 await AdministrationInfrastructureTests.RunAsync(Check);
 await DwEtlOperationTrackingTests.RunAsync(Check);
 await ArticlesDwSourceTests.RunAsync(Check);
+await ArticleExternalSearchTests.RunAsync(Check);
+ArticleMatrixStagingTests.Run(Check);
+await ArticleMatrixSubmissionTests.RunAsync(Check);
 ArticlesDwModelTests.Run(Check);
 DwContextIsolationTests.Run(Check);
 await ArticlesDwEtlTests.RunAsync(Check);

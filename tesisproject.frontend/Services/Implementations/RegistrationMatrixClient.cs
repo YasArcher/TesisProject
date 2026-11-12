@@ -1,5 +1,6 @@
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.MassRegistration;
+using tesisproject.shared.DTOs.Imports;
 
 namespace tesisproject.frontend.Services.Implementations;
 
@@ -28,4 +29,7 @@ public sealed class RegistrationMatrixClient : IRegistrationMatrixClient
 
     public Task<HttpResponseWrapper<RegistrationMatrixSubmissionResultDto?>> SubmitToStagingAsync(int matrixId, SubmitRegistrationMatrixRequest request, CancellationToken ct = default)
         => _api.PostAsync<SubmitRegistrationMatrixRequest, RegistrationMatrixSubmissionResultDto>($"articles/registration-matrices/{matrixId}/submit", request, ct);
+
+    public Task<HttpResponseWrapper<BulkImportBatchSummaryDto?>> GetStagingSummaryAsync(int matrixId, CancellationToken ct = default)
+        => _api.GetAsync<BulkImportBatchSummaryDto>($"articles/registration-matrices/{matrixId}/staging", ct);
 }

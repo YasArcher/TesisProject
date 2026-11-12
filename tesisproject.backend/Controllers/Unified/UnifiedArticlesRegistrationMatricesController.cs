@@ -6,6 +6,7 @@ using tesisproject.backend.Options;
 using tesisproject.backend.Services.Unified.Interfaces;
 using tesisproject.shared.Auth.Articles;
 using tesisproject.shared.DTOs.MassRegistration;
+using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers.Unified;
@@ -79,6 +80,14 @@ public sealed class UnifiedArticlesRegistrationMatricesController : ControllerBa
     {
         if (!_options.Enabled) return ModuleUnavailable<RegistrationMatrixSubmissionResultDto>();
         return (await _service.SubmitToStagingAsync(matrixId, request, _user.OwnerReference, includeAll: true, ct)).ToActionResult();
+    }
+
+    [HttpGet("{matrixId:int}/staging")]
+    [Authorize(Policy = ArticlePolicyNames.AuthorSubmission)]
+    public async Task<ActionResult<ServiceResult<BulkImportBatchSummaryDto>>> GetStagingSummary(int matrixId, CancellationToken ct = default)
+    {
+        if (!_options.Enabled) return ModuleUnavailable<BulkImportBatchSummaryDto>();
+        return (await _service.GetStagingSummaryAsync(matrixId, _user.OwnerReference, includeAll: true, ct)).ToActionResult();
     }
 
     private ActionResult<ServiceResult<T>> ModuleUnavailable<T>()

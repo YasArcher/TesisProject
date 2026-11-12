@@ -6,7 +6,7 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @attribute [Authorize]
-@inject IArticleClientService ArticlesClient
+@inject IArticleAnalyticsClientService AnalyticsClient
 @inject NavigationManager Nav
 
 <PageTitle>Inteligencia institucional | Plataforma integrada</PageTitle>
@@ -17,10 +17,10 @@
             <div class="articles-intelligence-hero-band px-5 py-5 text-white md:px-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Decision institucional</p>
+                        <p class="text-xs font-bold uppercase tracking-wide text-accent">Decision institucional</p>
                         <h1 class="mt-2 text-2xl font-bold md:text-3xl">Inteligencia artificial</h1>
-                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                            Vista de prediccion y recomendacion construida con la muestra de articulos disponible para apoyar decisiones institucionales.
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-on-dark/80">
+                            Indicadores y recomendaciones calculados sobre todos los articulos del Data Warehouse.
                         </p>
                     </div>
                     <div class="articles-intelligence-score">
@@ -51,10 +51,7 @@
 
         @if (_loading)
         {
-            <section class="articles-intelligence-panel rounded-lg border border-border bg-background p-8 text-center shadow-sm">
-                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
-                <p class="mt-3 text-sm text-muted">Analizando datos disponibles...</p>
-            </section>
+            <ArticlePageSkeleton Label="Analizando datos disponibles" Variant="dashboard" />
         }
         else if (!string.IsNullOrWhiteSpace(_error))
         {
@@ -86,7 +83,7 @@
                                 <h2 class="mt-1 text-lg font-bold text-foreground">Produccion estimada</h2>
                                 <p class="mt-1 text-sm text-muted">Proyeccion simple basada en tendencia por anio de publicacion.</p>
                             </div>
-                            <span class="articles-intelligence-pill">@ForecastConfidence% confianza</span>
+                            <span class="articles-intelligence-pill">Estimacion orientativa</span>
                         </div>
 
                         <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -189,46 +186,38 @@
 </div>
 
 @code {
-    private ArticlePageDto _page = new();
+    private ArticleAnalyticsSummaryDto _report = new();
     private string? _search;
     private int? _year;
     private bool _loading = true;
     private string? _error;
 
-    private IReadOnlyList<TopRow> YearRows => BuildRows(_page.Items
-        .Where(x => x.Year.HasValue)
-        .GroupBy(x => x.Year!.Value.ToString())
-        .OrderBy(x => x.Key));
+    private IReadOnlyList<TopRow> YearRows => BuildRows(_report.ByPublicationYear);
 
-    private IReadOnlyList<TopRow> FacultyRows => BuildRows(_page.Items
-        .GroupBy(x => CleanLabel(x.FacultyName, "Sin facultad"))
-        .OrderByDescending(x => x.Count()));
+    private IReadOnlyList<TopRow> FacultyRows => BuildRows(_report.ByFaculty);
 
-    private IReadOnlyList<TopRow> IndexingRows => BuildRows(_page.Items
-        .GroupBy(x => CleanLabel(x.IndexingSourceName, "Sin indexacion"))
-        .OrderByDescending(x => x.Count()));
+    private IReadOnlyList<TopRow> IndexingRows => BuildRows(_report.ByIndexingDatabase);
 
-    private int Total => _page.Items.Count;
-    private double DoiRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Doi)));
-    private double AuthorRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.AuthorsSummary) || x.Participants is { Count: > 0 }));
-    private double IndexingRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.IndexingSourceName)));
-    private double FacultyRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.FacultyName)));
-    private double OpenAccessRate => Ratio(_page.Items.Count(x => x.IsOpenAccess));
+    private int Total => _report.TotalArticles;
+    private double DoiRate => Ratio(_report.WithDoi);
+    private double AuthorRate => Ratio(_report.WithAuthors);
+    private double IndexingRate => Ratio(_report.WithIndexing);
+    private double FacultyRate => Ratio(_report.WithFaculty);
+    private double OpenAccessRate => Ratio(_report.OpenAccess);
 
     private int ReadinessScore => (int)Math.Round(
         VolumeScore * 0.30 + AuthorRate * 100 * 0.22 + IndexingRate * 100 * 0.20 + DoiRate * 100 * 0.14 + FacultyRate * 100 * 0.14);
 
     private int VolumeScore => Math.Min(100, Total * 2);
-    private int ForecastConfidence => Math.Clamp((ReadinessScore + (YearRows.Count * 8)) / 2, 20, 95);
     private int ForecastValue => CalculateForecast();
     private string ReadinessLabel => ReadinessScore >= 75 ? "Base solida" : ReadinessScore >= 50 ? "Base en consolidacion" : "Requiere mas datos";
     private string ForecastText => YearRows.Count >= 2
-        ? "La estimacion usa variacion reciente de la muestra y debe contrastarse con reportería consolidada."
+        ? "La estimacion usa la variacion reciente del historial completo del DW y debe contrastarse con reportería."
         : "La estimacion es orientativa porque faltan mas periodos historicos.";
 
     private IReadOnlyList<KpiItem> Kpis =>
     [
-        new("Muestra", Total.ToString("N0"), $"De {_page.TotalCount:N0} registros consultables"),
+        new("Articulos", Total.ToString("N0"), "Total del DW con filtros"),
         new("Con DOI", FormatPercent(DoiRate), "Identificacion bibliografica"),
         new("Con autores", FormatPercent(AuthorRate), "Trazabilidad de autoria"),
         new("Open Access", FormatPercent(OpenAccessRate), "Acceso abierto informado")
@@ -245,7 +234,7 @@
     private IReadOnlyList<RecommendationItem> Recommendations =>
     [
         new("Alta", "Completar identificadores", DoiRate >= 0.85 ? "La cobertura DOI es adecuada; mantener validacion en nuevos registros." : "Prioriza registros sin DOI para mejorar deduplicacion, busqueda y analisis predictivo."),
-        new("Media", "Fortalecer indexacion", IndexingRate >= 0.80 ? "La indexacion tiene buena cobertura en la muestra." : "Revisa articulos sin fuente de indexacion para mejorar tableros y recomendaciones."),
+        new("Media", "Fortalecer indexacion", IndexingRate >= 0.80 ? "La indexacion tiene buena cobertura en los registros filtrados." : "Revisa articulos sin fuente de indexacion para mejorar tableros y recomendaciones."),
         new("Media", "Revisar facultades", FacultyRate >= 0.80 ? "La asignacion por facultad permite segmentar decisiones." : "Completa facultades para comparar produccion cientifica por unidad academica."),
         new("Explorar", "Campo con mayor movimiento", $"El segmento mas visible es {TopLabel(FacultyRows)}; puede servir como punto inicial para analisis de crecimiento.")
     ];
@@ -253,7 +242,7 @@
     private IReadOnlyList<string> DecisionSignals =>
     [
         $"Preparacion IA actual: {ReadinessScore}% ({ReadinessLabel}).",
-        $"La facultad dominante en la muestra es {TopLabel(FacultyRows)}.",
+        $"La facultad con mayor presencia es {TopLabel(FacultyRows)}.",
         $"La indexacion mas frecuente es {TopLabel(IndexingRows)}.",
         $"La produccion estimada para el siguiente periodo es {ForecastValue:N0} articulo(s)."
     ];
@@ -265,18 +254,10 @@
         _loading = true;
         _error = null;
 
-        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
-        {
-            Search = _search,
-            Year = ToShortYear(_year),
-            Page = 1,
-            PageSize = 100,
-            SortBy = "Year",
-            SortDesc = true
-        });
+        var result = await AnalyticsClient.GetSummaryAsync(_year, _search);
 
         if (result.Success && result.Data is not null)
-            _page = result.Data;
+            _report = result.Data;
         else
             _error = FriendlyError(result.ErrorCode, result.Message);
 
@@ -315,27 +296,18 @@
         return Math.Max(0, last + trend);
     }
 
-    private static IReadOnlyList<TopRow> BuildRows(IEnumerable<IGrouping<string, ArticleListItemDto>> groups)
+    private IReadOnlyList<TopRow> BuildRows(IEnumerable<ArticleAnalyticsGroupDto> groups)
     {
         var ordered = groups
-            .Select(group => new { group.Key, Count = group.Count() })
-            .Where(x => !string.IsNullOrWhiteSpace(x.Key))
             .OrderByDescending(x => x.Count)
-            .ThenBy(x => x.Key)
-            .Take(8)
+            .ThenBy(x => x.Label)
             .ToList();
 
         var max = Math.Max(1, ordered.Count == 0 ? 1 : ordered.Max(x => x.Count));
-        return ordered.Select(x => new TopRow(x.Key, x.Count, x.Count / (double)max)).ToList();
+        return ordered.Select(x => new TopRow(x.Label, x.Count, x.Count / (double)max)).ToList();
     }
 
     private double Ratio(int count) => Total == 0 ? 0 : count / (double)Total;
-
-    private static short? ToShortYear(int? year)
-        => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
-
-    private static string CleanLabel(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 
     private static string FormatPercent(double value)
         => value.ToString("P0");

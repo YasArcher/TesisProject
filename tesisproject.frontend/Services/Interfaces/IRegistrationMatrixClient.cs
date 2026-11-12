@@ -1,4 +1,5 @@
 using tesisproject.shared.DTOs.MassRegistration;
+using tesisproject.shared.DTOs.Imports;
 
 namespace tesisproject.frontend.Services.Interfaces;
 
@@ -11,4 +12,5 @@ public interface IRegistrationMatrixClient
     Task<HttpResponseWrapper<RegistrationMatrixDetailDto?>> UpdateCellAsync(int matrixId, int rowId, UpdateRegistrationMatrixCellRequest request, CancellationToken ct = default);
     Task<HttpResponseWrapper<RegistrationMatrixDeleteResultDto?>> DeleteMatrixAsync(int matrixId, CancellationToken ct = default);
     Task<HttpResponseWrapper<RegistrationMatrixSubmissionResultDto?>> SubmitToStagingAsync(int matrixId, SubmitRegistrationMatrixRequest request, CancellationToken ct = default);
+    Task<HttpResponseWrapper<BulkImportBatchSummaryDto?>> GetStagingSummaryAsync(int matrixId, CancellationToken ct = default);
 }

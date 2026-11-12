@@ -1,13 +1,13 @@
 .articles-module-page {
-    --articles-ink: #12343b;
-    --articles-teal: #2f5f5b;
-    --articles-green: #3f6f5f;
-    --articles-mint: #edf7f3;
-    --articles-gold: #d8b84f;
-    --articles-border: rgba(47, 95, 91, 0.16);
-    --articles-muted: #64726f;
-    --articles-panel: rgba(255, 255, 255, 0.96);
-    background: linear-gradient(180deg, #f5faf8 0%, #eef6f2 48%, #f7faf8 100%);
+    --articles-ink: var(--color-foreground);
+    --articles-teal: var(--color-primary);
+    --articles-green: var(--color-shell-soft);
+    --articles-mint: var(--color-page-bg);
+    --articles-gold: var(--color-accent);
+    --articles-border: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    --articles-muted: var(--color-muted);
+    --articles-panel: color-mix(in srgb, var(--color-surface) 96%, transparent);
+    background: var(--color-page-bg);
     color: var(--articles-ink);
 }
 
@@ -18,11 +18,11 @@
 .articles-module-page header:first-of-type {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(216, 240, 228, 0.22) !important;
+    border: 1px solid color-mix(in srgb, var(--color-border) 22%, transparent) !important;
     border-radius: 8px;
-    background: linear-gradient(135deg, #12343b 0%, #2f5f5b 58%, #3f6f5f 100%);
+    background: linear-gradient(135deg, var(--color-foreground) 0%, var(--color-primary) 58%, var(--color-shell-soft) 100%);
     padding: 1.25rem;
-    box-shadow: 0 20px 42px rgba(18, 52, 59, 0.18);
+    box-shadow: 0 20px 42px color-mix(in srgb, var(--color-foreground) 18%, transparent);
 }
 
 .articles-module-page header:first-of-type p,
@@ -32,30 +32,30 @@
 }
 
 .articles-module-page header:first-of-type p:first-child {
-    color: rgba(255, 255, 255, 0.72) !important;
+    color: color-mix(in srgb, var(--color-surface) 72%, transparent) !important;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
 .articles-module-page header:first-of-type h1 {
-    color: #ffffff !important;
+    color: var(--color-surface) !important;
     font-size: clamp(1.35rem, 2vw, 1.85rem);
 }
 
 .articles-module-page header:first-of-type p:not(:first-child) {
-    color: rgba(255, 255, 255, 0.82) !important;
+    color: color-mix(in srgb, var(--color-surface) 82%, transparent) !important;
     line-height: 1.65;
 }
 
 .articles-module-page header:first-of-type button {
-    border-color: rgba(255, 255, 255, 0.24) !important;
-    background: rgba(255, 255, 255, 0.12) !important;
-    color: #ffffff !important;
+    border-color: color-mix(in srgb, var(--color-surface) 24%, transparent) !important;
+    background: color-mix(in srgb, var(--color-surface) 12%, transparent) !important;
+    color: var(--color-surface) !important;
     backdrop-filter: blur(8px);
 }
 
 .articles-module-page header:first-of-type button:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.2) !important;
+    background: color-mix(in srgb, var(--color-surface) 20%, transparent) !important;
     transform: translateY(-1px);
 }
 
@@ -69,7 +69,7 @@
     border-color: var(--articles-border) !important;
     border-radius: 8px !important;
     background: var(--articles-panel) !important;
-    box-shadow: 0 12px 26px rgba(18, 52, 59, 0.07);
+    box-shadow: 0 12px 26px color-mix(in srgb, var(--color-foreground) 7%, transparent);
 }
 
 .articles-metric-card::before {
@@ -95,17 +95,17 @@
 .articles-matrix-sidebar {
     border-color: var(--articles-border) !important;
     border-radius: 8px !important;
-    background: rgba(255, 255, 255, 0.97) !important;
-    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+    background: color-mix(in srgb, var(--color-surface) 97%, transparent) !important;
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
 .articles-module-page .articles-form-stack > section > div:first-child,
 .articles-workspace-panel > div:first-child {
-    border-color: rgba(47, 95, 91, 0.14) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
 }
 
 .articles-tabs {
-    background: linear-gradient(135deg, rgba(237, 247, 243, 0.96), rgba(255, 255, 255, 0.96));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-page-bg) 96%, transparent), color-mix(in srgb, var(--color-surface) 96%, transparent));
 }
 
 .articles-tab {
@@ -116,13 +116,13 @@
 .articles-tab--active {
     border-color: transparent !important;
     background: linear-gradient(135deg, var(--articles-ink), var(--articles-teal)) !important;
-    color: #ffffff !important;
+    color: var(--color-surface) !important;
 }
 
 .articles-module-page input,
 .articles-module-page select,
 .articles-module-page textarea {
-    border-color: rgba(47, 95, 91, 0.18) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 18%, transparent) !important;
     border-radius: 8px !important;
     color: var(--articles-ink) !important;
 }
@@ -130,13 +130,13 @@
 .articles-module-page input:focus,
 .articles-module-page select:focus,
 .articles-module-page textarea:focus {
-    border-color: rgba(47, 95, 91, 0.76) !important;
-    box-shadow: 0 0 0 3px rgba(63, 111, 95, 0.14);
+    border-color: color-mix(in srgb, var(--color-primary) 76%, transparent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-shell-soft) 14%, transparent);
     outline: none;
 }
 
 .articles-module-page table thead {
-    background: linear-gradient(135deg, rgba(237, 247, 243, 0.98), rgba(255, 255, 255, 0.98)) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-page-bg) 98%, transparent), color-mix(in srgb, var(--color-surface) 98%, transparent)) !important;
 }
 
 .articles-module-page table th {
@@ -145,7 +145,7 @@
 }
 
 .articles-module-page table tbody tr:hover {
-    background: rgba(237, 247, 243, 0.7) !important;
+    background: color-mix(in srgb, var(--color-page-bg) 70%, transparent) !important;
 }
 
 .articles-module-page button {
@@ -185,7 +185,7 @@
 }
 
 .articles-matrix-page .articles-matrix-sidebar button {
-    border-color: rgba(47, 95, 91, 0.14) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
 }
 
 .articles-matrix-page .articles-matrix-sidebar button:hover,
@@ -240,17 +240,17 @@
 }
 .articles-matrix-review {
     border-radius: 8px !important;
-    box-shadow: 0 10px 24px rgba(18, 52, 59, 0.06);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--color-foreground) 6%, transparent);
 }
 
 .articles-matrix-review--ready {
-    border-color: rgba(63, 111, 95, 0.24) !important;
-    background: linear-gradient(135deg, rgba(237, 247, 243, 0.96), rgba(255, 255, 255, 0.94));
+    border-color: color-mix(in srgb, var(--color-shell-soft) 24%, transparent) !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-page-bg) 96%, transparent), color-mix(in srgb, var(--color-surface) 94%, transparent));
     color: var(--articles-ink);
 }
 
 .articles-matrix-review--warning {
-    border-color: rgba(216, 184, 79, 0.44) !important;
-    background: linear-gradient(135deg, rgba(255, 248, 224, 0.96), rgba(255, 255, 255, 0.94));
+    border-color: color-mix(in srgb, var(--color-accent) 44%, transparent) !important;
+    background: linear-gradient(135deg, rgba(255, 248, 224, 0.96), color-mix(in srgb, var(--color-surface) 94%, transparent));
     color: #6f5514;
 }

@@ -3,16 +3,22 @@
 
 /* COLORES BASE DE TEMAS - SIMPLIFICADOS */
 :root {
-    --color-background: #f9fafb;
-    --color-foreground: #111827;
-    --color-primary: #2563eb;
-    --color-secondary: #10b981;
-    --color-accent: #f59e0b;
-    --color-border: #d1d5db;
+    --color-background: #ffffff;
+    --color-foreground: #121212;
+    --color-primary: #334155;
+    --color-secondary: #2f5f5b;
+    --color-accent: #d8b84f;
+    --color-border: color-mix(in srgb, #64748b 28%, #ffffff);
     --color-error: #ef4444;
-    --color-muted: #6b7280;
-    --color-page-bg: #E3E2E1;
-    --color-footer-text: #999999;
+    --color-muted: #64748b;
+    --color-page-bg: #f1f5f9;
+    --color-footer-text: #64748b;
+    --color-shell: #121212;
+    --color-shell-raised: #1f2937;
+    --color-shell-soft: #334155;
+    --color-surface: #ffffff;
+    --color-on-dark: #f1f5f9;
+    --color-skeleton: color-mix(in srgb, #64748b 18%, #f1f5f9);
 }
 
 .dark {
@@ -55,17 +61,23 @@
 }
 
 .institucional {
-    --color-background: #E3E2E1;
-    --color-foreground: #111827;
-    --color-primary: #7A1E19;
-    --color-secondary: #6e6e6e;
-    --color-accent: #999999;
-    --color-border: #d1d5db;
+    --color-background: #ffffff;
+    --color-foreground: #121212;
+    --color-primary: #334155;
+    --color-secondary: #2f5f5b;
+    --color-accent: #d8b84f;
+    --color-border: color-mix(in srgb, #64748b 28%, #ffffff);
     --color-error: #991b1b;
-    --color-muted: #6b7280;
+    --color-muted: #64748b;
     --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    --color-page-bg: #E3E2E1;
-    --color-footer-text: #999999;
+    --color-page-bg: #f1f5f9;
+    --color-footer-text: #64748b;
+    --color-shell: #121212;
+    --color-shell-raised: #1f2937;
+    --color-shell-soft: #334155;
+    --color-surface: #ffffff;
+    --color-on-dark: #f1f5f9;
+    --color-skeleton: color-mix(in srgb, #64748b 18%, #f1f5f9);
 }
 
 /* CONFIGURACIÓN TAILWIND */
@@ -80,6 +92,12 @@
     --color-muted: var(--color-muted);
     --color-page-bg: var(--color-page-bg);
     --color-footer-text: var(--color-footer-text);
+    --color-shell: var(--color-shell);
+    --color-shell-raised: var(--color-shell-raised);
+    --color-shell-soft: var(--color-shell-soft);
+    --color-surface: var(--color-surface);
+    --color-on-dark: var(--color-on-dark);
+    --color-skeleton: var(--color-skeleton);
     --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 

@@ -1,11 +1,11 @@
 .articles-ingestion-page {
-    --articles-ink: #12343b;
-    --articles-teal: #2f5f5b;
-    --articles-mint: #edf7f3;
-    --articles-gold: #d8b84f;
-    --articles-muted: #64726f;
-    --articles-border: rgba(47, 95, 91, 0.16);
-    background: linear-gradient(180deg, #f5faf8 0%, #eef6f2 52%, #f7faf8 100%);
+    --articles-ink: var(--color-foreground);
+    --articles-teal: var(--color-primary);
+    --articles-mint: var(--color-page-bg);
+    --articles-gold: var(--color-accent);
+    --articles-muted: var(--color-muted);
+    --articles-border: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    background: var(--color-page-bg);
     color: var(--articles-ink);
 }
 
@@ -13,20 +13,20 @@
 .articles-ingestion-panel {
     border-color: var(--articles-border) !important;
     border-radius: 8px !important;
-    background: rgba(255, 255, 255, 0.97) !important;
-    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+    background: color-mix(in srgb, var(--color-surface) 97%, transparent) !important;
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
 .articles-ingestion-hero-band {
     border-radius: 8px 8px 0 0;
-    background: linear-gradient(135deg, #0f172a 0%, #12343b 50%, #2f5f5b 100%);
+    background: linear-gradient(135deg, var(--color-shell) 0%, var(--color-foreground) 50%, var(--color-primary) 100%);
 }
 
 .articles-ingestion-status {
     min-width: 15rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid color-mix(in srgb, var(--color-surface) 20%, transparent);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--color-surface) 10%, transparent);
     padding: 0.9rem 1rem;
 }
 
@@ -42,7 +42,7 @@
 }
 
 .articles-ingestion-status span {
-    color: rgba(207, 250, 254, 0.88);
+    color: color-mix(in srgb, var(--color-on-dark) 88%, transparent);
 }
 
 .articles-ingestion-status strong,
@@ -55,26 +55,26 @@
 }
 
 .articles-ingestion-status strong {
-    color: #ffffff;
+    color: var(--color-surface);
 }
 
 .articles-ingestion-status small,
 .articles-ingestion-summary small {
     display: block;
     margin-top: 0.35rem;
-    color: rgba(226, 232, 240, 0.88);
+    color: color-mix(in srgb, var(--color-on-dark) 88%, transparent);
     font-size: 0.8rem;
 }
 
 .articles-ingestion-summary {
-    background: rgba(255, 255, 255, 0.96);
+    background: color-mix(in srgb, var(--color-surface) 96%, transparent);
 }
 
 .articles-ingestion-summary article,
 .articles-ingestion-result-card {
-    border: 1px solid rgba(47, 95, 91, 0.13);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 13%, transparent);
     border-radius: 8px;
-    background: rgba(237, 247, 243, 0.64);
+    background: color-mix(in srgb, var(--color-page-bg) 64%, transparent);
     padding: 0.9rem 1rem;
 }
 
@@ -93,14 +93,21 @@
 
 .articles-ingestion-primary {
     border: 1px solid transparent;
-    background: linear-gradient(135deg, #12343b, #2f5f5b);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--color-foreground), var(--color-primary));
+    color: var(--color-surface);
 }
 
 .articles-ingestion-secondary {
-    border: 1px solid rgba(47, 95, 91, 0.2);
-    background: #ffffff;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    background: var(--color-surface);
     color: var(--articles-teal);
+}
+
+.articles-ingestion-disabled {
+    border: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
+    background: var(--color-page-bg);
+    color: var(--color-muted);
+    cursor: not-allowed;
 }
 
 .articles-ingestion-primary:hover,
@@ -155,7 +162,7 @@
 .articles-ingestion-pill {
     width: fit-content;
     border-radius: 999px;
-    background: rgba(216, 184, 79, 0.18);
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
     color: #6f5c11;
     font-size: 0.78rem;
     font-weight: 800;
@@ -163,9 +170,9 @@
 }
 
 .articles-ingestion-block-row {
-    border: 1px solid rgba(47, 95, 91, 0.12);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.76);
+    background: color-mix(in srgb, var(--color-surface) 76%, transparent);
     padding: 1rem;
 }
 
@@ -176,7 +183,7 @@
 
 .articles-ingestion-block-row span {
     border-radius: 999px;
-    background: rgba(47, 95, 91, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     color: var(--articles-teal);
     font-size: 0.72rem;
     font-weight: 800;
@@ -188,20 +195,20 @@
     margin-top: 0.8rem;
     overflow: hidden;
     border-radius: 999px;
-    background: rgba(47, 95, 91, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .articles-ingestion-fill {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #2f5f5b, #d8b84f);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
 }
 
 .articles-ingestion-step {
     display: grid;
     grid-template-columns: 2.4rem 1fr;
     gap: 0.75rem;
-    border-bottom: 1px solid rgba(47, 95, 91, 0.1);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
     padding-bottom: 0.85rem;
 }
 

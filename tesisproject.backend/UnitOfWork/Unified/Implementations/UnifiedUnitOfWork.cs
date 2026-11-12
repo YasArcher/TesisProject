@@ -19,6 +19,7 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
     public IUnifiedArticleRegistrationRepository ArticleRegistration { get; }
     public IUnifiedArticleConfigurationRepository ArticleConfiguration { get; }
     public IUnifiedArticleRegistrationMatrixRepository ArticleRegistrationMatrices { get; }
+    public IGenericRepository<ArticleStagingBatch> ArticleStagingBatches { get; }
     public IGenericRepository<RegistrationMatrixColumn> RegistrationMatrixColumns { get; }
     public IGenericRepository<RegistrationMatrixRow> RegistrationMatrixRows { get; }
     public IGenericRepository<RegistrationMatrixCell> RegistrationMatrixCells { get; }
@@ -82,6 +83,7 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
         IUnifiedArticleRegistrationRepository articleRegistration,
         IUnifiedArticleConfigurationRepository articleConfiguration,
         IUnifiedArticleRegistrationMatrixRepository articleRegistrationMatrices,
+        IGenericRepository<ArticleStagingBatch> articleStagingBatches,
         IGenericRepository<RegistrationMatrixColumn> registrationMatrixColumns,
         IGenericRepository<RegistrationMatrixRow> registrationMatrixRows,
         IGenericRepository<RegistrationMatrixCell> registrationMatrixCells,
@@ -142,6 +144,7 @@ public sealed class UnifiedUnitOfWork : IUnifiedUnitOfWork
         ArticleRegistration = articleRegistration;
         ArticleConfiguration = articleConfiguration;
         ArticleRegistrationMatrices = articleRegistrationMatrices;
+        ArticleStagingBatches = articleStagingBatches;
         RegistrationMatrixColumns = registrationMatrixColumns;
         RegistrationMatrixRows = registrationMatrixRows;
         RegistrationMatrixCells = registrationMatrixCells;

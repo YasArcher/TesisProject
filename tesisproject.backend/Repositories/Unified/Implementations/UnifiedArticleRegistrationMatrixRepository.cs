@@ -16,7 +16,7 @@ public sealed class UnifiedArticleRegistrationMatrixRepository(UnifiedDideDbCont
             .ThenInclude(c => c.Field)
                 .ThenInclude(f => f!.Options)
         .Include(m => m.Rows.OrderBy(r => r.RowNumber)).ThenInclude(r => r.Cells)
-        .AsSingleQuery();
+        .AsSplitQuery();
 
     public Task<RegistrationMatrix?> FindWithDetailsAsync(Expression<Func<RegistrationMatrix, bool>> predicate, bool asNoTracking, CancellationToken ct)
         => QueryWithDetails(asNoTracking).FirstOrDefaultAsync(predicate, ct);

@@ -52,6 +52,7 @@ public static class UnifiedApplicationRegistration
         services.AddScoped<IUnifiedProjectsDwSource, UnifiedProjectsDwSource>();
         services.AddScoped<IUnifiedArticlesDwSource, UnifiedArticlesDwSource>();
         services.AddScoped<IUnifiedArticleRegistrationMatrixRepository, UnifiedArticleRegistrationMatrixRepository>();
+        services.AddScoped<IGenericRepository<ArticleStagingBatch>, UnifiedGenericRepository<ArticleStagingBatch>>();
         services.AddScoped<IGenericRepository<RegistrationMatrixColumn>, UnifiedGenericRepository<RegistrationMatrixColumn>>();
         services.AddScoped<IGenericRepository<RegistrationMatrixRow>, UnifiedGenericRepository<RegistrationMatrixRow>>();
         services.AddScoped<IGenericRepository<RegistrationMatrixCell>, UnifiedGenericRepository<RegistrationMatrixCell>>();

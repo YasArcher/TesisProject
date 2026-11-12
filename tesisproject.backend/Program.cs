@@ -15,6 +15,8 @@ using tesisproject.backend.Authorization.Articles;
 using tesisproject.backend.Options;
 using tesisproject.backend.Services.Analytic.Implementations;
 using tesisproject.backend.Services.Analytic.Interfaces;
+using tesisproject.backend.Services.External.Implementations;
+using tesisproject.backend.Services.External.Interfaces;
 using tesisproject.shared.Auth.Articles;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Routing;
@@ -220,6 +222,14 @@ static class StartupExtensions
         // Servicios
         builder.Services.AddScoped<IProjectsDwEtlService, ProjectsDwEtlService>();
         builder.Services.AddScoped<IArticlesDwEtlService, ArticlesDwEtlService>();
+        builder.Services.AddScoped<IArticleAnalyticsService, ArticleAnalyticsService>();
+        // Modulo articulos: cliente aislado para consultas externas de solo lectura.
+        builder.Services.AddHttpClient<IArticleExternalSearchService, ArticleExternalSearchService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.crossref.org/");
+            client.Timeout = TimeSpan.FromSeconds(15);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("TesisProject/1.0 (academic metadata lookup)");
+        });
     }
 
     public static void ConfigureApiDocumentation(this WebApplicationBuilder builder)

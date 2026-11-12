@@ -39,6 +39,22 @@ public static class ArticlePolicies
             ArticleRoles.WorkflowProcessorAreaTecnica);
         Add(options, ArticlePolicyNames.Intelligence, ArticlePermissions.ViewIntelligence,
             ArticleRoles.Analyst, ArticleRoles.IntelligenceViewer, ArticleRoles.IntelligenceTrainer);
+        options.AddPolicy(ArticlePolicyNames.AnalyticsRead, policy =>
+        {
+            policy.RequireAuthenticatedUser();
+            policy.RequireAssertion(context =>
+                IsSystemAdministrator(context.User) ||
+                context.User.HasClaim(ArticlePermissions.ClaimType, ArticlePermissions.ViewReporting) ||
+                context.User.HasClaim(ArticlePermissions.ClaimType, ArticlePermissions.ViewIntelligence) ||
+                context.User.IsInRole(ArticleRoles.Analyst) ||
+                context.User.IsInRole(ArticleRoles.ReportingViewer) ||
+                context.User.IsInRole(ArticleRoles.ReportingExporter) ||
+                context.User.IsInRole(ArticleRoles.ReportingAdvancedUser) ||
+                context.User.IsInRole(ArticleRoles.IntelligenceViewer) ||
+                context.User.IsInRole(ArticleRoles.IntelligenceTrainer) ||
+                context.User.IsInRole(ArticleRoles.WorkflowReviewerAreaTecnica) ||
+                context.User.IsInRole(ArticleRoles.WorkflowProcessorAreaTecnica));
+        });
         Add(options, ArticlePolicyNames.Configuration, ArticlePermissions.ManageConfiguration,
             ArticleRoles.Analyst, ArticleRoles.ConfigurationManager, ArticleRoles.CatalogManager);
         Add(options, ArticlePolicyNames.SecurityAdministration, ArticlePermissions.ManageSecurity,

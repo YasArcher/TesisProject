@@ -5,9 +5,10 @@
 
 .articles-placeholder-page .articles-placeholder-hero,
 .articles-placeholder-page .articles-workspace-panel {
-    border-color: rgba(47, 95, 91, 0.16) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 16%, transparent) !important;
     border-radius: 8px !important;
-    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 99%, transparent), color-mix(in srgb, var(--color-page-bg) 96%, transparent)) !important;
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
 .articles-placeholder-page .articles-placeholder-hero {
@@ -38,10 +39,10 @@
     align-items: center;
     justify-content: center;
     min-width: 10rem;
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
+    background: var(--color-page-bg);
+    color: var(--color-foreground);
     font-size: 0.78rem;
     font-weight: 800;
     padding: 0.75rem 1rem;
@@ -49,15 +50,15 @@
 }
 
 .articles-placeholder-page .articles-workspace-panel h2 {
-    color: #12343b !important;
+    color: var(--color-foreground) !important;
 }
 
 .articles-placeholder-page .articles-workspace-panel .rounded-lg {
-    border-color: rgba(47, 95, 91, 0.14) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 14%, transparent) !important;
 }
 
 .articles-placeholder-checklist {
-    background: rgba(255, 255, 255, 0.74);
+    background: color-mix(in srgb, var(--color-surface) 74%, transparent);
 }
 
 .articles-placeholder-check {
@@ -72,13 +73,13 @@
     width: 0.55rem;
     margin-top: 0.45rem;
     border-radius: 999px;
-    background: #d8b84f;
-    box-shadow: 0 0 0 0.25rem rgba(216, 184, 79, 0.16);
+    background: var(--color-accent);
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 .articles-placeholder-check p {
     margin: 0;
-    color: #526762;
+    color: var(--color-muted);
     font-size: 0.875rem;
     line-height: 1.5;
 }
@@ -93,42 +94,42 @@
 
 .articles-placeholder-check strong {
     display: block;
-    color: #12343b;
+    color: var(--color-foreground);
     font-size: 0.88rem;
 }
 
 .articles-placeholder-check small {
     display: block;
     margin-top: 0.15rem;
-    color: #526762;
+    color: var(--color-muted);
     font-size: 0.8rem;
     line-height: 1.45;
 }
 
 .articles-placeholder-metric {
-    background: rgba(255, 255, 255, 0.72);
+    background: color-mix(in srgb, var(--color-surface) 72%, transparent);
 }
 
 .articles-placeholder-action,
 .articles-placeholder-secondary {
-    border: 1px solid rgba(47, 95, 91, 0.22);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
     transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
 .articles-placeholder-action {
-    background: linear-gradient(135deg, #12343b, #2f5f5b);
-    color: #ffffff;
+    background: var(--color-foreground);
+    color: var(--color-surface);
 }
 
 .articles-placeholder-secondary {
-    background: #ffffff;
-    color: #12343b;
+    background: var(--color-surface);
+    color: var(--color-foreground);
 }
 
 .articles-placeholder-action:hover,
 .articles-placeholder-secondary:hover {
-    background: #1d4f4b;
-    color: #ffffff;
+    background: var(--color-shell-soft);
+    color: var(--color-surface);
     transform: translateY(-1px);
 }
 

@@ -32,6 +32,14 @@ public static class ArticlesDwEtlTests
               await dw.FactArticlePublications.CountAsync() == 5 &&
               await dw.FactArticleAuthors.CountAsync() == 6,
             "Articles full-load must create five articles/publication facts and six author facts.");
+        var analytics = await new ArticleAnalyticsService(dw)
+            .GetSummaryAsync(null, null, CancellationToken.None);
+        check(analytics.TotalArticles == 5 &&
+              analytics.ByPublicationYear.Sum(x => x.Count) == 5 &&
+              analytics.ByFaculty.Sum(x => x.Count) == 5 &&
+              analytics.ByIndexingDatabase.Sum(x => x.Count) == 5 &&
+              analytics.ByPublicationStatus.Sum(x => x.Count) == 5,
+            "Articles analytics must aggregate the full publication fact set, including missing dimension labels.");
         check(await dw.DimVenues.CountAsync() == 0 && await dw.FactArticleIndexings.CountAsync() == 0 &&
               await dw.FactVenueMetricYears.CountAsync() == 0,
             "Empty structural sources must remain empty and must not be inferred from ProductValues.");

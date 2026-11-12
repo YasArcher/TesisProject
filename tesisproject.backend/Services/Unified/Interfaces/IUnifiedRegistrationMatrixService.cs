@@ -1,4 +1,5 @@
 using tesisproject.shared.DTOs.MassRegistration;
+using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Unified.Interfaces;
@@ -12,4 +13,5 @@ public interface IUnifiedRegistrationMatrixService
     Task<ServiceResult<RegistrationMatrixDetailDto>> UpdateCellAsync(int matrixId, int rowId, UpdateRegistrationMatrixCellRequest request, string? ownerUserId, bool includeAll, CancellationToken ct = default);
     Task<ServiceResult<RegistrationMatrixDeleteResultDto>> DeleteMatrixAsync(int matrixId, string? ownerUserId, bool includeAll, CancellationToken ct = default);
     Task<ServiceResult<RegistrationMatrixSubmissionResultDto>> SubmitToStagingAsync(int matrixId, SubmitRegistrationMatrixRequest request, string? ownerUserId, bool includeAll, CancellationToken ct = default);
+    Task<ServiceResult<BulkImportBatchSummaryDto>> GetStagingSummaryAsync(int matrixId, string? ownerUserId, bool includeAll, CancellationToken ct = default);
 }

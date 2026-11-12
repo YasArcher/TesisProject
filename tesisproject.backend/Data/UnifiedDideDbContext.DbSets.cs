@@ -88,5 +88,7 @@ public sealed partial class UnifiedDideDbContext
     public DbSet<RegistrationMatrixColumn> RegistrationMatrixColumns => Set<RegistrationMatrixColumn>();
     public DbSet<RegistrationMatrixRow> RegistrationMatrixRows => Set<RegistrationMatrixRow>();
     public DbSet<RegistrationMatrixCell> RegistrationMatrixCells => Set<RegistrationMatrixCell>();
+    public DbSet<ArticleStagingBatch> ArticleStagingBatches => Set<ArticleStagingBatch>();
+    public DbSet<ArticleStagingRow> ArticleStagingRows => Set<ArticleStagingRow>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 }

@@ -13,6 +13,7 @@ public static class ArticlePolicyNames
     public const string BulkImport = "Articles.BulkImport";
     public const string ExternalApis = "Articles.ExternalApis";
     public const string Reporting = "Articles.Reporting";
+    public const string AnalyticsRead = "Articles.AnalyticsRead";
     public const string Intelligence = "Articles.Intelligence";
     public const string Configuration = "Articles.Configuration";
     public const string SecurityAdministration = "Articles.SecurityAdministration";

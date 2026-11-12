@@ -1,11 +1,11 @@
 .articles-intelligence-page {
-    --articles-ink: #12343b;
-    --articles-teal: #2f5f5b;
-    --articles-mint: #edf7f3;
-    --articles-gold: #d8b84f;
-    --articles-muted: #64726f;
-    --articles-border: rgba(47, 95, 91, 0.16);
-    background: linear-gradient(180deg, #f5faf8 0%, #edf6f2 52%, #f7faf8 100%);
+    --articles-ink: var(--color-foreground);
+    --articles-teal: var(--color-primary);
+    --articles-mint: var(--color-page-bg);
+    --articles-gold: var(--color-accent);
+    --articles-muted: var(--color-muted);
+    --articles-border: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    background: var(--color-page-bg);
     color: var(--articles-ink);
 }
 
@@ -14,19 +14,19 @@
 .articles-intelligence-kpi {
     border-color: var(--articles-border) !important;
     border-radius: 8px !important;
-    box-shadow: 0 14px 32px rgba(18, 52, 59, 0.08);
+    box-shadow: 0 14px 32px color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
 .articles-intelligence-hero-band {
     border-radius: 8px 8px 0 0;
-    background: linear-gradient(135deg, #0f172a 0%, #12343b 42%, #2f5f5b 100%);
+    background: linear-gradient(135deg, var(--color-shell) 0%, var(--color-foreground) 42%, var(--color-primary) 100%);
 }
 
 .articles-intelligence-score {
     min-width: 13rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid color-mix(in srgb, var(--color-surface) 20%, transparent);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--color-surface) 10%, transparent);
     padding: 0.9rem 1rem;
 }
 
@@ -43,13 +43,13 @@
 }
 
 .articles-intelligence-score span {
-    color: rgba(207, 250, 254, 0.88);
+    color: color-mix(in srgb, var(--color-on-dark) 88%, transparent);
 }
 
 .articles-intelligence-score strong {
     display: block;
     margin-top: 0.2rem;
-    color: #ffffff;
+    color: var(--color-surface);
     font-size: 2rem;
     line-height: 1;
 }
@@ -57,7 +57,7 @@
 .articles-intelligence-score small {
     display: block;
     margin-top: 0.35rem;
-    color: rgba(226, 232, 240, 0.88);
+    color: color-mix(in srgb, var(--color-on-dark) 88%, transparent);
     font-size: 0.8rem;
 }
 
@@ -66,7 +66,7 @@
     gap: 0.9rem;
     grid-template-columns: minmax(0, 1.5fr) minmax(8rem, 0.45fr) auto;
     align-items: end;
-    background: rgba(255, 255, 255, 0.96);
+    background: color-mix(in srgb, var(--color-surface) 96%, transparent);
 }
 
 .articles-intelligence-filterbar label {
@@ -76,9 +76,9 @@
 
 .articles-intelligence-filterbar input {
     width: 100%;
-    border: 1px solid rgba(47, 95, 91, 0.18);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--color-surface);
     color: var(--articles-ink);
     font-size: 0.9rem;
     padding: 0.62rem 0.75rem;
@@ -86,8 +86,8 @@
 }
 
 .articles-intelligence-filterbar input:focus {
-    border-color: rgba(47, 95, 91, 0.76);
-    box-shadow: 0 0 0 3px rgba(63, 111, 95, 0.14);
+    border-color: color-mix(in srgb, var(--color-primary) 76%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-shell-soft) 14%, transparent);
 }
 
 .articles-intelligence-actions {
@@ -117,13 +117,13 @@
 
 .articles-intelligence-primary {
     border: 1px solid transparent;
-    background: linear-gradient(135deg, #12343b, #2f5f5b);
-    color: #ffffff;
+    background: linear-gradient(135deg, var(--color-foreground), var(--color-primary));
+    color: var(--color-surface);
 }
 
 .articles-intelligence-secondary {
-    border: 1px solid rgba(47, 95, 91, 0.18);
-    background: #ffffff;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+    background: var(--color-surface);
     color: var(--articles-ink);
 }
 
@@ -134,7 +134,7 @@
 
 .articles-intelligence-kpi,
 .articles-intelligence-panel {
-    background: rgba(255, 255, 255, 0.97) !important;
+    background: color-mix(in srgb, var(--color-surface) 97%, transparent) !important;
 }
 
 .articles-intelligence-kpi {
@@ -170,7 +170,7 @@
     align-items: center;
     width: fit-content;
     border-radius: 999px;
-    background: rgba(216, 184, 79, 0.18);
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
     color: #6f5c11;
     font-size: 0.78rem;
     font-weight: 800;
@@ -196,17 +196,17 @@
     overflow: hidden;
     height: 0.58rem;
     border-radius: 999px;
-    background: rgba(47, 95, 91, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
 }
 
 .articles-intelligence-fill {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #2f5f5b, #d8b84f);
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
 }
 
 .articles-intelligence-forecast {
-    background: rgba(237, 247, 243, 0.72);
+    background: color-mix(in srgb, var(--color-page-bg) 72%, transparent);
 }
 
 .articles-intelligence-forecast span {
@@ -238,16 +238,16 @@
 }
 
 .articles-intelligence-recommendation {
-    border: 1px solid rgba(47, 95, 91, 0.14);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.72);
+    background: color-mix(in srgb, var(--color-surface) 72%, transparent);
     padding: 1rem;
 }
 
 .articles-intelligence-recommendation span {
     display: inline-flex;
     border-radius: 999px;
-    background: rgba(47, 95, 91, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     color: var(--articles-teal);
     font-size: 0.72rem;
     font-weight: 800;
@@ -264,7 +264,7 @@
 .articles-intelligence-quality {
     display: grid;
     gap: 0.45rem;
-    border-bottom: 1px solid rgba(47, 95, 91, 0.1);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
     padding-bottom: 0.75rem;
 }
 
@@ -289,7 +289,7 @@
     grid-template-columns: 0.75rem 1fr;
     gap: 0.7rem;
     align-items: start;
-    border-bottom: 1px solid rgba(47, 95, 91, 0.1);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
     padding-bottom: 0.8rem;
 }
 
@@ -304,7 +304,7 @@
     margin-top: 0.45rem;
     border-radius: 999px;
     background: var(--articles-gold);
-    box-shadow: 0 0 0 0.25rem rgba(216, 184, 79, 0.16);
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--color-accent) 16%, transparent);
 }
 
 @media (max-width: 980px) {

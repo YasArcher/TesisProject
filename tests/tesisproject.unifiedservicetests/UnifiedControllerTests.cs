@@ -58,7 +58,7 @@ internal static class UnifiedControllerTests
             check(ReferenceEquals(context, sp.GetRequiredService<UnifiedDideDbContext>()), "One context per scope");
             var uow = sp.GetRequiredService<IUnifiedUnitOfWork>();
             var repos = typeof(IUnifiedUnitOfWork).GetProperties();
-            check(repos.Length == 58, "58 Unified repository slots including Articles");
+            check(repos.Length == 59, "59 Unified repository slots including Article staging");
             foreach (var p in repos)
             {
                 check(ReferenceEquals(p.GetValue(uow), sp.GetRequiredService(p.PropertyType)), "Repository scoped instance " + p.Name);

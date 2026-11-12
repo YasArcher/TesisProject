@@ -14,6 +14,7 @@ public interface IUnifiedUnitOfWork : IAsyncDisposable
     IUnifiedArticleRegistrationRepository ArticleRegistration { get; }
     IUnifiedArticleConfigurationRepository ArticleConfiguration { get; }
     IUnifiedArticleRegistrationMatrixRepository ArticleRegistrationMatrices { get; }
+    IGenericRepository<ArticleStagingBatch> ArticleStagingBatches { get; }
     IGenericRepository<RegistrationMatrixColumn> RegistrationMatrixColumns { get; }
     IGenericRepository<RegistrationMatrixRow> RegistrationMatrixRows { get; }
     IGenericRepository<RegistrationMatrixCell> RegistrationMatrixCells { get; }

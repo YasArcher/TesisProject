@@ -1,0 +1,55 @@
+<section class="article-page-skeleton" role="status" aria-label="@Label" aria-busy="true">
+    <span class="sr-only">@Label</span>
+    @if (Variant == "form")
+    {
+        <div class="article-page-skeleton__summary">
+            <div class="article-page-skeleton__line article-page-skeleton__line--title"></div>
+            <div class="article-page-skeleton__line article-page-skeleton__line--medium"></div>
+        </div>
+        <div class="article-page-skeleton__form">
+            @for (var index = 0; index < 6; index++)
+            {
+                <div class="article-page-skeleton__field">
+                    <div class="article-page-skeleton__line article-page-skeleton__line--label"></div>
+                    <div class="article-page-skeleton__line article-page-skeleton__line--input"></div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="article-page-skeleton__metrics">
+            @for (var index = 0; index < 4; index++)
+            {
+                <div class="article-page-skeleton__metric">
+                    <div class="article-page-skeleton__line article-page-skeleton__line--label"></div>
+                    <div class="article-page-skeleton__line article-page-skeleton__line--value"></div>
+                </div>
+            }
+        </div>
+        @if (Variant == "dashboard")
+        {
+            <div class="article-page-skeleton__chart">
+                <div class="article-page-skeleton__line article-page-skeleton__line--medium"></div>
+                <div class="article-page-skeleton__chart-body"></div>
+            </div>
+        }
+        else
+        {
+            <div class="article-page-skeleton__rows">
+                @for (var index = 0; index < 3; index++)
+                {
+                    <div class="article-page-skeleton__row">
+                        <div class="article-page-skeleton__line article-page-skeleton__line--medium"></div>
+                        <div class="article-page-skeleton__line article-page-skeleton__line--short"></div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</section>
+
+@code {
+    [Parameter] public string Label { get; set; } = "Cargando información";
+    [Parameter] public string Variant { get; set; } = "list";
+}

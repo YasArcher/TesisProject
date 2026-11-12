@@ -6,7 +6,7 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @attribute [Authorize]
-@inject IArticleClientService ArticlesClient
+@inject IArticleAnalyticsClientService AnalyticsClient
 @inject IArticlesDwEtlClientService ArticlesEtlClient
 @inject NavigationManager Nav
 
@@ -18,16 +18,16 @@
             <div class="articles-reporting-hero-band px-5 py-5 text-white md:px-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-wide text-cyan-200">Analisis institucional</p>
+                        <p class="text-xs font-bold uppercase tracking-wide text-accent">Analisis institucional</p>
                         <h1 class="mt-2 text-2xl font-bold md:text-3xl">Reporteria de articulos</h1>
-                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                            Vista operativa para revisar produccion cientifica desde los articulos registrados. Los indicadores usan la muestra filtrada disponible y priorizan fecha de publicacion.
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-on-dark/80">
+                            Produccion cientifica consolidada por fecha de publicacion.
                         </p>
                     </div>
                     <div class="articles-reporting-status">
                         <span>Fuente</span>
-                        <strong>Muestra consultada</strong>
-                        <small>Analizando: @_page.Items.Count de @_page.TotalCount</small>
+                        <strong>Data Warehouse de articulos</strong>
+                        <small>@_report.TotalArticles.ToString("N0") registros con los filtros actuales</small>
                     </div>
                 </div>
             </div>
@@ -40,15 +40,6 @@
                 <label>
                     <span>Anio</span>
                     <input type="number" min="1900" max="@DateTime.Today.Year" @bind="_year" />
-                </label>
-                <label>
-                    <span>Orden</span>
-                    <select @bind="_sortBy">
-                        <option value="PublishedAt">Fecha de publicacion</option>
-                        <option value="Year">Anio</option>
-                        <option value="Title">Titulo</option>
-                        <option value="CreatedAt">Fecha de registro</option>
-                    </select>
                 </label>
                 <div class="articles-reporting-actions">
                     <button type="button" class="articles-reporting-secondary" @onclick="ClearAsync" disabled="@(_loading || _syncing)">Limpiar</button>
@@ -73,10 +64,7 @@
 
         @if (_loading)
         {
-            <section class="articles-reporting-panel rounded-lg border border-border bg-background p-8 text-center shadow-sm">
-                <div class="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary border-r-transparent"></div>
-                <p class="mt-3 text-sm text-muted">Cargando indicadores...</p>
-            </section>
+            <ArticlePageSkeleton Label="Cargando indicadores" Variant="dashboard" />
         }
         else if (!string.IsNullOrWhiteSpace(_error))
         {
@@ -88,6 +76,12 @@
         }
         else
         {
+            @if (_report.TotalArticles == 0)
+            {
+                <section class="articles-reporting-panel rounded-lg border border-border bg-background p-5 text-sm text-muted">
+                    No hay articulos en el Data Warehouse para estos filtros. Actualiza la reporteria si acabas de registrar informacion.
+                </section>
+            }
             <section class="articles-reporting-kpis grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 @foreach (var kpi in Kpis)
                 {
@@ -149,12 +143,7 @@
                             </div>
                         }
                     </div>
-                    <div class="articles-reporting-note mt-5 rounded-lg border border-border p-4">
-                        <strong>Alcance de datos</strong>
-                        <p>
-                            Esta vista usa los articulos disponibles en el modulo. Actualiza la reporteria para reflejar los datos procesados mas recientes.
-                        </p>
-                    </div>
+
                     <div class="articles-reporting-shortcuts mt-4">
                         <button type="button" class="articles-reporting-primary" @onclick="GoToIntelligence">Ver inteligencia</button>
                         <button type="button" class="articles-reporting-secondary" @onclick="GoToArticlesList">Abrir listado</button>
@@ -167,32 +156,22 @@
 </div>
 
 @code {
-    private ArticlePageDto _page = new();
+    private ArticleAnalyticsSummaryDto _report = new();
     private string? _search;
     private int? _year;
-    private string _sortBy = "PublishedAt";
     private bool _loading = true;
     private bool _syncing;
     private string? _error;
     private string? _syncMessage;
     private string? _syncError;
 
-    private IReadOnlyList<TopRow> YearRows => BuildRows(_page.Items
-        .Where(x => x.Year.HasValue)
-        .GroupBy(x => x.Year!.Value.ToString())
-        .OrderByDescending(x => x.Key));
+    private IReadOnlyList<TopRow> YearRows => BuildRows(_report.ByPublicationYear);
 
-    private IReadOnlyList<TopRow> FacultyRows => BuildRows(_page.Items
-        .GroupBy(x => CleanLabel(x.FacultyName, "Sin facultad"))
-        .OrderByDescending(x => x.Count()));
+    private IReadOnlyList<TopRow> FacultyRows => BuildRows(_report.ByFaculty);
 
-    private IReadOnlyList<TopRow> IndexingRows => BuildRows(_page.Items
-        .GroupBy(x => CleanLabel(x.IndexingSourceName, "Sin indexacion"))
-        .OrderByDescending(x => x.Count()));
+    private IReadOnlyList<TopRow> IndexingRows => BuildRows(_report.ByIndexingDatabase);
 
-    private IReadOnlyList<TopRow> StatusRows => BuildRows(_page.Items
-        .GroupBy(x => CleanLabel(x.PublicationStatusName, "Sin estado"))
-        .OrderByDescending(x => x.Count()));
+    private IReadOnlyList<TopRow> StatusRows => BuildRows(_report.ByPublicationStatus);
 
     private IReadOnlyList<ReportBlock> ReportBlocks =>
     [
@@ -204,22 +183,22 @@
 
     private IReadOnlyList<KpiItem> Kpis =>
     [
-        new("Registros", _page.TotalCount.ToString("N0"), "Total disponible con filtros"),
-        new("Muestra", _page.Items.Count.ToString("N0"), "Registros analizados ahora"),
-        new("Open Access", FormatPercent(OpenAccessRate), "Segun muestra cargada"),
+        new("Registros", _report.TotalArticles.ToString("N0"), "Total del DW con filtros"),
+        new("Con autores", _report.WithAuthors.ToString("N0"), "Articulos con autoria"),
+        new("Open Access", FormatPercent(OpenAccessRate), "Sobre registros filtrados"),
         new("Con DOI", FormatPercent(DoiRate), "Calidad de identificacion")
     ];
 
     private IReadOnlyList<string> DecisionSignals =>
     [
         $"La produccion visible se concentra en {TopLabel(YearRows)}.",
-        $"La facultad con mayor presencia en la muestra es {TopLabel(FacultyRows)}.",
+        $"La facultad con mayor presencia es {TopLabel(FacultyRows)}.",
         $"La fuente de indexacion dominante es {TopLabel(IndexingRows)}.",
         $"La cobertura DOI actual es {FormatPercent(DoiRate)}."
     ];
 
-    private double OpenAccessRate => Ratio(_page.Items.Count(x => x.IsOpenAccess));
-    private double DoiRate => Ratio(_page.Items.Count(x => !string.IsNullOrWhiteSpace(x.Doi)));
+    private double OpenAccessRate => Ratio(_report.OpenAccess);
+    private double DoiRate => Ratio(_report.WithDoi);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -228,18 +207,10 @@
         _loading = true;
         _error = null;
 
-        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
-        {
-            Search = _search,
-            Year = ToShortYear(_year),
-            Page = 1,
-            PageSize = 100,
-            SortBy = _sortBy,
-            SortDesc = true
-        });
+        var result = await AnalyticsClient.GetSummaryAsync(_year, _search);
 
         if (result.Success && result.Data is not null)
-            _page = result.Data;
+            _report = result.Data;
         else
             _error = FriendlyError(result.ErrorCode, result.Message);
 
@@ -269,7 +240,6 @@
     {
         _search = null;
         _year = null;
-        _sortBy = "PublishedAt";
         await LoadAsync();
     }
 
@@ -283,28 +253,20 @@
     private void GoToArticlesList() => Nav.NavigateTo("/articles");
     private void GoToIngestion() => Nav.NavigateTo("/articles/module/external-ingestion");
 
-    private static IReadOnlyList<TopRow> BuildRows(IEnumerable<IGrouping<string, ArticleListItemDto>> groups)
+    private IReadOnlyList<TopRow> BuildRows(IEnumerable<ArticleAnalyticsGroupDto> groups)
     {
         var ordered = groups
-            .Select(group => new { group.Key, Count = group.Count() })
             .OrderByDescending(x => x.Count)
-            .ThenBy(x => x.Key)
-            .Take(8)
+            .ThenBy(x => x.Label)
             .ToList();
 
-        var total = ordered.Sum(x => x.Count);
+        var total = _report.TotalArticles;
         return ordered
-            .Select(x => new TopRow(x.Key, x.Count, total <= 0 ? 0 : x.Count / (double)total))
+            .Select(x => new TopRow(x.Label, x.Count, total <= 0 ? 0 : x.Count / (double)total))
             .ToList();
     }
 
-    private double Ratio(int count) => _page.Items.Count == 0 ? 0 : count / (double)_page.Items.Count;
-
-    private static short? ToShortYear(int? year)
-        => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
-
-    private static string CleanLabel(string? value, string fallback)
-        => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+    private double Ratio(int count) => _report.TotalArticles == 0 ? 0 : count / (double)_report.TotalArticles;
 
     private static string FormatPercent(double value)
         => value.ToString("P0");

@@ -1,0 +1,8 @@
+.articles-detail-backdrop {
+    background: color-mix(in srgb, var(--color-shell) 72%, transparent);
+}
+
+.articles-detail-modal {
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+    border-radius: 8px;
+}

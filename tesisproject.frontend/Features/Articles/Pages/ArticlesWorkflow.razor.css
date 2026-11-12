@@ -3,7 +3,7 @@
 }
 
 .articles-workflow-hero__top {
-    background: linear-gradient(135deg, #0f172a 0%, #134e4a 58%, #0e7490 100%);
+    background: linear-gradient(135deg, var(--color-shell) 0%, var(--color-shell-raised) 58%, var(--color-shell-soft) 100%);
 }
 
 .articles-workflow-metric {
@@ -12,7 +12,7 @@
 
 .articles-workflow-metric:hover {
     border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--color-shell) 8%, transparent);
     transform: translateY(-1px);
 }
 
@@ -51,7 +51,7 @@
 
 .articles-workflow-card:hover {
     border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
-    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
+    box-shadow: 0 16px 32px color-mix(in srgb, var(--color-shell) 10%, transparent);
     transform: translateY(-1px);
 }
 
@@ -240,15 +240,15 @@
 }
 
 .articles-workflow-role-panel {
-    border-color: rgba(47, 95, 91, 0.16) !important;
-    background: rgba(255, 255, 255, 0.97) !important;
+    border-color: color-mix(in srgb, var(--color-primary) 16%, transparent) !important;
+    background: color-mix(in srgb, var(--color-surface) 97%, transparent) !important;
 }
 
 .articles-workflow-session {
     width: fit-content;
     border-radius: 999px;
-    background: rgba(47, 95, 91, 0.1);
-    color: #2f5f5b;
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
     font-size: 0.78rem;
     font-weight: 800;
     padding: 0.45rem 0.75rem;
@@ -256,20 +256,20 @@
 
 .articles-workflow-role-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
     gap: 1rem;
 }
 
 .articles-workflow-role-card {
-    border: 1px solid rgba(47, 95, 91, 0.14);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.76);
+    background: color-mix(in srgb, var(--color-surface) 76%, transparent);
     padding: 1rem;
 }
 
 .articles-workflow-role-card--enabled {
-    background: linear-gradient(180deg, rgba(237, 247, 243, 0.94), rgba(255, 255, 255, 0.84));
-    border-color: rgba(47, 95, 91, 0.24);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--color-page-bg) 94%, transparent), color-mix(in srgb, var(--color-surface) 84%, transparent));
+    border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
 }
 
 .articles-workflow-role-card span {
@@ -281,7 +281,7 @@
 }
 
 .articles-workflow-role-card--enabled span {
-    color: #2f5f5b;
+    color: var(--color-primary);
 }
 
 .articles-workflow-role-card strong {
@@ -293,7 +293,7 @@
 
 .articles-workflow-role-card em {
     border-radius: 999px;
-    background: rgba(216, 184, 79, 0.18);
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
     color: #6f5c11;
     font-size: 0.72rem;
     font-style: normal;
@@ -311,10 +311,10 @@
 .articles-workflow-role-card button {
     margin-top: 0.9rem;
     width: 100%;
-    border: 1px solid rgba(47, 95, 91, 0.14);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 14%, transparent);
     border-radius: 8px;
-    background: #eef3f1;
-    color: #8a9995;
+    background: var(--color-page-bg);
+    color: var(--color-muted);
     cursor: not-allowed;
     font-size: 0.85rem;
     font-weight: 800;

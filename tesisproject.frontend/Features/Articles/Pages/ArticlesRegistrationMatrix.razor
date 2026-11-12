@@ -7,6 +7,7 @@
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.MassRegistration
 @using tesisproject.shared.Validation
+@using tesisproject.shared.DTOs.Imports
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IRegistrationMatrixClient MatrixClient
 @inject NavigationManager Nav
@@ -16,7 +17,7 @@
             <div>
                 <p class="text-sm font-semibold text-primary">Registro tabular</p>
                 <h1 class="mt-1 text-2xl font-bold text-foreground">Matriz de articulos</h1>
-                <p class="mt-1 max-w-3xl text-sm text-muted">Crea borradores tabulares usando los campos visibles del formulario activo. El envio a revision se habilitara cuando la matriz este completa y revisada.</p>
+                <p class="mt-1 max-w-3xl text-sm text-muted">Captura filas, revisa los campos obligatorios y prepara un lote para revisión. El envío no registra artículos todavía.</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="LoadAsync" disabled="@_loading">Actualizar</button>
@@ -33,7 +34,7 @@
 
         @if (_loading)
         {
-            <section class="rounded-lg border border-border bg-background p-8 text-center text-sm text-muted">Cargando matrices...</section>
+            <ArticlePageSkeleton Label="Cargando matrices" Variant="list" />
         }
         else if (_form is null)
         {
@@ -59,7 +60,7 @@
                 </article>
                 <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Fase actual</p>
-                    <p class="mt-1 text-lg font-bold text-foreground">Borrador</p>
+                    <p class="mt-1 text-lg font-bold text-foreground">@(_selected is null ? "Sin selección" : StatusLabel(_selected.Summary.Status))</p>
                 </article>
             </section>
 
@@ -98,29 +99,20 @@
                                 <p class="text-xs text-muted">Estado: @StatusLabel(_selected.Summary.Status) - @_selected.Summary.RowCount fila(s) - @_selected.Columns.Count columna(s)</p>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="AddRowAsync" disabled="@_busy">Agregar fila</button>
-                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="ReviewMatrixAsync" disabled="@(_busy || _selected.Rows.Count == 0)">Revisar matriz</button>
-                                <button class="articles-matrix-submit rounded-lg px-3 py-2 text-sm font-semibold"
-                                        @onclick="SubmitMatrixToWorkflowAsync"
-                                        disabled="@(!CanSubmitMatrix)">
-                                    @(_submittingToWorkflow ? "Enviando..." : "Enviar a revision")
-                                </button>
-                                @if (_selected.Summary.LastImportBatchId.HasValue)
-                                {
-                                    <button class="articles-matrix-flow-status articles-matrix-flow-status--linked"
-                                            type="button"
-                                            title="Abrir seguimiento del lote enviado."
-                                            @onclick="GoToWorkflow">
-                                        Lote @_selected.Summary.LastImportBatchId
-                                    </button>
-                                }
-                                else
-                                {
-                                    <span class="articles-matrix-flow-status" title="Primero revisa que la matriz tenga filas y campos obligatorios completos.">Envio pendiente</span>
-                                }
-                                <button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @onclick="DeleteSelectedAsync" disabled="@_busy">Eliminar borrador</button>
+                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="AddRowAsync" disabled="@(_busy || !IsDraft)">Agregar fila</button>
+                                <button class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle" @onclick="ReviewMatrixAsync" disabled="@(_busy || !IsDraft || _selected.Rows.Count == 0)">Revisar matriz</button>
+                                <button class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50" @onclick="SubmitToStagingAsync" disabled="@(_busy || !IsDraft || !_matrixReviewed || MissingRequiredCellCount > 0 || _selected.Rows.Count == 0)">Enviar a staging</button>
+                                <button class="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" @onclick="DeleteSelectedAsync" disabled="@(_busy || !IsDraft)">Eliminar borrador</button>
                             </div>
                         </div>
+
+                        @if (_stagingSummary is not null)
+                        {
+                            <section class="mb-4 border-b border-border pb-4 text-sm text-foreground" aria-live="polite">
+                                <p class="font-bold">Lote @_stagingSummary.BatchCode preparado para revisión</p>
+                                <p class="mt-1 text-muted">@_stagingSummary.ValidRows fila(s) listas, @_stagingSummary.DuplicateRows DOI duplicado(s), @_stagingSummary.ErrorRows con errores. No se han registrado artículos.</p>
+                            </section>
+                        }
 
                         @if (_selected.Rows.Count > 0)
                         {
@@ -128,7 +120,7 @@
                                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                     <div>
                                         <p class="text-xs font-semibold uppercase">Revision de captura</p>
-                                        <h3 class="mt-1 text-base font-bold">@(MissingRequiredCellCount > 0 ? "Correcciones pendientes" : "Borrador listo para la siguiente fase")</h3>
+                                        <h3 class="mt-1 text-base font-bold">@(MissingRequiredCellCount > 0 ? "Correcciones pendientes" : IsDraft ? "Borrador listo para envío" : "Matriz enviada")</h3>
                                         <p class="mt-1 text-sm">@MatrixReviewMessage</p>
                                         <p class="mt-2 text-xs font-semibold">Revision: @(_matrixReviewed ? "realizada" : "pendiente")</p>
                                     </div>
@@ -193,29 +185,24 @@
     private ResolvedFormDto? _form;
     private List<RegistrationMatrixSummaryDto> _matrices = [];
     private RegistrationMatrixDetailDto? _selected;
+    private BulkImportBatchSummaryDto? _stagingSummary;
     private int? _selectedMatrixId;
     private bool _loading;
     private bool _creating;
     private bool _busy;
     private bool _matrixReviewed;
-    private bool _submittingToWorkflow;
     private string? _message;
     private bool _messageIsError;
     private readonly Dictionary<int, List<CatalogItemDto>> _matrixCatalogs = [];
 
     private string MessageClass => _messageIsError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800";
+    private bool IsDraft => _selected?.Summary.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase) == true;
     private int RequiredColumnCount => _selected?.Columns.Count(c => c.IsRequired) ?? 0;
     private int FilledCellCount => _selected?.Rows.Sum(row => row.Cells.Count(cell => !string.IsNullOrWhiteSpace(cell.RawValue))) ?? 0;
     private int MissingRequiredCellCount => _selected is null ? 0 : _selected.Rows.Sum(row => _selected.Columns.Count(column => column.IsRequired && string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId))));
     private string MatrixReviewMessage => MissingRequiredCellCount > 0
         ? "Completa los campos marcados en rojo antes de continuar con la preparacion del lote."
-        : "La matriz no tiene campos obligatorios pendientes. Ya puede continuar con la siguiente fase operativa.";
-    private bool CanSubmitMatrix => _selected is not null
-        && !_busy
-        && !_submittingToWorkflow
-        && _matrixReviewed
-        && _selected.Rows.Count > 0
-        && MissingRequiredCellCount == 0;
+        : IsDraft ? "La matriz no tiene campos obligatorios pendientes. Revísala y envíala a staging." : "La matriz ya fue enviada a staging y no puede editarse.";
 
     private List<ResolvedFormFieldDto> ActiveFields => _form?.Sections
         .SelectMany(s => s.Fields)
@@ -287,6 +274,12 @@
         _selectedMatrixId = matrixId;
         _matrixReviewed = false;
         await LoadMatrixCatalogsAsync();
+        _stagingSummary = null;
+        if (_selected.Summary.Status.Equals("Staged", StringComparison.OrdinalIgnoreCase))
+        {
+            var summary = await MatrixClient.GetStagingSummaryAsync(matrixId);
+            _stagingSummary = summary.Success ? summary.Data : null;
+        }
     }
 
     private async Task AddRowAsync()
@@ -340,6 +333,7 @@
             }
             _selected = null;
             _selectedMatrixId = null;
+            _stagingSummary = null;
             await LoadAsync();
             Show(result.Data?.Message ?? "Matriz eliminada.", false);
         }
@@ -356,56 +350,34 @@
         _matrixReviewed = true;
         Show(MissingRequiredCellCount > 0
             ? $"La matriz tiene {MissingRequiredCellCount} campo(s) obligatorio(s) pendiente(s)."
-            : "La matriz esta lista como borrador revisado. Continua con el flujo institucional cuando corresponda.",
+            : "La matriz está lista para enviar a staging. Todavía no se registrarán artículos.",
             MissingRequiredCellCount > 0);
         return Task.CompletedTask;
     }
 
-    private async Task SubmitMatrixToWorkflowAsync()
+    private async Task SubmitToStagingAsync()
     {
-        if (_selected is null)
-            return;
-
-        if (!CanSubmitMatrix)
-        {
-            Show("Revisa la matriz y completa los campos obligatorios antes de enviarla a revision.", true);
-            return;
-        }
-
-        _submittingToWorkflow = true;
+        if (_selected is null || !IsDraft || !_matrixReviewed || MissingRequiredCellCount > 0) return;
+        _busy = true;
         try
         {
-            var result = await MatrixClient.SubmitToStagingAsync(_selected.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest
-            {
-                ValidateAfterCreate = true,
-                UseAuthorWorkflow = true
-            });
-
+            var result = await MatrixClient.SubmitToStagingAsync(_selected.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest());
             if (!result.Success || result.Data is null)
             {
-                Show(result.Message ?? "No pude enviar la matriz a revision.", true);
+                Show(result.Message ?? "No pude preparar el lote. Revisa la matriz e inténtalo nuevamente.", true);
                 return;
             }
-
             _selected = result.Data.Matrix;
-            _selectedMatrixId = _selected.Summary.RegistrationMatrixId;
-            _matrixReviewed = true;
-            var batchId = result.Data.BatchResult?.Batch?.Summary?.ImportBatchId ?? _selected.Summary.LastImportBatchId;
-            Show(batchId.HasValue
-                    ? $"Matriz enviada a revision. Lote generado: {batchId.Value}."
-                    : !string.IsNullOrWhiteSpace(result.Data.Message) ? result.Data.Message : "Matriz enviada a revision.",
-                false);
-            await LoadAsync();
+            _stagingSummary = result.Data.BatchResult?.Batch?.Summary;
+            _matrixReviewed = false;
+            Show(result.Data.Message, false);
+            var matrices = await MatrixClient.GetMatricesAsync(50);
+            if (matrices.Success && matrices.Data is not null) _matrices = matrices.Data;
         }
         finally
         {
-            _submittingToWorkflow = false;
+            _busy = false;
         }
-    }
-
-    private void GoToWorkflow()
-    {
-        Nav.NavigateTo("/articles/module/workflow");
     }
 
     private static string? GetCellValue(RegistrationMatrixRowDto row, int fieldId)
@@ -548,7 +520,9 @@
     private static bool IsTruthy(string? value) => value is not null && (value.Equals("true", StringComparison.OrdinalIgnoreCase) || value.Equals("1") || value.Equals("si", StringComparison.OrdinalIgnoreCase));
 
     private static string StatusLabel(string? status)
-        => status?.Equals("Draft", StringComparison.OrdinalIgnoreCase) == true ? "Borrador" : status ?? "Sin estado";
+        => status?.Equals("Draft", StringComparison.OrdinalIgnoreCase) == true ? "Borrador"
+            : status?.Equals("Staged", StringComparison.OrdinalIgnoreCase) == true ? "En staging"
+            : status ?? "Sin estado";
 
     private void Show(string message, bool isError)
     {
