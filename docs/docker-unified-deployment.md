@@ -1,5 +1,23 @@
 # Despliegue Docker Unified
 
+## Inicio para colaboradores
+
+El stack usa SQL Server **externo**. Docker ejecuta el migrador, la API ASP.NET y el frontend Blazor/Nginx. Antes del primer inicio, el colaborador necesita una instancia SQL Server con autenticacion SQL y acceso TCP desde Docker. Para probar con datos existentes, debe restaurar un respaldo de `tesis_unified` en su propia instancia; la imagen no contiene respaldos ni credenciales.
+
+1. Actualizar la rama y crear `.env` a partir de `.env.example` si aun no existe. Nunca sobrescribir un `.env` personal ni subirlo a Git.
+2. Ajustar `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` y `JWT_KEY` en `.env`. Desde Docker Desktop, `DB_HOST=host.docker.internal` apunta al equipo anfitrion; `DB_PORT` debe ser el puerto TCP real de SQL Server, no el nombre de una instancia. El login SQL necesita permisos para crear y migrar la base. La autenticacion integrada de Windows no funciona dentro de estos contenedores Linux.
+3. Hacer respaldo de la base si ya contiene datos. Revisar `docker compose config --quiet` y levantar con `docker compose up --build -d`.
+4. Comprobar `docker compose ps -a`: `migrate-database` debe terminar con codigo 0 y `api`/`web` deben estar en ejecucion. Consultar `docker compose logs --tail=100 migrate-database api web` si algo falla.
+5. Abrir `http://localhost:8090` (o el valor de `WEB_HOST_PORT`). `http://localhost:8091/health` debe responder 200 desde el mismo equipo. La API se publica solo en la interfaz local; el navegador consume `/api` mediante Nginx.
+
+En PowerShell, la copia inicial del entorno puede hacerse con `Copy-Item .env.example .env` **solo si `.env` no existe**. En Bash, usar `cp .env.example .env` bajo la misma condicion. `DB_NAME` usa `tesis_unified` y los archivos se guardan en `./.docker-data/files` si no se especifican otros valores. Esa carpeta y `.env` se ignoran en Git y en el contexto de build.
+
+El modo predeterminado del contenedor API es `Production`, sin Swagger ni paginas de excepcion de desarrollo. Solo en un equipo de pruebas, cambiar `ASPNETCORE_ENVIRONMENT=Development` en `.env` y recrear `api` para acceder a Swagger en `http://localhost:8091/`. Volver a `Production` al finalizar. Las migraciones crean el esquema, pero no sustituyen los catalogos institucionales ni los datos de prueba; ejecutar las sincronizaciones y migraciones administrativas requeridas mediante el flujo autorizado de la aplicacion.
+
+El frontend requiere `tesisproject.frontend/wwwroot/appsettings.json` con `ApiBaseUrl=/api`; es configuracion publica, no un secreto. Debe formar parte del commit que recibira el colaborador. Nginx puede iniciar y mostrar la interfaz aunque la API aun no este disponible; en ese caso las solicitudes `/api/` devolveran error hasta que el backend arranque.
+
+No usar `docker compose down -v` para reiniciar: puede eliminar volumenes persistentes de otros servicios si se agregan al proyecto Compose. Para detener sin borrar datos, `docker compose down`.
+
 Se revisó `Develop` y `origin/Develop` en el commit local `0ea84384b17286142d3c6b5247a930d034fb5174`. Los ajustes están sobre la rama de unificación actual, preservando su trabajo pendiente; no se cambia Develop ni se hace merge.
 
 ## Flujo
@@ -26,9 +44,9 @@ Las conexiones de Docker se suministran exclusivamente por Compose desde `.env`;
 - DB_USER/DB_PASS: login SQL con permisos para crear y migrar `DB_NAME`.
 - DB_NAME: única base física, por defecto `tesis_unified`. Contiene `dbo`, `ProjectsDW` y `ArticlesDW`.
 - JWT_KEY: secreto aleatorio de al menos 32 caracteres; JWT_ISSUER/JWT_AUDIENCE deben coincidir entre emisores/validadores del despliegue.
-- STORAGE_HOST_PATH: directorio persistente del host; en Linux usar una ruta absoluta Linux con permisos apropiados.
+- STORAGE_HOST_PATH: directorio persistente del host. Si se omite, se usa `./.docker-data/files`; en Linux se puede indicar una ruta absoluta con permisos apropiados.
 - EXTERNAL_APIS_BASE_URL: directorio/APIs institucionales accesibles desde el backend.
-- WEB_HOST_PORT: puerto externo de Nginx, por defecto 8090.
+- WEB_HOST_PORT: puerto externo de Nginx, por defecto 8090. API_HOST_PORT (8091) se enlaza solo a `127.0.0.1` del host.
 
 `host.docker.internal` se mapea mediante host-gateway, compatible con hosts Linux y Docker Desktop. Los nombres internos siguen siendo `api` y `web`; se retiraron container_name fijos para permitir proyectos Compose aislados.
 
@@ -45,6 +63,10 @@ Revisar que `migrate-database` terminó con código 0. Si detecta conflicto, res
 La adaptación inicial de Docker no ejecutó migrations contra la BD de aplicación. El bootstrap opcional descrito abajo sí provisiona la cuenta indicada por el operador. No inventa seeds/forms/fields: el baseline Articles ausente continúa siendo una limitación funcional conocida, no solucionada por Docker. Los ajustes funcionales del frontend siguen en frontend-merge-impacts.md.
 
 ## Verificación
+
+- Revision local (2026-11-12): `docker compose config --quiet` con `.env` y con `.env.example`: PASS. El `.env` local sin `DB_NAME` ni `STORAGE_HOST_PATH` ahora resuelve `tesis_unified` y `./.docker-data/files`.
+- `docker compose build api web`: PASS con el codigo de trabajo actual. `docker compose run --rm --no-deps --entrypoint nginx web -t`: PASS incluso sin API en la red.
+- Smoke temporal del contenedor web: `/`, `/login`, `/appsettings.json` y `/tailwind.css` respondieron 200. Se detuvo el contenedor despues de la prueba. No se ejecuto el migrador ni se modifico SQL Server.
 
 - `docker compose --env-file .env.example config --quiet`: PASS.
 - Build backend y solución Release: PASS, 0 errores (21 warnings de la solución). Se regeneraron assets NuGet con SDK 9 porque el frontend tenía assets locales de herramientas .NET 10; no se cambió su código.

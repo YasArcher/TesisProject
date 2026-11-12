@@ -8,14 +8,14 @@ x-database-environment: &database-environment
 
   ConnectionStrings__ProjectsDwConnection: >-
     Server=${DB_HOST:?Set DB_HOST},${DB_PORT:-1433};
-    Database=${DB_NAME:?Set DB_NAME};
+    Database=${DB_NAME:-tesis_unified};
     User Id=${DB_USER:?Set DB_USER};
     Password=${DB_PASS:?Set DB_PASS};
     TrustServerCertificate=True;
 
   ConnectionStrings__ArticlesDwConnection: >-
     Server=${DB_HOST:?Set DB_HOST},${DB_PORT:-1433};
-    Database=${DB_NAME:?Set DB_NAME};
+    Database=${DB_NAME:-tesis_unified};
     User Id=${DB_USER:?Set DB_USER};
     Password=${DB_PASS:?Set DB_PASS};
     TrustServerCertificate=True;
@@ -56,13 +56,14 @@ services:
 
     environment:
       <<: *database-environment
-      # Production Development Environment. Cambiar a Development para debug.
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ASPNETCORE_URLS: http://+:8080
 
       ArticlesModule__Enabled: "true"
 
       ExternalApis__BaseUrl: ${EXTERNAL_APIS_BASE_URL:-http://host.docker.internal:3000}
+      ExternalApis__Scopus__ApiKey: ${SCOPUS_API_KEY:-}
+      ExternalApis__Scopus__InstToken: ${SCOPUS_INST_TOKEN:-}
 
       Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
       Jwt__Issuer: ${JWT_ISSUER:-tesisproject-local}
@@ -84,16 +85,17 @@ services:
 
     volumes:
       - type: bind
-        source: ${STORAGE_HOST_PATH:?Set STORAGE_HOST_PATH}
+        source: ${STORAGE_HOST_PATH:-./.docker-data/files}
         target: /app/files
+        bind:
+          create_host_path: true
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-    # Útil para desarrollo/debug.
-    # Nginx seguirá consumiendo api:8080 internamente.
+    # Acceso directo solo desde el host; Nginx consume api:8080 internamente.
     ports:
-      - "${API_HOST_PORT:-8091}:8080"
+      - "127.0.0.1:${API_HOST_PORT:-8091}:8080"
 
     restart: unless-stopped
 
