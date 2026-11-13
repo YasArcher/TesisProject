@@ -143,6 +143,7 @@ await UnifiedRequestAdapterTests.RunAsync(Check);
 await CatalogSynchronizationTests.RunAsync(Check);
 await FacultyHierarchyTests.RunAsync(Check);
 await LocalCatalogConsumerTests.RunAsync(Check);
+await ArticleFormCatalogTests.RunAsync(Check);
 ProjectMatrixDateParsingTests.Run(Check);
 await AdministrationInfrastructureTests.RunAsync(Check);
 await DwEtlOperationTrackingTests.RunAsync(Check);

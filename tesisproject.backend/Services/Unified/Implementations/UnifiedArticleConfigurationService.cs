@@ -689,7 +689,10 @@ public sealed class UnifiedArticleConfigurationService(IUnifiedArticleConfigurat
         => repository.ReadCatalogItemsAsync(NormalizeCatalogKey(key), parentId, ct);
 
     private static string NormalizeCatalogKey(string? key)
-        => (key ?? string.Empty).Trim().Replace("_", "-").ToLowerInvariant();
+    {
+        var normalized = (key ?? string.Empty).Trim().Replace("_", "-").ToLowerInvariant();
+        return normalized.StartsWith("dbo.", StringComparison.Ordinal) ? normalized[4..] : normalized;
+    }
     public async Task<ServiceResult<List<CatalogAdminItemDto>>> GetAdminCatalog(string catalogKey, CancellationToken ct)
     {
         var items = await repository.ReadAdminCatalogAsync(NormalizeCatalogKey(catalogKey), ct);
