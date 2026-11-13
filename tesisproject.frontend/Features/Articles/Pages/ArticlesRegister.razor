@@ -20,7 +20,7 @@
                 <p class="text-sm font-semibold text-primary">Registro y seguimiento</p>
                 <h1 class="mt-1 text-2xl font-bold text-foreground">Registrar artículo</h1>
                 <p class="mt-1 max-w-3xl text-sm text-muted">
-                    Formulario conectado a la configuración activa. Valida campos requeridos, participantes y reglas antes de guardar el artículo en producción científica.
+                    Completa los datos y revisa las observaciones antes de registrar.
                 </p>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -63,20 +63,20 @@
         }
         else
         {
-            <section class="articles-metric-grid mb-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
-                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+            <section class="articles-metric-grid mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-3 md:p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Formulario</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@_articleForm.FormName</p>
                 </article>
-                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-3 md:p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Campos visibles</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@VisibleArticleFields.Count</p>
                 </article>
-                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-3 md:p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Obligatorios</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@VisibleArticleFields.Count(f => f.IsRequired)</p>
                 </article>
-                <article class="articles-metric-card rounded-lg border border-border bg-background p-4">
+                <article class="articles-metric-card rounded-lg border border-border bg-background p-3 md:p-4">
                     <p class="text-xs font-semibold uppercase text-muted">Participantes</p>
                     <p class="mt-1 text-lg font-bold text-foreground">@_participants.Count</p>
                 </article>
@@ -160,7 +160,7 @@
                                 <span>
                                     <span class="articles-accordion-eyebrow">Sección del formulario</span>
                                     <span class="articles-accordion-title">@formSection.GroupName</span>
-                                    <span class="articles-accordion-description">@fields.Count campo(s) configurados desde administración</span>
+                                    <span class="articles-accordion-description">@fields.Count campos</span>
                                 </span>
                                 <span class="articles-accordion-meta">
                                     <span class="articles-accordion-badge @(sectionHasErrors ? "articles-accordion-badge--warning" : null)">
@@ -299,10 +299,7 @@
                 <aside class="articles-right-panel space-y-4">
                     <section class="rounded-lg border border-border bg-background p-5">
                         <p class="text-xs font-semibold uppercase text-muted">Estado del registro</p>
-                        <h2 class="mt-1 text-lg font-bold text-foreground">Preparación controlada</h2>
-                        <p class="mt-2 text-sm text-muted">
-                            Revisa los datos visibles del formulario activo antes de guardar. Si existen campos opcionales pendientes, el sistema solicitará confirmación antes de registrar.
-                        </p>
+                        <h2 class="mt-1 text-lg font-bold text-foreground">Revisión</h2>
                         <div class="mt-4 grid grid-cols-2 gap-3">
                             <div class="rounded-lg border border-border p-3">
                                 <p class="text-xs text-muted">Completados</p>
@@ -356,14 +353,6 @@
 
                     </section>
 
-                    <section class="rounded-lg border border-border bg-background p-5">
-                        <p class="text-xs font-semibold uppercase text-muted">Flujo actual</p>
-                        <ul class="mt-3 space-y-2 text-sm text-muted">
-                            <li>1. Verificar campos obligatorios y reglas configuradas.</li>
-                            <li>2. Confirmar si existen campos opcionales pendientes.</li>
-                            <li>3. Registrar el artículo para consulta institucional.</li>
-                        </ul>
-                    </section>
                 </aside>
             </div>
         }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
-using tesisproject.frontend.Services.Auth; // asegúrate del namespace real de CustomAuthStateProvider
+using tesisproject.frontend.Services.Auth;
 
 namespace tesisproject.frontend.Layout
 {
@@ -10,31 +10,12 @@ namespace tesisproject.frontend.Layout
 
         private bool IsSidebarOpen = false;
         private bool _isSidebarCollapsed;
+        private bool _portalSidebarExpanded;
         private DateTime _now = DateTime.Now;
         private CancellationTokenSource? _clockCancellation;
 
-        private string CurrentPath
-        {
-            get
-            {
-                var baseUri = Nav.BaseUri.TrimEnd('/');
-                var relative = Nav.Uri.StartsWith(baseUri, StringComparison.OrdinalIgnoreCase)
-                    ? Nav.Uri[baseUri.Length..]
-                    : Nav.Uri;
-
-                return relative.StartsWith("/") ? relative : "/" + relative;
-            }
-        }
-
-        private bool IsArticleRoute => CurrentPath.StartsWith("/articles", StringComparison.OrdinalIgnoreCase);
-
-        private string CurrentModuleBadge => IsArticleRoute
-            ? "Producción científica"
-            : "Gestión de proyectos";
-
-        private string CurrentModuleDescription => IsArticleRoute
-            ? "Registro, workflow, reportería e inteligencia científica."
-            : "Seguimiento operativo de proyectos de investigación.";
+        private bool IsPortalRoute => Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/') == string.Empty;
+        private bool SidebarCollapsed => IsPortalRoute ? !_portalSidebarExpanded : _isSidebarCollapsed;
 
         private string CurrentDateLabel => _now.ToString("dd/MM/yyyy");
         private string CurrentTimeLabel => _now.ToString("HH:mm");
@@ -97,6 +78,8 @@ namespace tesisproject.frontend.Layout
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
             IsSidebarOpen = false;
+            if (IsPortalRoute)
+                _portalSidebarExpanded = false;
             StateHasChanged();
         }
 
@@ -107,7 +90,10 @@ namespace tesisproject.frontend.Layout
 
         private void ToggleSidebarCollapsed()
         {
-            _isSidebarCollapsed = !_isSidebarCollapsed;
+            if (IsPortalRoute)
+                _portalSidebarExpanded = !_portalSidebarExpanded;
+            else
+                _isSidebarCollapsed = !_isSidebarCollapsed;
         }
 
         public void Dispose()

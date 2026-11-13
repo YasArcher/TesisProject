@@ -21,7 +21,7 @@
                         <p class="text-xs font-semibold uppercase tracking-wide text-accent">Workflow de articulos</p>
                         <h1 class="mt-1 text-2xl font-bold">Seguimiento de envios</h1>
                         <p class="mt-2 max-w-2xl text-sm text-on-dark/80">
-                            Vista inicial para revisar registros de articulos dentro de la plataforma integrada.
+                            Consulta articulos registrados y lotes preparados en la plataforma integrada.
                         </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
@@ -54,7 +54,7 @@
                     <strong>@CurrentPageWithDoi</strong>
                 </div>
                 <div class="articles-workflow-metric rounded-md border border-border bg-page-bg px-4 py-3">
-                    <span>Lotes enviados</span>
+                    <span>Lotes en seguimiento</span>
                     <strong>@SubmittedMatrices.Count</strong>
                 </div>
             </div>
@@ -66,7 +66,7 @@
                     <span class="articles-workflow-pill">Bandeja institucional</span>
                     <h2 class="mt-3 text-lg font-bold text-foreground">Bandeja operativa activa</h2>
                     <p class="mt-2 max-w-3xl text-sm text-muted">
-                        Esta pantalla trabaja con articulos reales y con la sesion integrada. Las acciones de UODIDE, autor y Area Tecnica se muestran segun permisos y se habilitan cuando el caso permite continuar.
+                        Esta bandeja muestra articulos y lotes reales. Las decisiones de UODIDE y Area Tecnica aun no procesan lotes de staging.
                     </p>
                 </div>
                 <button type="button"
@@ -141,9 +141,9 @@
             <div class="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-start md:justify-between">
                 <div>
                     <p class="text-xs font-bold uppercase text-muted">Envios por matriz</p>
-                    <h2 class="mt-1 text-lg font-bold text-foreground">Lotes enviados a revision</h2>
+                    <h2 class="mt-1 text-lg font-bold text-foreground">Lotes preparados y envios anteriores</h2>
                     <p class="mt-2 max-w-3xl text-sm text-muted">
-                        Aqui aparecen las matrices que ya salieron del borrador y pueden continuar su revision por rol.
+                        Los lotes en staging se pueden consultar aqui. La aprobacion por rol y el registro final aun no estan habilitados para estos lotes.
                     </p>
                 </div>
                 <button type="button"
@@ -156,7 +156,7 @@
             @if (SubmittedMatrices.Count == 0)
             {
                 <div class="mt-4 rounded-lg border border-dashed border-border bg-page-bg p-5 text-sm text-muted">
-                    Todavia no hay matrices enviadas a revision. Crea una matriz, completa las filas obligatorias y utiliza "Enviar a revision".
+                    Todavia no hay lotes preparados. Crea una matriz, completa las filas obligatorias y preparala en staging.
                 </div>
             }
             else
@@ -170,7 +170,7 @@
                                     <span>@WorkflowStatusLabel(matrix.Status)</span>
                                     <strong>@matrix.Name</strong>
                                 </div>
-                                <em>@(matrix.LastImportBatchId.HasValue ? $"Lote {matrix.LastImportBatchId}" : "Enviado")</em>
+                                <em>@(IsStaged(matrix.Status) ? "En staging" : matrix.LastImportBatchId.HasValue ? $"Lote anterior {matrix.LastImportBatchId}" : "Envio anterior")</em>
                             </div>
                             <dl>
                                 <div>
@@ -187,7 +187,7 @@
                                 </div>
                             </dl>
                             <button type="button" @onclick="() => OpenReviewBatch(matrix)">
-                                Revisar seguimiento
+                                @(IsStaged(matrix.Status) ? "Ver lote preparado" : "Ver envio anterior")
                             </button>
                         </article>
                     }
@@ -299,23 +299,24 @@
 
     private int CurrentPageWithDoi => _page.Items.Count(item => !string.IsNullOrWhiteSpace(item.Doi));
     private List<RegistrationMatrixSummaryDto> SubmittedMatrices => _matrices
-        .Where(matrix => matrix.LastImportBatchId.HasValue || matrix.Status.Contains("Submitted", StringComparison.OrdinalIgnoreCase))
+        .Where(matrix => IsStaged(matrix.Status) || matrix.LastImportBatchId.HasValue || matrix.Status.Contains("Submitted", StringComparison.OrdinalIgnoreCase))
         .OrderByDescending(matrix => matrix.UpdatedAt ?? matrix.CreatedAt)
         .ToList();
-    private int? LatestSubmittedBatchId => SubmittedMatrices.FirstOrDefault()?.LastImportBatchId;
+    private int? LatestStagedMatrixId => SubmittedMatrices.FirstOrDefault(matrix => IsStaged(matrix.Status))?.RegistrationMatrixId;
+    private int? LatestSubmittedBatchId => SubmittedMatrices.FirstOrDefault(matrix => matrix.LastImportBatchId.HasValue)?.LastImportBatchId;
 
     private IReadOnlyList<WorkflowBox> WorkflowBoxes =>
     [
-        new("Autor", _session?.Articles.CanUseWorkflow == true, "Envios", "Seguimiento de articulos enviados, correcciones y observaciones devueltas.", "Ver envios", "/scientific-production/author-workspace"),
-        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Revision", "Toma de caso, revision inicial y devolucion al autor cuando corresponda.", "Revisar casos", BuildReviewTarget("/scientific-production/uodide-review-staging")),
-        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Final", "Validacion final, correccion tecnica y procesamiento definitivo.", "Validar final", BuildReviewTarget("/scientific-production/area-tecnica-review-staging"))
+        new("Autor", _session?.Articles.CanUseWorkflow == true, "Envios", "Consulta los lotes preparados; la correccion por rol sigue pendiente.", "Ver bandeja", "/scientific-production/author-workspace"),
+        new("UODIDE", _session?.Articles.CanReviewUodide == true, "Revision", "Vista previa del lote. La toma de caso y la devolucion aun no estan conectadas.", "Ver lote", BuildReviewTarget("/scientific-production/uodide-review-staging")),
+        new("Area tecnica", _session?.Articles.CanReviewTechnical == true || _session?.Articles.CanProcess == true, "Final", "Vista previa del lote. La aprobacion y el procesamiento aun no estan conectados.", "Ver lote", BuildReviewTarget("/scientific-production/area-tecnica-review-staging"))
     ];
 
     private static IReadOnlyList<TestAction> TestActions =>
     [
         new("1", "Formulario individual", "Captura un articulo desde el formulario activo.", "/articles/module/register"),
-        new("2", "Matriz tabular", "Crea filas, revisa campos obligatorios y envia a revision.", "/articles/module/matrix"),
-        new("3", "Workflow", "Verifica seguimiento, revision UODIDE y area tecnica.", "/articles/module/workflow")
+        new("2", "Matriz tabular", "Crea filas, revisa campos obligatorios y prepara el lote.", "/articles/module/matrix"),
+        new("3", "Seguimiento", "Consulta el estado del lote antes de su futura revision por roles.", "/articles/module/workflow")
     ];
 
     protected override Task OnInitializedAsync() => LoadPageAsync(1);
@@ -358,11 +359,14 @@
     private void GoToMatrix() => Nav.NavigateTo("/articles/module/matrix");
     private void OpenArticle(int articleId) => Nav.NavigateTo($"/articles?articleId={articleId}");
     private void OpenReviewBatch(RegistrationMatrixSummaryDto matrix)
-        => Nav.NavigateTo(matrix.LastImportBatchId.HasValue
-            ? $"/scientific-production/article-review-staging?batchId={matrix.LastImportBatchId}"
-            : "/articles/module/workflow");
+        => Nav.NavigateTo(IsStaged(matrix.Status)
+            ? $"/scientific-production/article-review-staging?matrixId={matrix.RegistrationMatrixId}"
+            : matrix.LastImportBatchId.HasValue
+                ? $"/scientific-production/article-review-staging?batchId={matrix.LastImportBatchId}"
+                : "/articles/module/workflow");
     private string BuildReviewTarget(string baseRoute)
-        => LatestSubmittedBatchId.HasValue ? $"{baseRoute}?batchId={LatestSubmittedBatchId.Value}" : baseRoute;
+        => LatestStagedMatrixId.HasValue ? $"{baseRoute}?matrixId={LatestStagedMatrixId.Value}"
+            : LatestSubmittedBatchId.HasValue ? $"{baseRoute}?batchId={LatestSubmittedBatchId.Value}" : baseRoute;
     private void NavigateTo(string target) => Nav.NavigateTo(target);
     private void OpenWorkflowBox(WorkflowBox box)
     {
@@ -383,12 +387,14 @@
         {
             "SubmittedToWorkflow" => "En revision",
             "Submitted" => "Enviado",
+            "Staged" => "Preparado en staging",
             "Draft" => "Borrador",
             _ when !string.IsNullOrWhiteSpace(status) => status,
             _ => "Sin estado"
         };
 
     private static string FormatDate(DateTime value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+    private static bool IsStaged(string? status) => string.Equals(status, "Staged", StringComparison.OrdinalIgnoreCase);
 
     private static string FriendlyError(string? code, string? message)
         => code switch

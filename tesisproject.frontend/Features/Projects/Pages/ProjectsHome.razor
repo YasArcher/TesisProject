@@ -9,6 +9,7 @@
 @using tesisproject.shared.DTOs.Export
 @using tesisproject.shared.DTOs.Filters
 @using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.shared.Errors
 
 @inject IProjectClientService ProjectService
 @inject IProjectFiltersClientService ProjectFiltersService
@@ -17,7 +18,20 @@
 @inject IJSRuntime JS
 @inject IToastService Toast
 
-<div class="h-full min-h-0 flex flex-col gap-6 p-4 w-full">
+<div class="h-full min-h-0 flex flex-col gap-5 p-4 w-full">
+    <header class="shrink-0 min-w-0">
+        <p class="text-xs font-semibold uppercase text-muted">Investigacion</p>
+        <h1 class="mt-1 text-xl font-bold text-foreground">Proyectos</h1>
+    </header>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-page-bg px-4 py-3 text-sm text-foreground" role="alert">
+            <span>No se pudieron cargar los proyectos. Intenta nuevamente.</span>
+            <button type="button" class="font-semibold text-accent hover:underline disabled:opacity-50" disabled="@isLoading" @onclick="LoadProjects">Reintentar</button>
+        </div>
+    }
+
     <section class="shrink-0 flex flex-col gap-3 md:flex-row md:items-center md:justify-between min-w-0">
         <div class="flex-1 min-w-0">
             <FilterBar Config="@_filterConfig"
@@ -96,13 +110,16 @@
                            ScrollbarType="ScrollbarType.Thin">
 
                     <EmptyStateAction>
-                        <ActionButton Text="Crear Nuevo Proyecto"
-                                      Execute="CreateNewProject"
-                                      Intent="ButtonIntent.Accept"
-                                      Variant="ButtonVariant.Filled"
-                                      Size="ButtonSize.Sm"
-                                      Disabled="@isLoading"
-                                      Class="px-4 py-2 rounded-md" />
+                        @if (string.IsNullOrWhiteSpace(errorMessage))
+                        {
+                            <ActionButton Text="Crear Nuevo Proyecto"
+                                          Execute="CreateNewProject"
+                                          Intent="ButtonIntent.Accept"
+                                          Variant="ButtonVariant.Filled"
+                                          Size="ButtonSize.Sm"
+                                          Disabled="@isLoading"
+                                          Class="px-4 py-2 rounded-md" />
+                        }
                     </EmptyStateAction>
 
                     <ChildContent Context="project">
@@ -116,7 +133,7 @@
 
             @if ((filteredProjects?.Count ?? 0) > 0)
             {
-                <div class="shrink-0 pt-3 flex items-center justify-between gap-3">
+                <div class="shrink-0 pt-3 flex flex-wrap items-center justify-between gap-3">
                     <div class="text-xs text-muted">
                         Mostrando @pagedProjects.Count de @_totalItems
                         (Página @_page de @_totalPages)
@@ -407,7 +424,7 @@
             var resp = await ProjectService.GetListAsync(onlyActive: true);
             allProjects = resp.Success ? resp.Data ?? new() : new();
 
-            if (!resp.Success)
+            if (!resp.Success && resp.ErrorCode != ErrorCodes.Project.NoneFound)
                 errorMessage = resp.ToErrorMessage("Error desconocido al cargar proyectos");
 
             _page = 1;
@@ -786,6 +803,9 @@
 
     private string GetEmptyStateDescription()
     {
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+            return "Vuelve a intentar la carga para consultar tus proyectos.";
+
         var hasFilters = currentFilters?.Filters?.Any() == true;
         var hasSearch = !string.IsNullOrWhiteSpace(currentSearch);
 

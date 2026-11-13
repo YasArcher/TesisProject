@@ -55,42 +55,41 @@
 @inject IProjectExtensionTypeClientService ProjectExtensionTypeService
 
 <div class="h-full min-h-0 flex flex-col overflow-hidden">
-    <!-- Header -->
-    <div class="sticky top-0 z-10 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+    <div class="sticky top-0 z-10 shrink-0 border-b border-border bg-background px-4 py-3">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <!-- Izquierda -->
-            <div class="space-y-3 min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-3">
-                    <span class="inline-flex items-center px-3 py-1 text-sm font-bold rounded-full bg-primary text-white shrink-0">
+            <div class="min-w-0 flex-1 space-y-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex shrink-0 items-center rounded px-2 py-0.5 text-xs font-bold text-white" style="background:var(--component-deep-teal)">
                         #@_project?.ProjectId
                     </span>
 
                     @if (!string.IsNullOrEmpty(_project?.ProjectCode))
                     {
-                        <span class="text-sm text-muted font-mono bg-muted/20 px-2 py-1 rounded max-w-full truncate">
+                        <span class="max-w-full truncate rounded bg-page-bg px-2 py-0.5 font-mono text-xs text-muted">
                             @_project?.ProjectCode
                         </span>
                     }
                 </div>
 
-                <h1 class="text-2xl lg:text-3xl font-bold text-foreground leading-tight break-words text-balance">
+                <h1 class="break-words text-xl font-bold leading-tight text-foreground lg:text-2xl">
                     @(string.IsNullOrEmpty(_project?.ProjectName) ? "Proyecto Sin Nombre" : _project?.ProjectName)
                 </h1>
 
-                <div class="flex flex-wrap items-center gap-3">
-                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-primary-subtle text-primary border border-primary/20">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center rounded border border-primary/20 bg-primary-subtle px-2 py-0.5 text-xs font-medium text-primary">
                         @(_project?.ProjectTypeName ?? "Sin tipo")
                     </span>
 
-                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-secondary-subtle text-secondary border border-secondary/20">
+                    <span class="inline-flex items-center rounded border border-secondary/20 bg-secondary-subtle px-2 py-0.5 text-xs font-medium text-secondary">
                         @(_project?.ProjectStateName ?? "Sin estado")
                     </span>
                 </div>
             </div>
 
             <!-- Derecha -->
-            <div class="lg:text-right space-y-3 shrink-0">
-                <div class="flex lg:justify-end">
+            <div class="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
+                <div>
                     <ActionButton Execute="GoToEdit"
                                   Text="Editar"
                                   Intent="ButtonIntent.Info"
@@ -98,13 +97,12 @@
                                   Size="ButtonSize.Md" />
                 </div>
 
-                <div class="text-sm font-medium text-muted">Progreso del Proyecto</div>
-                <div class="flex items-center gap-4 lg:justify-end">
-                    <div class="w-32 bg-border rounded-full h-3 relative overflow-hidden">
-                        <div class="bg-secondary h-3 rounded-full transition-all duration-500"
+                <div class="flex items-center gap-2" aria-label="Progreso del proyecto">
+                    <div class="relative h-2 w-24 overflow-hidden rounded-full bg-border">
+                        <div class="h-2 rounded-full bg-secondary transition-all duration-500"
                              style="width:@((_project?.ExecutionPercentage ?? 0).ToString("F1"))%"></div>
                     </div>
-                    <span class="text-2xl font-bold text-secondary">
+                    <span class="text-sm font-bold text-secondary">
                         @((_project?.ExecutionPercentage ?? 0).ToString("F1"))%
                     </span>
                 </div>

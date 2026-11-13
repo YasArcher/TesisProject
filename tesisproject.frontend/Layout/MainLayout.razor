@@ -3,20 +3,21 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
 
-<div class="fusion-app-shell @(_isSidebarCollapsed ? "is-sidebar-collapsed" : null)">
+<div class="fusion-app-shell @(SidebarCollapsed ? "is-sidebar-collapsed" : null)">
     @if (ShowSidebar)
     {
-        <aside class="fusion-sidebar-desktop @(_isSidebarCollapsed ? "is-collapsed" : null)" aria-label="Navegación principal">
-            <SideBar IsCollapsed="@_isSidebarCollapsed"
+        <aside class="fusion-sidebar-desktop @(SidebarCollapsed ? "is-collapsed" : null)" aria-label="Navegación principal">
+            <SideBar IsCollapsed="@SidebarCollapsed"
                      IsDesktop="true"
-                     OnToggleCollapsed="ToggleSidebarCollapsed" />
+                     OnToggleCollapsed="ToggleSidebarCollapsed"
+                     OnLogout="HandleLogout" />
         </aside>
 
         @if (IsSidebarOpen)
         {
             <div class="fusion-sidebar-overlay" @onclick="ToggleSidebar">
                 <aside class="fusion-sidebar-mobile" @onclick:stopPropagation="true" aria-label="Navegación principal móvil">
-                    <SideBar IsCollapsed="false" IsDesktop="false" />
+                    <SideBar IsCollapsed="false" IsDesktop="false" OnLogout="HandleLogout" />
                 </aside>
             </div>
         }
@@ -24,24 +25,17 @@
 
     <div class="fusion-app-workspace">
         <header class="fusion-app-header">
-            @if (ShowSidebar)
-            {
-                <button @onclick="ToggleSidebar"
-                        class="fusion-sidebar-tab"
-                        aria-label="Abrir navegación">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
-                    </svg>
-                </button>
-            }
-
-            <a href="/" class="fusion-header-brand" aria-label="Inicio">
-                <img src="/images/logo.png" alt="Inicio" />
-            </a>
-
-            <div class="fusion-header-context">
-                <span class="fusion-header-pill">@CurrentModuleBadge</span>
-                <span class="fusion-header-description">@CurrentModuleDescription</span>
+            <div class="fusion-header-leading">
+                @if (ShowSidebar)
+                {
+                    <button @onclick="ToggleSidebar"
+                            class="fusion-sidebar-tab"
+                            aria-label="Abrir navegación">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+                        </svg>
+                    </button>
+                }
             </div>
 
             <div class="fusion-header-actions">
@@ -51,9 +45,6 @@
                 </div>
 
                 <a href="/" class="fusion-header-link">Módulos</a>
-                <button type="button" class="fusion-logout-button" @onclick="HandleLogout">
-                    <span>Salir</span>
-                </button>
             </div>
         </header>
 

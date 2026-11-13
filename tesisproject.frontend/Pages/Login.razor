@@ -6,19 +6,22 @@
 
 <div class="login-card">
     <div class="login-card__brand">
-        <img src="/images/logo.png" alt="Sistema institucional" class="login-card__brand-logo" />
-        <div>
-            <div class="login-card__brand-kicker">UTA</div>
-            <div class="login-card__brand-title">Acceso institucional</div>
+        <img src="/images/logo.png" alt="SIGEP-DIDE" class="login-card__brand-logo" />
+        <span class="login-card__brand-title">Universidad Técnica de Ambato</span>
+    </div>
+
+    <div class="login-card__body">
+        <div class="login-card__header">
+            <h1>Acceso institucional</h1>
+            <p>Ingresa con tu cuenta para continuar.</p>
         </div>
-    </div>
 
-    <div class="login-card__header">
-        <h1>Inicia sesion</h1>
-        <p>Usa tus credenciales para ingresar al modulo correspondiente segun tu rol institucional.</p>
-    </div>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="login-card__error" role="alert" aria-live="assertive">@_error</div>
+        }
 
-    <EditForm Model="@LoginModel" OnValidSubmit="HandleLogin">
+        <EditForm Model="@LoginModel" OnValidSubmit="HandleLogin">
         <DataAnnotationsValidator />
 
         <div class="login-card__field">
@@ -42,7 +45,7 @@
         </div>
 
         <div class="login-card__field">
-            <label for="login-password">Contrasena</label>
+            <label for="login-password">Contraseña</label>
             <div class="login-card__input-shell">
                 <span class="login-card__input-icon" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -54,11 +57,11 @@
                            type="@(ShowPassword ? "text" : "password")"
                            class="login-card__input login-card__input--password"
                            autocomplete="current-password"
-                           placeholder="Ingresa tu contrasena" />
+                           placeholder="Ingresa tu contraseña" />
                 <button type="button"
                         class="login-card__toggle"
-                        aria-label="@(ShowPassword ? "Ocultar contrasena" : "Mostrar contrasena")"
-                        title="@(ShowPassword ? "Ocultar contrasena" : "Mostrar contrasena")"
+                        aria-label="@(ShowPassword ? "Ocultar contraseña" : "Mostrar contraseña")"
+                        title="@(ShowPassword ? "Ocultar contraseña" : "Mostrar contraseña")"
                         @onclick="TogglePassword">
                     @if (ShowPassword)
                     {
@@ -81,11 +84,6 @@
             <ValidationMessage For="@(() => LoginModel.Password)" class="login-card__validation" />
         </div>
 
-        <div class="login-card__meta">
-            <span>Acceso seguro</span>
-            <span>Sesion institucional</span>
-        </div>
-
         <button type="submit" class="login-card__submit" disabled="@_busy">
             @if (_busy)
             {
@@ -97,10 +95,6 @@
                 <span>Ingresar al sistema</span>
             }
         </button>
-    </EditForm>
-
-    @if (!string.IsNullOrWhiteSpace(_error))
-    {
-        <div class="login-card__error" role="alert" aria-live="assertive">@_error</div>
-    }
+        </EditForm>
+    </div>
 </div>

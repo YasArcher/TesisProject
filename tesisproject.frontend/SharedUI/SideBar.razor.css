@@ -1,10 +1,6 @@
 .fusion-sidebar-shell {
-    --sidebar-navy: var(--color-shell-soft);
-    --sidebar-navy-deep: var(--color-shell-raised);
-    --sidebar-navy-soft: var(--color-shell-soft);
-    --sidebar-steel: var(--color-muted);
-    --sidebar-gold: var(--color-accent);
-    --sidebar-wine: var(--color-primary);
+    --sidebar-highlight: var(--color-warm);
+    --sidebar-marker: var(--color-copper);
     --sidebar-text: color-mix(in srgb, var(--color-surface) 94%, transparent);
     --sidebar-muted: color-mix(in srgb, var(--color-surface) 68%, transparent);
     --sidebar-soft: color-mix(in srgb, var(--color-surface) 8%, transparent);
@@ -14,7 +10,11 @@
     display: flex;
     flex-direction: column;
     color: var(--sidebar-text);
-    background: var(--color-shell);
+    background: linear-gradient(168deg,
+        color-mix(in srgb, var(--color-shell-raised) 82%, var(--component-mist)) 0%,
+        var(--color-shell-raised) 36%,
+        color-mix(in srgb, var(--color-shell) 85%, var(--component-teal)) 72%,
+        color-mix(in srgb, var(--color-shell) 68%, var(--component-deep-teal)) 100%);
     box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-surface) 8%, transparent), 12px 0 30px color-mix(in srgb, var(--color-shell-raised) 8%, transparent);
     font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -22,17 +22,19 @@
 .fusion-sidebar-topline {
     flex-shrink: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 0.7rem;
-    padding: 0.96rem 0.92rem 0.72rem;
+    padding: 0.75rem 0.72rem;
     border-bottom: 1px solid var(--sidebar-border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell) 34%, transparent), color-mix(in srgb, var(--color-shell) 12%, transparent));
+    background: linear-gradient(115deg,
+        color-mix(in srgb, var(--color-shell-raised) 76%, var(--component-mist)),
+        color-mix(in srgb, var(--color-shell-raised) 76%, var(--component-teal)));
 }
 
 .fusion-sidebar-system {
     min-width: 0;
-    color: color-mix(in srgb, var(--color-accent) 94%, transparent);
+    color: var(--sidebar-highlight);
     font-size: 0.66rem;
     font-weight: 850;
     letter-spacing: 0.105em;
@@ -47,9 +49,9 @@
     max-width: 7.5rem;
     padding: 0.3rem 0.58rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-mist) 36%, transparent);
     color: #fff;
-    background: linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 18%, transparent), color-mix(in srgb, var(--color-surface) 5%, transparent));
+    background: color-mix(in srgb, var(--component-teal) 32%, var(--color-shell-raised));
     font-size: 0.67rem;
     font-weight: 820;
     white-space: nowrap;
@@ -57,41 +59,12 @@
     text-overflow: ellipsis;
 }
 
-.fusion-context-card {
-    flex-shrink: 0;
-    margin: 0.78rem 0.76rem 0.42rem;
-    padding: 0.82rem 0.86rem;
-    border: 1px solid color-mix(in srgb, var(--color-muted) 28%, transparent);
-    border-radius: 0.78rem;
-    background:
-        linear-gradient(180deg, color-mix(in srgb, var(--color-muted) 18%, transparent), color-mix(in srgb, var(--color-surface) 6%, transparent)),
-        color-mix(in srgb, var(--color-surface) 4%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface) 4%, transparent), 0 12px 22px color-mix(in srgb, var(--color-shell) 8%, transparent);
-}
-
-.fusion-context-label,
 .fusion-footer-title {
     font-size: 0.64rem;
     line-height: 1;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--color-accent) 92%, transparent);
-}
-
-.fusion-context-card strong {
-    display: block;
-    margin: 0.28rem 0 0.2rem;
-    color: #fff;
-    font-size: 0.94rem;
-    line-height: 1.16;
-    font-weight: 820;
-}
-
-.fusion-context-card small {
-    display: block;
-    color: var(--sidebar-muted);
-    font-size: 0.74rem;
-    line-height: 1.34;
+    color: var(--sidebar-highlight);
 }
 
 .fusion-sidebar-nav {
@@ -123,8 +96,8 @@
     width: 0.46rem;
     height: 0.46rem;
     border-radius: 999px;
-    background: var(--sidebar-gold);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 13%, transparent);
+    background: var(--sidebar-marker);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-copper) 14%, transparent);
 }
 
 .fusion-section-heading span { display: none; }
@@ -146,7 +119,7 @@
     margin-bottom: 0.28rem;
 }
 
-.fusion-nav-link {
+.fusion-sidebar-shell ::deep .fusion-nav-link {
     width: 100%;
     min-height: 2.58rem;
     display: grid;
@@ -176,8 +149,8 @@
     text-align: left;
 }
 
-.fusion-nav-link:hover,
-.fusion-nav-link:focus-visible {
+.fusion-sidebar-shell ::deep .fusion-nav-link:hover,
+.fusion-sidebar-shell ::deep .fusion-nav-link:focus-visible {
     color: #fff;
     background: color-mix(in srgb, var(--color-surface) 10%, transparent);
     border-color: color-mix(in srgb, var(--color-muted) 26%, transparent);
@@ -185,13 +158,13 @@
     outline: none;
 }
 
-.fusion-nav-link.is-active {
+.fusion-sidebar-shell ::deep .fusion-nav-link.is-active {
     color: #fff;
-    background:
-        linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 20%, transparent), rgba(122, 31, 61, 0.24)),
-        color-mix(in srgb, var(--color-surface) 6%, transparent);
-    border-color: color-mix(in srgb, var(--color-accent) 36%, transparent);
-    box-shadow: inset 3px 0 0 var(--sidebar-gold), 0 12px 22px color-mix(in srgb, var(--color-shell) 13%, transparent);
+    background: linear-gradient(110deg,
+        color-mix(in srgb, var(--component-teal) 42%, var(--color-shell-raised)),
+        color-mix(in srgb, var(--component-mist) 20%, var(--color-shell-raised)));
+    border-color: color-mix(in srgb, var(--color-mist) 36%, transparent);
+    box-shadow: inset 3px 0 0 var(--sidebar-marker);
 }
 
 .fusion-nav-icon {
@@ -207,9 +180,9 @@
     flex-shrink: 0;
 }
 
-.fusion-nav-link:hover .fusion-nav-icon,
-.fusion-nav-link.is-active .fusion-nav-icon {
-    color: var(--sidebar-gold);
+.fusion-sidebar-shell ::deep .fusion-nav-link:hover .fusion-nav-icon,
+.fusion-sidebar-shell ::deep .fusion-nav-link.is-active .fusion-nav-icon {
+    color: var(--sidebar-highlight);
     background: color-mix(in srgb, var(--color-surface) 12%, transparent);
 }
 
@@ -247,8 +220,8 @@
 
 .fusion-chevron.is-expanded {
     transform: rotate(90deg);
-    color: var(--sidebar-gold);
-    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    color: var(--sidebar-highlight);
+    background: color-mix(in srgb, var(--color-mist) 16%, transparent);
 }
 
 .fusion-subnav {
@@ -276,7 +249,7 @@
     transform: translateY(0) scaleY(1);
 }
 
-.fusion-nav-child {
+.fusion-sidebar-shell ::deep .fusion-nav-child {
     min-height: 2.08rem;
     grid-template-columns: minmax(0, 1fr);
     padding: 0.46rem 0.62rem;
@@ -289,7 +262,7 @@
     position: relative;
 }
 
-.fusion-nav-child::before {
+.fusion-sidebar-shell ::deep .fusion-nav-child::before {
     content: "";
     position: absolute;
     left: -0.82rem;
@@ -299,17 +272,17 @@
     background: color-mix(in srgb, var(--color-surface) 18%, transparent);
 }
 
-.fusion-nav-child:hover,
-.fusion-nav-child:focus-visible {
+.fusion-sidebar-shell ::deep .fusion-nav-child:hover,
+.fusion-sidebar-shell ::deep .fusion-nav-child:focus-visible {
     background: color-mix(in srgb, var(--color-surface) 8%, transparent);
     transform: translateX(1px);
 }
 
-.fusion-nav-child.is-active {
+.fusion-sidebar-shell ::deep .fusion-nav-child.is-active {
     color: #fff;
-    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
-    border-color: color-mix(in srgb, var(--color-accent) 24%, transparent);
-    box-shadow: inset 2px 0 0 var(--sidebar-gold);
+    background: color-mix(in srgb, var(--component-teal) 34%, var(--color-shell-raised));
+    border-color: color-mix(in srgb, var(--color-mist) 28%, transparent);
+    box-shadow: inset 2px 0 0 var(--sidebar-marker);
 }
 
 .fusion-nav-child .fusion-nav-text {
@@ -320,7 +293,9 @@
     flex-shrink: 0;
     padding: 0.76rem;
     border-top: 1px solid var(--sidebar-border);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell) 18%, transparent), color-mix(in srgb, var(--color-shell) 32%, transparent));
+    background: linear-gradient(120deg,
+        color-mix(in srgb, var(--color-shell) 82%, var(--component-teal)),
+        color-mix(in srgb, var(--color-shell) 74%, var(--component-deep-teal)));
     box-shadow: 0 -14px 28px color-mix(in srgb, var(--color-shell) 18%, transparent);
 }
 
@@ -339,12 +314,11 @@
     width: 0.68rem;
     height: 0.68rem;
     border-radius: 999px;
-    background: var(--sidebar-gold);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 14%, transparent);
+    background: var(--sidebar-marker);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-copper) 14%, transparent);
 }
 
 .fusion-footer-title {
-    margin-bottom: 0.2rem;
     font-weight: 820;
 }
 
@@ -373,6 +347,134 @@
     line-height: 1.28;
 }
 
+.fusion-sidebar-footer ::deep button {
+    color: var(--color-warm);
+}
+
+.fusion-sidebar-footer ::deep button:hover {
+    background: color-mix(in srgb, var(--color-warm) 11%, transparent);
+}
+
+.fusion-account-area {
+    position: relative;
+    margin-top: 0.65rem;
+}
+
+.fusion-account-trigger {
+    width: 100%;
+    min-height: 3.05rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.42rem 0.56rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    color: var(--sidebar-text);
+    background: color-mix(in srgb, var(--color-surface) 8%, transparent);
+    text-align: left;
+    cursor: pointer;
+}
+
+.fusion-account-trigger:hover,
+.fusion-account-trigger:focus-visible {
+    border-color: color-mix(in srgb, var(--color-mist) 48%, transparent);
+    background: color-mix(in srgb, var(--component-teal) 24%, var(--color-shell));
+}
+
+.fusion-account-trigger::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-left: auto;
+    border-top: 2px solid var(--sidebar-muted);
+    border-left: 2px solid var(--sidebar-muted);
+    transform: rotate(45deg);
+}
+
+.fusion-account-avatar {
+    width: 2.08rem;
+    height: 2.08rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 7px;
+    color: var(--color-on-dark);
+    background: var(--component-teal);
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.fusion-account-summary {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+}
+
+.fusion-account-summary strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.fusion-account-summary small {
+    color: var(--sidebar-muted);
+    font-size: 0.69rem;
+}
+
+.fusion-account-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 0.55rem);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    padding: 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--color-mist) 42%, transparent);
+    border-radius: 8px;
+    color: var(--color-on-dark);
+    background: var(--color-shell-raised);
+    box-shadow: 0 -12px 30px color-mix(in srgb, var(--color-shell) 35%, transparent);
+}
+
+.fusion-account-panel span {
+    color: var(--sidebar-muted);
+    font-size: 0.68rem;
+    font-weight: 760;
+    text-transform: uppercase;
+}
+
+.fusion-account-panel strong {
+    overflow-wrap: anywhere;
+    font-size: 0.88rem;
+    line-height: 1.3;
+}
+
+.fusion-account-panel small {
+    overflow-wrap: anywhere;
+    color: var(--sidebar-muted);
+    font-size: 0.73rem;
+}
+
+.fusion-account-panel .fusion-account-logout {
+    min-height: 2.32rem;
+    margin-top: 0.6rem;
+    border: 1px solid var(--color-warm);
+    border-radius: 6px;
+    color: var(--color-shell);
+    background: var(--color-warm);
+    font-size: 0.8rem;
+    font-weight: 780;
+    cursor: pointer;
+}
+
+.fusion-account-panel .fusion-account-logout:hover { background: #fff; }
+
 @media (max-width: 767px) {
     .fusion-sidebar-shell {
         width: min(20rem, 86vw);
@@ -382,15 +484,11 @@
         padding-top: 0.86rem;
     }
 
-    .fusion-context-card {
-        margin: 0.64rem 0.66rem 0.34rem;
-    }
-
     .fusion-sidebar-nav {
         padding-inline: 0.6rem;
     }
 
-    .fusion-nav-link {
+    .fusion-sidebar-shell ::deep .fusion-nav-link {
         min-height: 2.62rem;
         font-size: 0.84rem;
     }
@@ -400,68 +498,7 @@
     }
 }
 
-/* FUSION-UX-PALETTE-REFINEMENT */
-.fusion-sidebar-shell {
-    --sidebar-navy: var(--color-shell-soft);
-    --sidebar-navy-deep: var(--color-shell);
-    --sidebar-navy-soft: var(--color-shell-soft);
-    --sidebar-steel: var(--color-muted);
-    --sidebar-gold: var(--color-accent);
-    --sidebar-wine: var(--color-primary);
-    --sidebar-teal: var(--color-secondary);
-    --sidebar-coral: var(--color-accent);
-    --sidebar-mint: var(--color-secondary);
-    --sidebar-text: color-mix(in srgb, var(--color-surface) 95%, transparent);
-    --sidebar-muted: color-mix(in srgb, var(--color-on-dark) 72%, transparent);
-    background: var(--color-shell);
-}
-
-.fusion-sidebar-topline {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-shell) 46%, transparent), color-mix(in srgb, var(--color-shell) 16%, transparent));
-}
-
-.fusion-sidebar-system,
-.fusion-context-label,
-.fusion-footer-title {
-    color: color-mix(in srgb, var(--color-accent) 96%, transparent);
-}
-
-.fusion-sidebar-badge {
-    border-color: color-mix(in srgb, var(--color-secondary) 34%, transparent);
-    background: linear-gradient(145deg, color-mix(in srgb, var(--color-secondary) 32%, transparent), color-mix(in srgb, var(--color-accent) 10%, transparent));
-}
-
-.fusion-context-card {
-    border-color: color-mix(in srgb, var(--color-secondary) 24%, transparent);
-    background:
-        linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 20%, transparent), color-mix(in srgb, var(--color-primary) 13%, transparent)),
-        color-mix(in srgb, var(--color-surface) 4%, transparent);
-}
-
-.fusion-section-heading::before {
-    background: linear-gradient(135deg, var(--sidebar-gold), var(--sidebar-coral));
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent), 0 0 16px color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-
-.fusion-nav-link:hover,
-.fusion-nav-link:focus-visible {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 16%, transparent), color-mix(in srgb, var(--color-surface) 7%, transparent));
-    border-color: color-mix(in srgb, var(--color-secondary) 24%, transparent);
-}
-
-.fusion-nav-link.is-active {
-    background:
-        linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 22%, transparent), color-mix(in srgb, var(--color-primary) 24%, transparent)),
-        color-mix(in srgb, var(--color-surface) 7%, transparent);
-    border-color: color-mix(in srgb, var(--color-accent) 38%, transparent);
-}
-
-.fusion-nav-link:hover .fusion-nav-icon,
-.fusion-nav-link.is-active .fusion-nav-icon,
-.fusion-chevron.is-expanded {
-    color: var(--sidebar-gold);
-}
-
+/* Keep submenu entries consistent; reserve copper for the active marker. */
 .fusion-subnav {
     position: relative;
     border-left: 0;
@@ -475,87 +512,29 @@
     bottom: 0.26rem;
     width: 2px;
     border-radius: 999px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 78%, transparent), color-mix(in srgb, var(--color-secondary) 70%, transparent), color-mix(in srgb, var(--color-accent) 62%, transparent));
+    background: color-mix(in srgb, var(--color-mist) 42%, transparent);
 }
 
-.fusion-nav-child {
-    color: rgba(241, 246, 248, 0.84);
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 14%, transparent), color-mix(in srgb, var(--color-surface) 4%, transparent));
-    border-color: color-mix(in srgb, var(--color-secondary) 12%, transparent);
+.fusion-sidebar-shell ::deep .fusion-nav-child {
+    color: color-mix(in srgb, var(--color-on-dark) 84%, transparent);
+    background: linear-gradient(95deg,
+        color-mix(in srgb, var(--component-teal) 17%, transparent),
+        color-mix(in srgb, var(--component-mist) 7%, transparent));
+    border-color: color-mix(in srgb, var(--color-mist) 10%, transparent);
 }
 
-.fusion-nav-child:nth-child(3n + 1) {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-secondary) 17%, transparent), color-mix(in srgb, var(--color-surface) 4%, transparent));
+.fusion-sidebar-shell ::deep .fusion-nav-child:hover,
+.fusion-sidebar-shell ::deep .fusion-nav-child:focus-visible {
+    color: var(--color-on-dark);
+    background: color-mix(in srgb, var(--component-teal) 29%, transparent);
+    border-color: color-mix(in srgb, var(--color-mist) 25%, transparent);
 }
 
-.fusion-nav-child:nth-child(3n + 2) {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 16%, transparent), color-mix(in srgb, var(--color-surface) 4%, transparent));
-}
-
-.fusion-nav-child:nth-child(3n) {
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 15%, transparent), color-mix(in srgb, var(--color-surface) 4%, transparent));
-}
-
-.fusion-nav-child::before {
-    background: var(--sidebar-gold);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 10%, transparent);
-}
-
-.fusion-nav-child:nth-child(3n + 2)::before {
-    background: var(--sidebar-mint);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-secondary) 10%, transparent);
-}
-
-.fusion-nav-child:nth-child(3n)::before {
-    background: var(--sidebar-coral);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 10%, transparent);
-}
-
-.fusion-nav-child:hover,
-.fusion-nav-child:focus-visible {
-    color: var(--color-surface);
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 16%, transparent), color-mix(in srgb, var(--color-secondary) 16%, transparent));
-    border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
-}
-
-.fusion-nav-child.is-active {
-    color: var(--color-surface);
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 22%, transparent), color-mix(in srgb, var(--color-secondary) 18%, transparent));
-    border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
-    box-shadow: inset 2px 0 0 var(--sidebar-gold), 0 10px 18px color-mix(in srgb, var(--color-shell) 12%, transparent);
-}
-
-/* FUSION-UX-CONTEXT-CARD-COMPACT */
-.fusion-context-card {
-    margin: 0.52rem 0.72rem 0.28rem;
-    padding: 0.52rem 0.62rem;
-    border-radius: 0.62rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.16rem 0.5rem;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface) 4%, transparent), 0 8px 16px color-mix(in srgb, var(--color-shell) 7%, transparent);
-}
-
-.fusion-context-label {
-    grid-column: 1 / -1;
-    font-size: 0.56rem;
-    letter-spacing: 0.11em;
-}
-
-.fusion-context-card strong {
-    margin: 0;
-    font-size: 0.8rem;
-    line-height: 1.08;
-}
-
-.fusion-context-card small {
-    grid-column: 1 / -1;
-    font-size: 0.66rem;
-    line-height: 1.18;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.fusion-sidebar-shell ::deep .fusion-nav-child.is-active {
+    color: var(--color-on-dark);
+    background: color-mix(in srgb, var(--component-teal) 34%, var(--color-shell-raised));
+    border-color: color-mix(in srgb, var(--color-mist) 30%, transparent);
+    box-shadow: inset 2px 0 0 var(--sidebar-marker);
 }
 
 
@@ -576,7 +555,7 @@
 .fusion-sidebar-collapse:hover {
     transform: translateY(-1px);
     background: color-mix(in srgb, var(--color-surface) 16%, transparent);
-    border-color: color-mix(in srgb, var(--color-accent) 32%, transparent);
+    border-color: color-mix(in srgb, var(--color-mist) 45%, transparent);
 }
 
 .fusion-sidebar-collapse svg {
@@ -596,15 +575,27 @@
     padding: 0.8rem 0.56rem;
 }
 
-.fusion-sidebar-shell.is-collapsed .fusion-sidebar-system,
 .fusion-sidebar-shell.is-collapsed .fusion-sidebar-badge,
-.fusion-sidebar-shell.is-collapsed .fusion-context-card,
 .fusion-sidebar-shell.is-collapsed .fusion-section-heading strong,
 .fusion-sidebar-shell.is-collapsed .fusion-nav-text,
 .fusion-sidebar-shell.is-collapsed .fusion-chevron,
-.fusion-sidebar-shell.is-collapsed .fusion-sidebar-footer {
+.fusion-sidebar-shell.is-collapsed .fusion-footer-status,
+.fusion-sidebar-shell.is-collapsed .fusion-powerbi-action,
+.fusion-sidebar-shell.is-collapsed .fusion-footer-note,
+.fusion-sidebar-shell.is-collapsed .fusion-footer-error,
+.fusion-sidebar-shell.is-collapsed .fusion-account-summary,
+.fusion-sidebar-shell.is-collapsed .fusion-account-trigger::after {
     display: none !important;
 }
+
+.fusion-sidebar-shell.is-collapsed .fusion-sidebar-system {
+    text-align: center;
+    font-size: 0.58rem;
+}
+
+.fusion-sidebar-shell.is-collapsed .fusion-sidebar-footer { padding: 0.5rem; }
+.fusion-sidebar-shell.is-collapsed .fusion-account-area { margin-top: 0; }
+.fusion-sidebar-shell.is-collapsed .fusion-account-trigger { justify-content: center; padding: 0.42rem; }
 
 .fusion-sidebar-shell.is-collapsed .fusion-sidebar-collapse svg {
     transform: rotate(180deg);
@@ -623,10 +614,10 @@
 .fusion-sidebar-shell.is-collapsed .fusion-section-heading::before {
     width: 0.38rem;
     height: 0.38rem;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 10%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-copper) 12%, transparent);
 }
 
-.fusion-sidebar-shell.is-collapsed .fusion-nav-link {
+.fusion-sidebar-shell.is-collapsed ::deep .fusion-nav-link {
     grid-template-columns: 1fr;
     justify-items: center;
     min-height: 2.72rem;
@@ -644,7 +635,17 @@
     display: none !important;
 }
 
-.fusion-sidebar-shell.is-collapsed .fusion-nav-link:hover,
-.fusion-sidebar-shell.is-collapsed .fusion-nav-link:focus-visible {
+.fusion-sidebar-shell.is-collapsed ::deep .fusion-nav-link:hover,
+.fusion-sidebar-shell.is-collapsed ::deep .fusion-nav-link:focus-visible {
     transform: translateX(0) translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fusion-sidebar-shell ::deep .fusion-nav-link,
+    .fusion-subnav,
+    .fusion-chevron,
+    .fusion-sidebar-collapse,
+    .fusion-sidebar-collapse svg {
+        transition: none;
+    }
 }

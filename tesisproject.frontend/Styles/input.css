@@ -1,24 +1,38 @@
 ﻿@import "tailwindcss";
 @source "../**/*.{razor,cshtml,html,js,ts,cs,css}";
 
-/* COLORES BASE DE TEMAS - SIMPLIFICADOS */
+/* Base palette for the integrated shell; component palette for local accents. */
 :root {
+    --palette-ink: #121212;
+    --palette-slate-900: #1F2937;
+    --palette-slate-700: #334155;
+    --palette-slate-500: #64748B;
+    --palette-slate-100: #F1F5F9;
+    --component-ink: #0A0F14;
+    --component-deep-teal: #0F3D3E;
+    --component-teal: #2E6F73;
+    --component-mist: #7FB3B8;
+    --component-warm: #EADCC8;
+    --component-copper: #C6601F;
     --color-background: #ffffff;
-    --color-foreground: #121212;
-    --color-primary: #334155;
-    --color-secondary: #2f5f5b;
-    --color-accent: #d8b84f;
-    --color-border: color-mix(in srgb, #64748b 28%, #ffffff);
-    --color-error: #ef4444;
-    --color-muted: #64748b;
-    --color-page-bg: #f1f5f9;
-    --color-footer-text: #64748b;
-    --color-shell: #121212;
-    --color-shell-raised: #1f2937;
-    --color-shell-soft: #334155;
+    --color-foreground: var(--palette-ink);
+    --color-primary: var(--palette-slate-700);
+    --color-secondary: var(--palette-slate-500);
+    --color-accent: #A34E19;
+    --color-copper: var(--component-copper);
+    --color-warm: var(--component-warm);
+    --color-mist: var(--component-mist);
+    --color-border: color-mix(in srgb, var(--palette-slate-500) 28%, #ffffff);
+    --color-error: #991b1b;
+    --color-muted: var(--palette-slate-500);
+    --color-page-bg: var(--palette-slate-100);
+    --color-footer-text: var(--color-muted);
+    --color-shell: var(--palette-slate-900);
+    --color-shell-raised: var(--palette-slate-700);
+    --color-shell-soft: var(--palette-slate-500);
     --color-surface: #ffffff;
-    --color-on-dark: #f1f5f9;
-    --color-skeleton: color-mix(in srgb, #64748b 18%, #f1f5f9);
+    --color-on-dark: var(--palette-slate-100);
+    --color-skeleton: color-mix(in srgb, var(--palette-slate-500) 18%, var(--palette-slate-100));
 }
 
 .dark {
@@ -61,23 +75,7 @@
 }
 
 .institucional {
-    --color-background: #ffffff;
-    --color-foreground: #121212;
-    --color-primary: #334155;
-    --color-secondary: #2f5f5b;
-    --color-accent: #d8b84f;
-    --color-border: color-mix(in srgb, #64748b 28%, #ffffff);
-    --color-error: #991b1b;
-    --color-muted: #64748b;
     --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    --color-page-bg: #f1f5f9;
-    --color-footer-text: #64748b;
-    --color-shell: #121212;
-    --color-shell-raised: #1f2937;
-    --color-shell-soft: #334155;
-    --color-surface: #ffffff;
-    --color-on-dark: #f1f5f9;
-    --color-skeleton: color-mix(in srgb, #64748b 18%, #f1f5f9);
 }
 
 /* CONFIGURACIÓN TAILWIND */
@@ -87,6 +85,9 @@
     --color-primary: var(--color-primary);
     --color-secondary: var(--color-secondary);
     --color-accent: var(--color-accent);
+    --color-copper: var(--color-copper);
+    --color-warm: var(--color-warm);
+    --color-mist: var(--color-mist);
     --color-border: var(--color-border);
     --color-error: var(--color-error);
     --color-muted: var(--color-muted);

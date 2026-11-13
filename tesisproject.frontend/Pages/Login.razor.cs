@@ -105,11 +105,11 @@ namespace tesisproject.frontend.Pages
 
     public class LoginModel
     {
-        [Required]
-        [EmailAddress]
+        [Required(ErrorMessage = "Ingresa tu correo institucional.")]
+        [EmailAddress(ErrorMessage = "Ingresa un correo válido.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required]
+        [Required(ErrorMessage = "Ingresa tu contraseña.")]
         public string Password { get; set; } = string.Empty;
     }
 }

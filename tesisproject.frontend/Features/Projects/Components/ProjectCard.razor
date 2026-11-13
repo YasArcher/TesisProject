@@ -4,56 +4,55 @@
 @inherits ComponentBase
 
 <Card Tone="CardTone.Default"
-      Class="h-full min-h-0 flex flex-col overflow-hidden bg-background border border-border rounded-2xl card-hover-primary transition-shadow">
+      Class="h-full min-h-0 flex flex-col overflow-hidden bg-background card-hover-primary transition-shadow"
+      style="border-radius: 8px;">
     <CardHeader Class="shrink-0 min-w-0">
-        <h3 class="text-lg font-semibold text-foreground line-clamp-2 break-words">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-semibold text-muted">@Item.ProjectCode</span>
+            <span class="rounded-sm border border-border bg-page-bg px-2 py-1 text-xs font-semibold text-foreground">@Item.ProjectStateName</span>
+        </div>
+        <h3 class="line-clamp-2 break-words text-base font-semibold text-foreground">
             @Item.ProjectName
         </h3>
-
-        <p class="text-sm text-muted break-words">
-            <span class="font-medium">Estado:</span> @Item.ProjectStateName •
-            <span class="font-medium">Tipo:</span> @Item.ProjectTypeName
-        </p>
-
-        <p class="text-sm text-muted break-words">
-            <span class="font-medium">Grupo:</span> @Item.ProjectGroupName
-        </p>
+        <p class="mt-2 break-words text-sm text-muted">@Item.ProjectTypeName</p>
     </CardHeader>
 
-    <CardBody Class="flex-1 min-h-0">
-        <div class="text-sm text-foreground grid grid-cols-2 gap-x-4 gap-y-1">
+    <CardBody Class="flex-1 min-h-0 gap-3">
+        <div class="text-xs text-muted">
+            <span class="font-semibold text-foreground">Grupo</span>
+            <span class="ml-1 break-words">@Item.ProjectGroupName</span>
+        </div>
+        <div>
+            <div class="mb-1 flex items-center justify-between text-xs">
+                <span class="font-semibold text-foreground">Avance</span>
+                <strong class="text-foreground">@ProgressPercent.ToString("0.##")%</strong>
+            </div>
+            <div class="h-2 overflow-hidden rounded-sm bg-page-bg" role="progressbar"
+                 aria-label="Avance del proyecto" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@ProgressPercent">
+                <div class="h-full bg-accent" style="width: @ProgressWidth;"></div>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-border pt-3 text-xs text-muted">
             <div class="min-w-0">
-                <span class="font-medium">Inicio:</span>
-                @Item.StartDate.ToSpanishShortDate()
+                <span class="block font-semibold text-foreground">Inicio</span>
+                <span>@Item.StartDate.ToSpanishShortDate()</span>
             </div>
 
             <div class="min-w-0">
-                <span class="font-medium">Fin:</span>
-                @Item.TentativeEndDate.ToSpanishShortDate()
-            </div>
-
-            <div class="col-span-2 min-w-0">
-                <span class="font-medium">Progreso:</span>
-                @(Item.ExecutionPercentage?.ToString("0.##") ?? "0")%
+                <span class="block font-semibold text-foreground">Fin previsto</span>
+                <span>@Item.TentativeEndDate.ToSpanishShortDate()</span>
             </div>
         </div>
     </CardBody>
 
     <CardFooter>
-        <div class="flex gap-2">
+        <div class="flex justify-end">
             <ActionButton Text="Abrir"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
                           Class="rounded-md"
-                          Execute="@(() => OnOpen.InvokeAsync(Item))">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                </Icon>
-            </ActionButton>
+                          Execute="@(() => OnOpen.InvokeAsync(Item))" />
         </div>
     </CardFooter>
 </Card>

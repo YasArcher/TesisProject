@@ -1,102 +1,106 @@
 @page "/"
 @using tesisproject.frontend.Services.Interfaces
-@using tesisproject.shared.DTOs.Auth
+@using tesisproject.frontend.SharedUI.Feedback
+@using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.Errors
 @inject IAuthClientService AuthClient
+@inject IProjectClientService ProjectClient
+@inject IArticleClientService ArticleClient
 @inject NavigationManager Nav
-<div class="h-full overflow-y-auto bg-page-bg">
-    <div class="mx-auto w-full max-w-6xl p-4 md:p-6">
-        <header class="mb-6 border-b border-border pb-4">
-            <p class="text-sm font-semibold text-primary">Sistema integrado de investigación</p>
-            <h1 class="mt-1 text-2xl font-bold text-foreground">Selecciona el módulo de trabajo</h1>
-            <p class="mt-2 max-w-3xl text-sm text-muted">
-                Tu sesión institucional determina las funciones disponibles. Puedes volver a esta pantalla desde el menú principal.
-            </p>
+
+<div class="portal-page">
+    <div class="portal-content">
+        <header class="portal-hero">
+            <img src="/images/portal-research.png"
+                 alt="Investigadores revisando artículos y resultados en un laboratorio universitario"
+                 loading="eager" decoding="async" />
+            <div class="portal-hero-shade"></div>
+            <div class="portal-hero-copy">
+                <p>Investigación institucional</p>
+                <h1>Portal de investigación</h1>
+                <span>Proyectos y producción científica en un solo lugar.</span>
+            </div>
         </header>
 
-        @if (_loading)
+        @if (!string.IsNullOrWhiteSpace(_message))
         {
-            <div class="flex items-center justify-center" style="min-height: 16rem;">
-                <div class="text-center">
-                    <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                    <p class="mt-3 text-sm text-muted">Consultando accesos...</p>
-                </div>
+            <p class="portal-notice" role="status">@_message</p>
+        }
+
+        <section class="portal-metrics" aria-label="Indicadores generales">
+            <div class="portal-section-heading">
+                <h2>Resumen institucional</h2>
+                @if (!_loading)
+                {
+                    <button type="button" disabled="@_metricsLoading" @onclick="RefreshMetricsAsync">Actualizar cifras</button>
+                }
             </div>
-        }
-        else
-        {
-            @if (!string.IsNullOrWhiteSpace(_message))
+            <div class="portal-metrics-grid">
+                <article>
+                    <span>Total de proyectos</span>
+                    @if (_loading || _metricsLoading) { <Skeleton Width="84" Height="36" /> }
+                    else { <strong>@MetricValue(_totalProjects)</strong> }
+                </article>
+                <article>
+                    <span>Total de artículos</span>
+                    @if (_loading || _metricsLoading) { <Skeleton Width="84" Height="36" /> }
+                    else { <strong>@MetricValue(_totalArticles)</strong> }
+                </article>
+                <article>
+                    <span>Proyectos en ejecución</span>
+                    @if (_loading || _metricsLoading) { <Skeleton Width="84" Height="36" /> }
+                    else { <strong>@MetricValue(_projectsInProgress)</strong> }
+                </article>
+            </div>
+            @if (_metricsError)
             {
-                <div class="mb-4 rounded-lg border border-border bg-background p-4 text-sm text-muted">
-                    @_message
-                </div>
+                <p class="portal-metrics-note" role="status">Algunas cifras no están disponibles. Puedes actualizarlas nuevamente.</p>
             }
+        </section>
 
-            <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <article class="rounded-lg border border-border bg-background p-5 shadow-sm">
-                    <div class="mb-4 flex items-start justify-between gap-4">
-                        <div>
-                            <p class="text-xs font-bold uppercase @(_canOpenProjects ? "text-primary" : "text-muted")">
-                                @(_canOpenProjects ? "Disponible" : "Sin acceso")
-                            </p>
-                            <h2 class="mt-1 text-xl font-bold text-foreground">Gestión de proyectos</h2>
-                        </div>
-                        <span class="rounded-lg bg-primary-subtle px-3 py-2 text-sm font-semibold text-primary">Proyectos</span>
+        <section class="portal-modules" aria-label="Módulos disponibles">
+            <div class="portal-section-heading"><h2>Módulos</h2></div>
+            <div class="portal-module-grid">
+                <article class="portal-module-card portal-module-projects">
+                    <div>
+                        <span class="portal-module-label">@(_loading ? "Consultando acceso" : _canOpenProjects ? "Disponible" : "Sin acceso")</span>
+                        <h3>Gestión de proyectos</h3>
+                        <p>Proyectos, matrices y seguimiento.</p>
                     </div>
-                    <p class="mb-5 text-sm text-muted">
-                        Administra proyectos, grupos, presupuestos, productos, matrices, visitas y seguimiento institucional.
-                    </p>
-                    <button type="button"
-                            class="w-full rounded-lg px-4 py-3 text-sm font-semibold transition @ProjectButtonClass"
-                            disabled="@(!_canOpenProjects)"
-                            @onclick="OpenProjects">
-                        @(_canOpenProjects ? "Ingresar a proyectos" : "Módulo no disponible")
+                    <button type="button" disabled="@(_loading || !_canOpenProjects)" @onclick="OpenProjects">
+                        @(_canOpenProjects ? "Ir a proyectos" : "Módulo no disponible")
                     </button>
                 </article>
-
-                <article class="rounded-lg border border-border bg-background p-5 shadow-sm">
-                    <div class="mb-4 flex items-start justify-between gap-4">
-                        <div>
-                            <p class="text-xs font-bold uppercase @(_canOpenArticles ? "text-primary" : "text-muted")">
-                                @ArticleAvailabilityLabel
-                            </p>
-                            <h2 class="mt-1 text-xl font-bold text-foreground">Producción científica</h2>
-                        </div>
-                        <span class="rounded-lg bg-muted/20 px-3 py-2 text-sm font-semibold text-foreground">Artículos</span>
+                <article class="portal-module-card portal-module-articles">
+                    <div>
+                        <span class="portal-module-label">@ArticleAvailabilityLabel</span>
+                        <h3>Producción científica</h3>
+                        <p>Artículos, registro y reportería.</p>
                     </div>
-                    <p class="mb-5 text-sm text-muted">
-                        Consulta artículos científicos y prepara la integración progresiva de registro, workflow, reportería e IA.
-                    </p>
-                    <button type="button"
-                            class="w-full rounded-lg px-4 py-3 text-sm font-semibold transition @ArticleButtonClass"
-                            disabled="@(!_canOpenArticles)"
-                            @onclick="OpenArticles">
-                        @(_canOpenArticles ? "Ingresar a artículos" : "Módulo no disponible")
+                    <button type="button" disabled="@(_loading || !_canOpenArticles)" @onclick="OpenArticles">
+                        @(_canOpenArticles ? "Ir a artículos" : "Módulo no disponible")
                     </button>
                 </article>
-            </section>
-        }
+            </div>
+        </section>
     </div>
 </div>
 
 @code {
     private bool _loading = true;
+    private bool _metricsLoading;
+    private bool _metricsError;
     private bool _canOpenProjects;
     private bool _canOpenArticles;
+    private bool _canReadArticles;
     private bool _articlesEnabled;
+    private int? _totalProjects;
+    private int? _totalArticles;
+    private int? _projectsInProgress;
     private string? _message;
 
     private string ArticleAvailabilityLabel
-        => !_articlesEnabled ? "En preparación" : _canOpenArticles ? "Disponible" : "Sin acceso";
-
-    private string ArticleButtonClass
-        => _canOpenArticles
-            ? "bg-primary text-white hover:opacity-90"
-            : "cursor-not-allowed bg-border text-muted";
-
-    private string ProjectButtonClass
-        => _canOpenProjects
-            ? "bg-primary text-white hover:opacity-90"
-            : "cursor-not-allowed bg-border text-muted";
+        => _loading ? "Consultando acceso" : !_articlesEnabled ? "En preparación" : _canOpenArticles ? "Disponible" : "Sin acceso";
 
     protected override async Task OnInitializedAsync()
     {
@@ -110,20 +114,97 @@
                 role.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
                 role.Equals("superadmin", StringComparison.OrdinalIgnoreCase));
             _articlesEnabled = result.Data.Articles.Enabled;
-            _canOpenArticles = result.Data.Articles.CanAccess || result.Data.Articles.CanList;
+            _canOpenArticles = _articlesEnabled && (result.Data.Articles.CanAccess || result.Data.Articles.CanList);
+            _canReadArticles = _articlesEnabled && result.Data.Articles.CanList;
 
             if (!_canOpenProjects && !_canOpenArticles)
-                _message = "Tu cuenta inició sesión correctamente, pero todavía no tiene un rol operativo asignado.";
-            else if (_articlesEnabled && !_canOpenArticles)
-                _message = "Tu cuenta no tiene permisos asignados para consultar producción científica.";
+                _message = "Tu cuenta no tiene un módulo asignado.";
         }
         else
         {
-            _message = "No fue posible consultar los accesos de artículos. La gestión de proyectos continúa disponible.";
+            _message = "No fue posible consultar tus accesos. Actualiza la página para intentarlo de nuevo.";
         }
 
         _loading = false;
+        await RefreshMetricsAsync();
     }
+
+    private async Task RefreshMetricsAsync()
+    {
+        if (_metricsLoading)
+            return;
+
+        _metricsLoading = true;
+        _metricsError = false;
+        _totalProjects = null;
+        _projectsInProgress = null;
+        _totalArticles = null;
+
+        try
+        {
+            var results = await Task.WhenAll(LoadProjectMetricsAsync(), LoadArticleMetricsAsync());
+            _metricsError = results.Any(success => !success);
+        }
+        finally
+        {
+            _metricsLoading = false;
+        }
+    }
+
+    private async Task<bool> LoadProjectMetricsAsync()
+    {
+        if (!_canOpenProjects)
+            return true;
+
+        try
+        {
+            var result = await ProjectClient.GetListAsync(onlyActive: false);
+            if (result.Success && result.Data is not null)
+            {
+                _totalProjects = result.Data.Count;
+                _projectsInProgress = result.Data.Count(project =>
+                    string.Equals(project.ProjectStateName, "En ejecución", StringComparison.OrdinalIgnoreCase));
+                return true;
+            }
+
+            if (result.ErrorCode == ErrorCodes.Project.NoneFound)
+            {
+                _totalProjects = 0;
+                _projectsInProgress = 0;
+                return true;
+            }
+        }
+        catch
+        {
+            // Keep the metric unavailable when the projects service cannot be reached.
+        }
+
+        return false;
+    }
+
+    private async Task<bool> LoadArticleMetricsAsync()
+    {
+        if (!_canReadArticles)
+            return true;
+
+        try
+        {
+            var result = await ArticleClient.GetPageAsync(new ArticleListQuery { Page = 1, PageSize = 1 });
+            if (result.Success && result.Data is not null)
+            {
+                _totalArticles = result.Data.TotalCount;
+                return true;
+            }
+        }
+        catch
+        {
+            // Keep the metric unavailable when the articles service cannot be reached.
+        }
+
+        return false;
+    }
+
+    private static string MetricValue(int? value) => value?.ToString("N0") ?? "N/D";
 
     private void OpenProjects() => Nav.NavigateTo("/projects/home");
     private void OpenArticles() => Nav.NavigateTo("/articles");

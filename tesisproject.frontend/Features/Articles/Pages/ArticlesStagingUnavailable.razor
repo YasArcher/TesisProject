@@ -17,6 +17,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.MassRegistration
+@using tesisproject.shared.DTOs.Imports
 @attribute [Authorize]
 @inject IRegistrationMatrixClient MatrixClient
 @inject NavigationManager Nav
@@ -46,11 +47,11 @@
                     <p class="mt-2 text-sm leading-6 text-muted">
                         @CurrentContext.PanelDetail
                     </p>
-                    @if (BatchId.HasValue)
+                    @if (MatrixId.HasValue)
                     {
                         <div class="articles-protected-batch mt-4">
-                            <span>Lote seleccionado</span>
-                            <strong>@BatchId</strong>
+                            <span>Matriz seleccionada</span>
+                            <strong>@MatrixId</strong>
                         </div>
                     }
                     <div class="mt-5 grid gap-3 md:grid-cols-3">
@@ -89,7 +90,7 @@
             </div>
         </section>
 
-        @if (BatchId.HasValue)
+        @if (MatrixId.HasValue || BatchId.HasValue)
         {
             <section class="articles-review-panel rounded-lg border border-border bg-background p-5 shadow-sm md:p-6">
                 @if (_loadingMatrix)
@@ -116,7 +117,7 @@
                             <p class="text-xs font-bold uppercase text-muted">Detalle del lote</p>
                             <h2 class="mt-1 text-xl font-bold text-foreground">@_matrix.Summary.Name</h2>
                             <p class="mt-2 max-w-3xl text-sm text-muted">
-                                Revisa las filas enviadas desde la matriz. Esta vista permite validar visualmente el contenido antes de continuar con acciones de workflow.
+                                Revisa las filas preparadas y los DOI duplicados. La aprobacion y el registro final aun no estan disponibles para este lote.
                             </p>
                         </div>
                         <span class="articles-review-status">@StatusLabel(_matrix.Summary.Status)</span>
@@ -124,20 +125,20 @@
 
                     <div class="articles-review-metrics mt-4">
                         <article>
-                            <span>Filas</span>
-                            <strong>@_matrix.Rows.Count</strong>
+                            <span>Filas del lote</span>
+                            <strong>@_staging?.TotalRows</strong>
                         </article>
                         <article>
-                            <span>Columnas</span>
-                            <strong>@_matrix.Columns.Count</strong>
+                            <span>Preparadas</span>
+                            <strong>@_staging?.ValidRows</strong>
                         </article>
                         <article>
-                            <span>Obligatorios</span>
-                            <strong>@_matrix.Columns.Count(x => x.IsRequired)</strong>
+                            <span>DOI duplicados</span>
+                            <strong>@_staging?.DuplicateRows</strong>
                         </article>
                         <article>
-                            <span>Completitud</span>
-                            <strong>@CompletionRate%</strong>
+                            <span>Con errores</span>
+                            <strong>@_staging?.ErrorRows</strong>
                         </article>
                     </div>
 
@@ -146,6 +147,7 @@
                             <thead>
                                 <tr>
                                     <th>Fila</th>
+                                    <th>Estado</th>
                                     @foreach (var column in _matrix.Columns)
                                     {
                                         <th>
@@ -163,6 +165,7 @@
                                 {
                                     <tr @key="row.RegistrationMatrixRowId">
                                         <td class="articles-review-row-number">@row.RowNumber</td>
+                                        <td>@StatusLabel(row.Status)</td>
                                         @foreach (var column in _matrix.Columns)
                                         {
                                             var value = GetCellValue(row, column.FieldId);
@@ -191,45 +194,62 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "matrixId")]
+    public int? MatrixId { get; set; }
+
     [SupplyParameterFromQuery(Name = "batchId")]
     public int? BatchId { get; set; }
 
     private RegistrationMatrixDetailDto? _matrix;
+    private BulkImportBatchSummaryDto? _staging;
     private bool _loadingMatrix;
     private string? _matrixError;
 
-    private int CompletionRate
-    {
-        get
-        {
-            if (_matrix is null || _matrix.Rows.Count == 0 || _matrix.Columns.Count == 0)
-                return 0;
-
-            var total = _matrix.Rows.Count * _matrix.Columns.Count;
-            var filled = _matrix.Rows.Sum(row => _matrix.Columns.Count(column => !string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId))));
-            return (int)Math.Round(filled * 100m / total, MidpointRounding.AwayFromZero);
-        }
-    }
-
     protected override async Task OnParametersSetAsync()
     {
-        if (BatchId.HasValue)
+        if (MatrixId.HasValue || BatchId.HasValue)
             await LoadMatrixAsync();
     }
 
     private async Task LoadMatrixAsync()
     {
-        if (!BatchId.HasValue)
-            return;
-
         _loadingMatrix = true;
         _matrixError = null;
-        var result = await MatrixClient.GetMatrixAsync(BatchId.Value);
-        if (result.Success && result.Data is not null)
-            _matrix = result.Data;
-        else
-            _matrixError = result.Message ?? "No se pudo obtener el detalle del lote seleccionado.";
-        _loadingMatrix = false;
+        _matrix = null;
+        _staging = null;
+        try
+        {
+            if (MatrixId is not > 0)
+            {
+                _matrixError = "Este enlace de lote anterior no identifica una matriz del staging actual. Abre el lote desde la bandeja de workflow.";
+                return;
+            }
+
+            var matrixResult = await MatrixClient.GetMatrixAsync(MatrixId.Value);
+            if (!matrixResult.Success || matrixResult.Data is null)
+            {
+                _matrixError = matrixResult.Message ?? "No se pudo obtener la matriz seleccionada.";
+                return;
+            }
+
+            var stagingResult = await MatrixClient.GetStagingSummaryAsync(MatrixId.Value);
+            if (!stagingResult.Success || stagingResult.Data is null)
+            {
+                _matrixError = stagingResult.Message ?? "No se pudo obtener el lote de staging de esta matriz.";
+                return;
+            }
+
+            _matrix = matrixResult.Data;
+            _staging = stagingResult.Data;
+        }
+        catch (Exception)
+        {
+            _matrixError = "No fue posible consultar el lote. Intentalo nuevamente.";
+        }
+        finally
+        {
+            _loadingMatrix = false;
+        }
     }
 
     private void GoWorkflow() => Nav.NavigateTo("/articles/module/workflow");
@@ -246,6 +266,10 @@
         {
             "SubmittedToWorkflow" => "En revision",
             "Submitted" => "Enviado",
+            "Staged" => "En staging",
+            "Ready" => "Preparada",
+            "Duplicate" => "DOI duplicado",
+            "Invalid" => "Con errores",
             "Draft" => "Borrador",
             _ when !string.IsNullOrWhiteSpace(status) => status,
             _ => "Sin estado"

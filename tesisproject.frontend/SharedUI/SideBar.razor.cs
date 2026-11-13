@@ -2,6 +2,7 @@
 using Blazored.Toast.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
 using tesisproject.frontend.Services.Interfaces;
 
 namespace tesisproject.frontend.SharedUI;
@@ -11,6 +12,7 @@ public partial class SideBar : IDisposable
     [Parameter] public bool IsCollapsed { get; set; }
     [Parameter] public bool IsDesktop { get; set; }
     [Parameter] public EventCallback OnToggleCollapsed { get; set; }
+    [Parameter] public EventCallback OnLogout { get; set; }
 
     private record MenuItem(
         string Text,
@@ -20,7 +22,6 @@ public partial class SideBar : IDisposable
         string? Icon = null,
         IReadOnlyList<MenuItem>? Children = null,
         IReadOnlyCollection<string>? AllowedRoles = null,
-        bool RequiresArticlesAccess = false,
         string? ArticleCapability = null
     )
     {
@@ -55,29 +56,52 @@ public partial class SideBar : IDisposable
     private bool _articleCanViewReporting;
     private bool _articleCanViewIntelligence;
     private bool _articleCanManageSecurity;
-    private bool _projectsAccess;
-    private bool _sessionLoaded;
+    private bool _accountOpen;
+    private string? _accountName;
+    private string? _accountEmail;
     private string SidebarShellClass => $"fusion-sidebar-shell {(IsCollapsed ? "is-collapsed" : string.Empty)}";
     private string CollapseButtonLabel => IsCollapsed ? "Expandir navegación" : "Contraer navegación";
+    private string AccountPanelId => IsDesktop ? "sidebar-account-desktop" : "sidebar-account-mobile";
+    private string AccountName => string.IsNullOrWhiteSpace(_accountName) ? "Usuario" : _accountName;
+    private string AccountInitials => AccountName.Trim()[..1].ToUpperInvariant();
+    private bool IsGeneralPortal => CurrentPath == "/";
+    private string CurrentModuleLabel => IsGeneralPortal ? "General" : IsArticlePortal ? "Artículos" : "Proyectos";
 
-    private readonly HashSet<string> _expanded = new();
+    private readonly Dictionary<string, bool> _expandedOverrides = new();
 
-    private void Toggle(string key)
+    private void Toggle(string key, bool parentActive)
     {
         if (IsCollapsed)
             return;
 
-        if (!_expanded.Add(key))
-            _expanded.Remove(key);
+        _expandedOverrides[key] = !IsExpanded(key, parentActive);
     }
 
     private async Task ToggleCollapsedAsync()
     {
+        _accountOpen = false;
         if (OnToggleCollapsed.HasDelegate)
             await OnToggleCollapsed.InvokeAsync();
     }
 
-    private bool IsExpanded(string key) => _expanded.Contains(key);
+    private async Task ToggleAccountAsync()
+    {
+        if (IsCollapsed && OnToggleCollapsed.HasDelegate)
+            await OnToggleCollapsed.InvokeAsync();
+
+        _accountOpen = !_accountOpen;
+    }
+
+    private Task LogoutAsync() => OnLogout.InvokeAsync();
+
+    private void HandleAccountKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+            _accountOpen = false;
+    }
+
+    private bool IsExpanded(string key, bool parentActive)
+        => _expandedOverrides.TryGetValue(key, out var expanded) ? expanded : parentActive;
 
     private bool IsChildActive(MenuItem parent)
     {
@@ -115,8 +139,6 @@ public partial class SideBar : IDisposable
 
     private readonly MenuItem[] _projectItems =
     [
-        new MenuItem("Módulos", "/", true, "Plataforma", IconDashboard),
-        new MenuItem("Artículos científicos", "/articles", false, "Plataforma", IconArticles, RequiresArticlesAccess: true),
         new MenuItem(
             Text: "Gestión de proyectos",
             Section: "Proyectos",
@@ -208,7 +230,7 @@ public partial class SideBar : IDisposable
             .GroupBy(i => i.Section);
 
     private IEnumerable<MenuItem> ActiveItems
-        => IsArticlePortal ? _articleItems : _projectItems;
+        => IsGeneralPortal ? [] : IsArticlePortal ? _articleItems : _projectItems;
 
     private bool IsArticlePortal
     {
@@ -216,11 +238,18 @@ public partial class SideBar : IDisposable
         {
             var path = CurrentPath;
             return path.StartsWith("/articles", StringComparison.OrdinalIgnoreCase) ||
-                   (_sessionLoaded && _articlesAccess && !_projectsAccess);
+                   path.StartsWith("/articulos", StringComparison.OrdinalIgnoreCase) ||
+                   path.StartsWith("/scientific-production", StringComparison.OrdinalIgnoreCase);
         }
     }
 
-    private bool CanUsePowerBi => !IsArticlePortal && _roles.Contains("superadmin");
+    private bool CanUsePowerBi => !IsGeneralPortal && !IsArticlePortal && _roles.Contains("superadmin");
+
+    protected override void OnParametersSet()
+    {
+        if (IsCollapsed)
+            _accountOpen = false;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,6 +259,10 @@ public partial class SideBar : IDisposable
             return;
 
         _roles = session.Data.Roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _accountName = session.Data.DisplayName;
+        _accountEmail = session.Data.Email;
+        if (string.IsNullOrWhiteSpace(_accountName))
+            _accountName = _accountEmail;
         var articleAccess = session.Data.Articles;
         _articlesAccess = articleAccess.Enabled &&
             (articleAccess.CanAccess || articleAccess.CanList || articleAccess.CanRegister || articleAccess.CanUseWorkflow ||
@@ -244,12 +277,12 @@ public partial class SideBar : IDisposable
         _articleCanViewReporting = articleAccess.CanViewReporting;
         _articleCanViewIntelligence = articleAccess.CanViewIntelligence;
         _articleCanManageSecurity = articleAccess.CanManageSecurity;
-        _projectsAccess = _roles.Overlaps(["coordinador", "technical", "admin", "superadmin"]);
-        _sessionLoaded = true;
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs args)
     {
+        _expandedOverrides.Clear();
+        _accountOpen = false;
         InvokeAsync(StateHasChanged);
     }
 
@@ -267,9 +300,6 @@ public partial class SideBar : IDisposable
 
             return HasArticleCapability(item.ArticleCapability);
         }
-
-        if (item.RequiresArticlesAccess && !_articlesAccess)
-            return false;
 
         return item.AllowedRoles is null ||
                item.AllowedRoles.Count == 0 ||

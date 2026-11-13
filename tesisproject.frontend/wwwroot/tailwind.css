@@ -49,7 +49,6 @@
     --color-teal-500: oklch(70.4% 0.14 182.503);
     --color-teal-600: oklch(60% 0.118 184.704);
     --color-cyan-50: oklch(98.4% 0.019 200.873);
-    --color-cyan-200: oklch(91.7% 0.08 205.041);
     --color-cyan-500: oklch(71.5% 0.143 215.221);
     --color-cyan-700: oklch(52% 0.105 223.128);
     --color-sky-50: oklch(97.7% 0.013 236.62);
@@ -163,6 +162,7 @@
     --leading-tight: 1.25;
     --leading-snug: 1.375;
     --leading-relaxed: 1.625;
+    --radius-sm: 0.25rem;
     --radius-md: 0.375rem;
     --radius-lg: 0.5rem;
     --radius-xl: 0.75rem;
@@ -185,6 +185,9 @@
     --color-primary: var(--color-primary);
     --color-secondary: var(--color-secondary);
     --color-accent: var(--color-accent);
+    --color-copper: var(--color-copper);
+    --color-warm: var(--color-warm);
+    --color-mist: var(--color-mist);
     --color-border: var(--color-border);
     --color-error: var(--color-error);
     --color-muted: var(--color-muted);
@@ -1430,6 +1433,9 @@
   }
   .rounded-md {
     border-radius: var(--radius-md);
+  }
+  .rounded-sm {
+    border-radius: var(--radius-sm);
   }
   .rounded-xl {
     border-radius: var(--radius-xl);
@@ -3687,6 +3693,9 @@
   .text-violet-700 {
     color: var(--color-violet-700);
   }
+  .text-warm {
+    color: var(--color-warm);
+  }
   .text-white {
     color: var(--color-white);
   }
@@ -5230,6 +5239,11 @@
       grid-template-columns: 1fr 1fr 5rem auto auto;
     }
   }
+  .md\:grid-cols-\[1fr_7rem_auto\] {
+    @media (width >= 48rem) {
+      grid-template-columns: 1fr 7rem auto;
+    }
+  }
   .md\:grid-cols-\[120px_minmax\(0\,1fr\)\] {
     @media (width >= 48rem) {
       grid-template-columns: 120px minmax(0,1fr);
@@ -5399,6 +5413,11 @@
       margin-left: calc(var(--spacing) * 6);
     }
   }
+  .lg\:block {
+    @media (width >= 64rem) {
+      display: block;
+    }
+  }
   .lg\:inline {
     @media (width >= 64rem) {
       display: inline;
@@ -5504,6 +5523,11 @@
       grid-template-columns: 320px minmax(0,1fr);
     }
   }
+  .lg\:grid-cols-\[minmax\(0\,1\.3fr\)_minmax\(0\,\.8fr\)_minmax\(0\,1fr\)_auto\] {
+    @media (width >= 64rem) {
+      grid-template-columns: minmax(0,1.3fr) minmax(0,.8fr) minmax(0,1fr) auto;
+    }
+  }
   .lg\:grid-cols-\[minmax\(0\,1\.4fr\)_minmax\(8rem\,\.38fr\)_minmax\(11rem\,\.55fr\)_minmax\(10rem\,\.45fr\)\] {
     @media (width >= 64rem) {
       grid-template-columns: minmax(0,1.4fr) minmax(8rem,.38fr) minmax(11rem,.55fr) minmax(10rem,.45fr);
@@ -5512,6 +5536,11 @@
   .lg\:grid-cols-\[minmax\(0\,1fr\)_18rem\] {
     @media (width >= 64rem) {
       grid-template-columns: minmax(0,1fr) 18rem;
+    }
+  }
+  .lg\:grid-cols-\[minmax\(0\,2fr\)_minmax\(0\,1fr\)\] {
+    @media (width >= 64rem) {
+      grid-template-columns: minmax(0,2fr) minmax(0,1fr);
     }
   }
   .lg\:grid-cols-\[minmax\(0\,2fr\)_minmax\(0\,2fr\)_auto\] {
@@ -5612,6 +5641,11 @@
   .xl\:max-h-\[calc\(100vh-2rem\)\] {
     @media (width >= 80rem) {
       max-height: calc(100vh - 2rem);
+    }
+  }
+  .xl\:max-w-2xl {
+    @media (width >= 80rem) {
+      max-width: var(--container-2xl);
     }
   }
   .xl\:columns-4 {
@@ -5749,6 +5783,11 @@
       align-items: flex-end;
     }
   }
+  .xl\:items-start {
+    @media (width >= 80rem) {
+      align-items: flex-start;
+    }
+  }
   .xl\:justify-between {
     @media (width >= 80rem) {
       justify-content: space-between;
@@ -5767,6 +5806,11 @@
   .xl\:overflow-y-auto {
     @media (width >= 80rem) {
       overflow-y: auto;
+    }
+  }
+  .\32 xl\:grid-cols-3 {
+    @media (width >= 96rem) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
   .\32 xl\:grid-cols-\[1\.15fr_0\.85fr\] {
@@ -5870,22 +5914,42 @@
   }
 }
 :root {
+  --palette-ink: #121212;
+  --palette-slate-900: #1F2937;
+  --palette-slate-700: #334155;
+  --palette-slate-500: #64748B;
+  --palette-slate-100: #F1F5F9;
+  --component-ink: #0A0F14;
+  --component-deep-teal: #0F3D3E;
+  --component-teal: #2E6F73;
+  --component-mist: #7FB3B8;
+  --component-warm: #EADCC8;
+  --component-copper: #C6601F;
   --color-background: #ffffff;
-  --color-foreground: #121212;
-  --color-primary: #334155;
-  --color-secondary: #2f5f5b;
-  --color-accent: #d8b84f;
-  --color-border: color-mix(in srgb, #64748b 28%, #ffffff);
-  --color-error: #ef4444;
-  --color-muted: #64748b;
-  --color-page-bg: #f1f5f9;
-  --color-footer-text: #64748b;
-  --color-shell: #121212;
-  --color-shell-raised: #1f2937;
-  --color-shell-soft: #334155;
+  --color-foreground: var(--palette-ink);
+  --color-primary: var(--palette-slate-700);
+  --color-secondary: var(--palette-slate-500);
+  --color-accent: #A34E19;
+  --color-copper: var(--component-copper);
+  --color-warm: var(--component-warm);
+  --color-mist: var(--component-mist);
+  --color-border: var(--palette-slate-500);
+  @supports (color: color-mix(in lab, red, red)) {
+    --color-border: color-mix(in srgb, var(--palette-slate-500) 28%, #ffffff);
+  }
+  --color-error: #991b1b;
+  --color-muted: var(--palette-slate-500);
+  --color-page-bg: var(--palette-slate-100);
+  --color-footer-text: var(--color-muted);
+  --color-shell: var(--palette-slate-900);
+  --color-shell-raised: var(--palette-slate-700);
+  --color-shell-soft: var(--palette-slate-500);
   --color-surface: #ffffff;
-  --color-on-dark: #f1f5f9;
-  --color-skeleton: color-mix(in srgb, #64748b 18%, #f1f5f9);
+  --color-on-dark: var(--palette-slate-100);
+  --color-skeleton: var(--palette-slate-500);
+  @supports (color: color-mix(in lab, red, red)) {
+    --color-skeleton: color-mix(in srgb, var(--palette-slate-500) 18%, var(--palette-slate-100));
+  }
 }
 .dark {
   --color-background: #0f172a;
@@ -5924,23 +5988,7 @@
   --color-footer-text: #94a3b8;
 }
 .institucional {
-  --color-background: #ffffff;
-  --color-foreground: #121212;
-  --color-primary: #334155;
-  --color-secondary: #2f5f5b;
-  --color-accent: #d8b84f;
-  --color-border: color-mix(in srgb, #64748b 28%, #ffffff);
-  --color-error: #991b1b;
-  --color-muted: #64748b;
   --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --color-page-bg: #f1f5f9;
-  --color-footer-text: #64748b;
-  --color-shell: #121212;
-  --color-shell-raised: #1f2937;
-  --color-shell-soft: #334155;
-  --color-surface: #ffffff;
-  --color-on-dark: #f1f5f9;
-  --color-skeleton: color-mix(in srgb, #64748b 18%, #f1f5f9);
 }
 .bg-primary-hover:hover {
   background-color: var(--color-primary);

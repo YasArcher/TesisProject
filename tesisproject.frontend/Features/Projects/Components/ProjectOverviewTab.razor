@@ -1,5 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Feedback
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Utils
@@ -9,9 +10,16 @@
 <div class="w-full min-w-0 flex flex-col gap-4 p-4 md:p-5">
     @if (IsLoading || (!_loadFinishedOnce && Item is null))
     {
-        <div class="flex items-center justify-center gap-3 rounded-lg border border-primary/20 bg-primary-subtle px-4 py-6">
-            <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-            <div class="text-sm font-medium text-primary">Cargando proyecto...</div>
+        <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" role="status" aria-label="Cargando proyecto">
+            <div class="space-y-4 rounded-lg border border-border bg-background p-4">
+                <Skeleton Width="160" Height="20" />
+                <Skeleton Width="260" Height="14" />
+                <Skeleton Width="220" Height="14" />
+            </div>
+            <div class="space-y-4 rounded-lg border border-border bg-background p-4">
+                <Skeleton Width="130" Height="20" />
+                <Skeleton Width="180" Height="14" />
+            </div>
         </div>
     }
     else if (Item is null)

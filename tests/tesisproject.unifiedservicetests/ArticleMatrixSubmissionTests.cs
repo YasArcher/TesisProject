@@ -34,6 +34,12 @@ internal static class ArticleMatrixSubmissionTests
             submitted.Data.BatchResult.InsertedRows == 0,
             "Submitting a matrix must stage one row without claiming final Article insertion.");
         var firstBatchId = submitted.Data!.BatchResult!.Batch.Summary.ImportBatchId;
+        var stagingSummary = await service.GetStagingSummaryAsync(1, "owner", false);
+        check(stagingSummary.Success && stagingSummary.Data?.ImportBatchId == firstBatchId &&
+            stagingSummary.Data.Status == "Staged" && stagingSummary.Data.ValidRows == 1 &&
+            stagingSummary.Data.DuplicateRows == 0 &&
+            (await context.RegistrationMatrices.FindAsync(1))?.Status == "Staged",
+            "The matrix-id staging route must return the persisted batch and ready-row counts.");
         check(await context.ArticleStagingBatches.CountAsync() == 1 && await context.ArticleStagingRows.CountAsync() == 1 &&
             await context.Articles.CountAsync() == 0 &&
             (await context.RegistrationMatrices.FindAsync(1))?.LastImportBatchId is null,

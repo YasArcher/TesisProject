@@ -4,8 +4,8 @@
 
 <div class="@SidebarShellClass">
     <div class="fusion-sidebar-topline">
-        <span class="fusion-sidebar-system">Plataforma institucional</span>
-        <span class="fusion-sidebar-badge">@(IsArticlePortal ? "Artículos" : "Proyectos")</span>
+        <span class="fusion-sidebar-system">Portal</span>
+        <span class="fusion-sidebar-badge">@CurrentModuleLabel</span>
         @if (IsDesktop)
         {
             <button type="button"
@@ -21,11 +21,6 @@
         }
     </div>
 
-    <div class="fusion-context-card">
-        <span class="fusion-context-label">Vista activa</span>
-        <strong>@(IsArticlePortal ? "Artículos" : "Proyectos")</strong>
-        <small>@(IsArticlePortal ? "Registro, reportería e IA." : "Seguimiento y gestión operativa.")</small>
-    </div>
     <nav class="fusion-sidebar-nav" aria-label="Navegacion principal">
         @foreach (var group in GroupedItems)
         {
@@ -42,15 +37,15 @@
             {
                 var key = $"{group.Key ?? "root"}::{item.Text}::{item.Href ?? "nohref"}";
                 var parentActive = item.HasChildren && IsChildActive(item);
-                var expanded = item.HasChildren && !IsCollapsed && (IsExpanded(key) || parentActive);
+                var expanded = item.HasChildren && !IsCollapsed && IsExpanded(key, parentActive);
 
                 if (item.HasChildren)
                 {
                     <div class="fusion-nav-group">
                         <button type="button"
                                 class="fusion-nav-link fusion-nav-button @(parentActive ? "is-active" : null)" title="@item.Text"
-                                @onclick="() => Toggle(key)"
-                                aria-expanded="@expanded">
+                                @onclick="() => Toggle(key, parentActive)"
+                                aria-expanded="@(expanded ? "true" : "false")">
                             @if (!string.IsNullOrWhiteSpace(item.Icon))
                             {
                                 <span class="fusion-nav-icon">
@@ -111,15 +106,13 @@
     <div class="fusion-sidebar-footer">
         <div class="fusion-footer-status">
             <span class="fusion-footer-dot"></span>
-            <div>
-                <div class="fusion-footer-title">Plataforma activa</div>
-                <small>@(IsArticlePortal ? "Produccion cientifica" : "Gestion de proyectos")</small>
-            </div>
+            <div class="fusion-footer-title">UTA · Investigación</div>
         </div>
 
         @if (CanUsePowerBi)
         {
-            <ActionButton Text="Actualizar Power BI"
+            <div class="fusion-powerbi-action">
+                <ActionButton Text="Actualizar Power BI"
                           Intent="ButtonIntent.Warning"
                           Variant="ButtonVariant.Ghost"
                           Size="ButtonSize.Md"
@@ -137,7 +130,8 @@
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
                 </Icon>
-            </ActionButton>
+                </ActionButton>
+            </div>
         }
 
         @if (!string.IsNullOrWhiteSpace(_etlStatus))
@@ -153,5 +147,33 @@
                 @_etlError
             </div>
         }
+
+        <div class="fusion-account-area" @onkeydown="HandleAccountKeyDown">
+            @if (_accountOpen)
+            {
+                <div class="fusion-account-panel" id="@AccountPanelId">
+                    <span>Cuenta conectada</span>
+                    <strong>@AccountName</strong>
+                    @if (!string.IsNullOrWhiteSpace(_accountEmail) && !string.Equals(_accountEmail, AccountName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <small>@_accountEmail</small>
+                    }
+                    <button type="button" class="fusion-account-logout" @onclick="LogoutAsync">Salir</button>
+                </div>
+            }
+            <button type="button"
+                    class="fusion-account-trigger"
+                    title="Cuenta de @AccountName"
+                    aria-label="Cuenta de @AccountName"
+                    aria-expanded="@(_accountOpen ? "true" : "false")"
+                    aria-controls="@AccountPanelId"
+                    @onclick="ToggleAccountAsync">
+                <span class="fusion-account-avatar" aria-hidden="true">@AccountInitials</span>
+                <span class="fusion-account-summary">
+                    <strong>@AccountName</strong>
+                    <small>Cuenta</small>
+                </span>
+            </button>
+        </div>
     </div>
 </div>

@@ -15,23 +15,18 @@
     <div class="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 md:p-6">
         <header class="articles-bulk-hero overflow-hidden rounded-lg border border-border bg-background shadow-sm">
             <div class="articles-bulk-hero-band px-5 py-5 text-white md:px-6">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-wide text-accent">Captura tabular</p>
+                        <p class="text-xs font-bold uppercase tracking-wide text-warm">Captura tabular</p>
                         <h1 class="mt-2 text-2xl font-bold md:text-3xl">Carga masiva de articulos</h1>
                         <p class="mt-3 max-w-3xl text-sm leading-6 text-on-dark/80">
-                            Revisa las matrices y sus lotes preparados antes de continuar con el registro de articulos.
+                            Matrices y lotes preparados para revisión.
                         </p>
-                    </div>
-                    <div class="articles-bulk-status-card">
-                        <span>Estado del flujo</span>
-                        <strong>Staging disponible</strong>
-                        <small>Registro final pendiente</small>
                     </div>
                 </div>
             </div>
 
-            <div class="articles-bulk-summary grid gap-3 px-5 py-4 md:grid-cols-4 md:px-6">
+            <div class="articles-bulk-summary grid grid-cols-2 gap-2 px-4 py-4 md:gap-3 md:px-6">
                 <article>
                     <span>Matrices</span>
                     <strong>@_matrices.Count</strong>
@@ -40,18 +35,8 @@
                     <span>Filas preparadas</span>
                     <strong>@TotalRows</strong>
                 </article>
-                <article>
-                    <span>Columnas</span>
-                    <strong>@TotalColumns</strong>
-                </article>
-                <article>
-                    <span>Con lote</span>
-                    <strong>@MatricesWithBatch</strong>
-                </article>
             </div>
         </header>
-
-        <ArticlesModuleNav Title="Matriz, lote y preparacion de workflow" />
 
         @if (!string.IsNullOrWhiteSpace(_message))
         {
@@ -68,7 +53,6 @@
                         <div>
                             <p class="text-xs font-bold uppercase text-muted">Borradores tabulares</p>
                             <h2 class="mt-1 text-lg font-bold text-foreground">Matrices disponibles</h2>
-                            <p class="mt-1 text-sm text-muted">Estas matrices son la entrada segura para preparar datos antes de enviarlos al flujo institucional.</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button type="button" class="articles-bulk-secondary" disabled="@_loading" @onclick="LoadMatricesAsync">Actualizar</button>
@@ -125,28 +109,16 @@
                     }
                 </section>
 
-                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
-                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                            <p class="text-xs font-bold uppercase text-muted">Control del flujo</p>
-                            <h2 class="mt-1 text-lg font-bold text-foreground">Procesamiento institucional</h2>
-                            <p class="mt-1 max-w-3xl text-sm text-muted">
-                                Las matrices revisadas pueden enviarse a staging. El registro final se habilitara cuando la aprobacion del lote este disponible.
-                            </p>
-                        </div>
-                        <span class="articles-bulk-disabled" role="status">@FlowStatusText</span>
-                    </div>
-                    <div class="articles-bulk-process-note mt-4 @(CanSubmitSelectedMatrix ? "articles-bulk-process-note--ready" : string.Empty)">
-                        <strong>Estado actual</strong>
-                        <p>El envio a staging conserva las filas sin registrar articulos. Las filas listas y los DOI duplicados se muestran por separado.</p>
-                    </div>
-                </section>
             </main>
 
             <aside class="grid gap-5">
                 <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
                     <p class="text-xs font-bold uppercase text-muted">Revision de matriz</p>
                     <h2 class="mt-1 text-lg font-bold text-foreground">@SelectedMatrixTitle</h2>
+                    @if (_selectedMatrix is not null)
+                    {
+                        <span class="articles-bulk-disabled mt-2 inline-flex" role="status">@FlowStatusText</span>
+                    }
 
                     @if (_loadingDetail)
                     {
@@ -180,7 +152,7 @@
                         {
                             <div class="mt-4 border-t border-border pt-4 text-sm text-foreground" aria-live="polite">
                                 <strong>Lote @_stagingSummary.BatchCode en staging</strong>
-                                <p class="mt-1 text-muted">@_stagingSummary.ValidRows fila(s) listas, @_stagingSummary.DuplicateRows DOI duplicado(s), @_stagingSummary.ErrorRows con errores. Ningun articulo registrado.</p>
+                                <p class="mt-1 text-muted">@_stagingSummary.ValidRows fila(s) preparadas, @_stagingSummary.DuplicateRows DOI duplicado(s), @_stagingSummary.ErrorRows con errores. Ningun articulo registrado.</p>
                             </div>
                         }
 
@@ -205,7 +177,7 @@
                         <div class="mt-4 grid gap-2">
                             <button type="button" class="articles-bulk-primary" @onclick="GoToMatrix">Abrir matriz seleccionada</button>
                             <button type="button" class="articles-bulk-secondary" disabled="@(!CanSubmitSelectedMatrix)" @onclick="SubmitSelectedMatrixAsync">
-                                @(_submittingToWorkflow ? "Enviando a revision..." : "Enviar a revision")
+                                @(_submittingToStaging ? "Preparando lote..." : "Preparar lote en staging")
                             </button>
                             <button type="button" class="articles-bulk-secondary" disabled="@(!HasActiveBatch)" @onclick="OpenCurrentBatch">Ver lote enviado</button>
                             @if (_pendingDeleteMatrixId == _selectedMatrix.Summary.RegistrationMatrixId)
@@ -221,36 +193,6 @@
                     }
                 </section>
 
-                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
-                    <p class="text-xs font-bold uppercase text-muted">Ruta recomendada</p>
-                    <h2 class="mt-1 text-lg font-bold text-foreground">Operacion segura</h2>
-                    <div class="mt-4 space-y-3">
-                        @foreach (var step in FlowSteps)
-                        {
-                            <div class="articles-bulk-step">
-                                <span>@step.Number</span>
-                                <div>
-                                    <strong>@step.Title</strong>
-                                    <p>@step.Detail</p>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </section>
-
-                <section class="articles-bulk-panel rounded-lg border border-border bg-background p-5 shadow-sm">
-                    <p class="text-xs font-bold uppercase text-muted">Reglas visibles</p>
-                    <h2 class="mt-1 text-lg font-bold text-foreground">Antes de procesar</h2>
-                    <div class="mt-4 space-y-3">
-                        @foreach (var rule in Rules)
-                        {
-                            <div class="articles-bulk-rule">
-                                <span></span>
-                                <p>@rule</p>
-                            </div>
-                        }
-                    </div>
-                </section>
             </aside>
         </section>
     </div>
@@ -260,64 +202,38 @@
     private bool _loading = true;
     private bool _loadingDetail;
     private bool _deletingMatrix;
-    private bool _submittingToWorkflow;
+    private bool _submittingToStaging;
     private string? _message;
     private List<RegistrationMatrixSummaryDto> _matrices = [];
     private RegistrationMatrixDetailDto? _selectedMatrix;
     private BulkImportBatchSummaryDto? _stagingSummary;
     private int? _pendingDeleteMatrixId;
-    private int? _lastSubmittedBatchId;
 
     private int TotalRows => _matrices.Sum(x => x.RowCount);
-    private int TotalColumns => _matrices.Sum(x => x.ColumnCount);
-    private int MatricesWithBatch => _matrices.Count(HasBatch);
     private string SelectedMatrixTitle => _selectedMatrix?.Summary.Name ?? "Seleccion pendiente";
     private int RequiredColumnCount => _selectedMatrix?.Columns.Count(x => x.IsRequired) ?? 0;
     private int RequiredCellCount => RequiredColumnCount * (_selectedMatrix?.Rows.Count ?? 0);
     private int CompletedRequiredCells => _selectedMatrix is null ? 0 : RequiredColumns.Sum(column =>
         _selectedMatrix.Rows.Count(row => row.Cells.Any(cell => cell.FieldId == column.FieldId && !string.IsNullOrWhiteSpace(cell.RawValue))));
     private int MissingRequiredCells => Math.Max(0, RequiredCellCount - CompletedRequiredCells);
-    private int? ActiveBatchId => _selectedMatrix?.Summary.LastImportBatchId ?? _lastSubmittedBatchId;
-    private bool HasActiveBatch => ActiveBatchId.HasValue;
+    private bool HasActiveBatch => IsStaged(_selectedMatrix?.Summary.Status);
     private bool CanSubmitSelectedMatrix => _selectedMatrix is not null
+        && string.Equals(_selectedMatrix.Summary.Status, "Draft", StringComparison.OrdinalIgnoreCase)
         && _selectedMatrix.Rows.Count > 0
         && MissingRequiredCells == 0
         && !HasActiveBatch
-        && !_submittingToWorkflow;
+        && !_submittingToStaging;
     private bool CanDeleteSelectedMatrix => _selectedMatrix is not null
         && !_selectedMatrix.Summary.LastImportBatchId.HasValue
         && string.Equals(_selectedMatrix.Summary.Status, "Draft", StringComparison.OrdinalIgnoreCase);
     private IEnumerable<RegistrationMatrixColumnDto> RequiredColumns => _selectedMatrix?.Columns.Where(x => x.IsRequired) ?? [];
-    private string FlowStatusText => _submittingToWorkflow
-        ? "Enviando al workflow"
+    private string FlowStatusText => _submittingToStaging
+        ? "Preparando lote"
         : HasActiveBatch
-            ? "Lote generado"
+            ? "Lote en staging"
             : CanSubmitSelectedMatrix
-                ? "Listo para enviar"
+                ? "Listo para preparar"
                 : "Revision requerida";
-    private string FlowMessage => _selectedMatrix switch
-    {
-        null => "Selecciona una matriz para revisar filas, columnas y campos obligatorios antes de continuar.",
-        { Rows.Count: 0 } => "La matriz seleccionada no tiene filas. Agrega registros desde la matriz antes de enviarla al workflow.",
-        _ when MissingRequiredCells > 0 => $"La matriz mantiene {MissingRequiredCells} celda(s) obligatoria(s) pendiente(s). Corrige los datos antes de enviarla.",
-        _ when HasActiveBatch => $"La matriz ya fue enviada y tiene un lote asociado. Puedes abrir el detalle del lote o continuar desde workflow.",
-        _ => "La matriz seleccionada cumple los datos minimos y puede enviarse al workflow institucional."
-    };
-
-    private IReadOnlyList<FlowStep> FlowSteps =>
-    [
-        new("01", "Preparar matriz", "El usuario organiza columnas y filas segun el formulario activo o una matriz personalizada."),
-        new("02", "Enviar a staging", "Se validan las filas y se separan los DOI repetidos sin registrar articulos."),
-        new("03", "Aprobar y registrar", "El procesamiento final estara disponible despues de la revision del lote.")
-    ];
-
-    private IReadOnlyList<string> Rules =>
-    [
-        "No se debe procesar informacion sin una matriz con filas y columnas configuradas.",
-        "Los duplicados por DOI deben bloquearse antes de registrar articulos definitivos.",
-        "Los mensajes de error deben indicar una accion clara para el usuario final.",
-        "Las operaciones largas deben mostrar progreso y resultado resumido."
-    ];
 
     protected override async Task OnInitializedAsync() => await LoadMatricesAsync();
 
@@ -332,9 +248,7 @@
             if (response.Success && response.Data is not null)
             {
                 _matrices = response.Data;
-                _message = _matrices.Count == 0
-                    ? "Todavia no existen matrices para carga masiva. Empieza creando una matriz tabular."
-                    : "Matrices cargadas correctamente. Revisa una matriz para continuar con el flujo de carga masiva.";
+                _message = null;
                 if (_selectedMatrix is not null && !_matrices.Any(x => x.RegistrationMatrixId == _selectedMatrix.Summary.RegistrationMatrixId))
                     _selectedMatrix = null;
                 return;
@@ -442,7 +356,7 @@
         if (!CanSubmitSelectedMatrix || _selectedMatrix is null)
             return;
 
-        _submittingToWorkflow = true;
+        _submittingToStaging = true;
         _message = null;
         var matrixId = _selectedMatrix.Summary.RegistrationMatrixId;
 
@@ -451,13 +365,13 @@
             var response = await MatrixClient.SubmitToStagingAsync(matrixId, new SubmitRegistrationMatrixRequest
             {
                 ValidateAfterCreate = true,
-                UseAuthorWorkflow = true
+                UseAuthorWorkflow = false
             });
 
             if (response.Success && response.Data is not null)
             {
                 _selectedMatrix = response.Data.Matrix;
-                _lastSubmittedBatchId = response.Data.BatchResult?.Batch.Summary.ImportBatchId ?? response.Data.Matrix.Summary.LastImportBatchId;
+                _stagingSummary = response.Data.BatchResult?.Batch.Summary;
 
                 var index = _matrices.FindIndex(x => x.RegistrationMatrixId == matrixId);
                 if (index >= 0)
@@ -465,23 +379,23 @@
 
                 _message = !string.IsNullOrWhiteSpace(response.Data.Message)
                     ? response.Data.Message
-                    : "Matriz enviada al workflow correctamente.";
+                    : "Lote preparado en staging. Ningun articulo se ha registrado aun.";
 
-                if (_lastSubmittedBatchId.HasValue)
-                    _message += $" Lote generado: {_lastSubmittedBatchId.Value}.";
+                if (_stagingSummary is not null)
+                    _message += $" Lote generado: {_stagingSummary.BatchCode}.";
             }
             else
             {
-                _message = response.Message ?? response.Data?.Message ?? "No fue posible enviar la matriz al workflow.";
+                _message = response.Message ?? response.Data?.Message ?? "No fue posible preparar el lote.";
             }
         }
         catch (Exception ex)
         {
-            _message = $"No fue posible enviar la matriz al workflow: {ex.Message}";
+            _message = $"No fue posible preparar el lote: {ex.Message}";
         }
         finally
         {
-            _submittingToWorkflow = false;
+            _submittingToStaging = false;
         }
     }
 
@@ -489,8 +403,8 @@
     private void GoToWorkflow() => Nav.NavigateTo("/articles/module/workflow");
     private void OpenCurrentBatch()
     {
-        if (ActiveBatchId.HasValue)
-            Nav.NavigateTo($"/scientific-production/article-review-staging?batchId={ActiveBatchId.Value}");
+        if (HasActiveBatch && _selectedMatrix is not null)
+            Nav.NavigateTo($"/scientific-production/article-review-staging?matrixId={_selectedMatrix.Summary.RegistrationMatrixId}");
     }
 
     private bool IsSelected(RegistrationMatrixSummaryDto matrix) => _selectedMatrix?.Summary.RegistrationMatrixId == matrix.RegistrationMatrixId;
@@ -511,5 +425,4 @@
 
     private static string FormatDate(DateTime date) => date.ToLocalTime().ToString("dd/MM/yyyy");
 
-    private sealed record FlowStep(string Number, string Title, string Detail);
 }
